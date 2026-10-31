@@ -2,52 +2,23 @@
 
 SwiftUI app, iOS, Xcode project at `larping.xcodeproj` (uses the modern
 `PBXFileSystemSynchronizedRootGroup` — files dropped into `larping/`
-automatically join the build, no project edits needed). Brand "Larping" /
-tagline "actually works".
+automatically join the build, no project edits needed). Brand "MURY" / tagline "MOVE EXPLORE SHARE".
 
-**Offline-first, zero networking.** Fully local via SwiftData. The original
-NestJS-backed architecture was removed (see `STATUS.md` for history).
+**Offline-first, no app backend.** Activities are local via SwiftData. Apple Maps may request imagery; optional HealthKit, Files exports and native sharing retain their existing platform boundaries. The original NestJS-backed architecture was removed (see `STATUS.md` for history).
 
-## Theme & branding
+## Theme & branding (MURY 1.1)
 
-Black/white monochrome (Grok-style). Colors defined entirely as
-Assets.xcassets color sets with Any/Dark variants; Xcode synthesizes
-`Color.ink`, `.canvas`, `.cardSurface`, `.slate`, `.muted`, `.border`, etc.
+BrandTheme is an enum with pink/tiffany raw values. AppStorage key brandTheme starts empty; missing or invalid values show ThemeSelectionView until a deliberate selection is confirmed. Only then is RootTabView mounted, so first-launch seeding/store construction/record permissions do not precede the choice. Later colour changes update the environment without changing the root identity. appearanceMode and user profile values retain their old keys.
 
-| Set | Light | Dark | Use |
-|---|---|---|---|
-| `Ink` | `#0F1115` | `#FAFAFA` | Primary text/icons (swaps with Canvas) |
-| `Canvas` | `#FAFAFA` | `#0F1115` | Main background |
-| `CardSurface` | `#FFFFFF` | `#242A33` | Elevated surfaces |
-| `Slate` | `#242A33` | `#242A33` | Fixed dark tone |
-| `Muted` | `#6B7280` | `#9CA3AF` | Secondary text |
-| `Border` | `#E5E7EB` | `#374151` | Borders |
-| `Success`/`Error`/`Info`/`Warning` | `#22C55E`/`#EF4444`/`#3B82F6`/`#F59E0B` | same | Status |
-| `Accent` + `AccentColor` | `#463CFF` | `#CEFE06` | System tint — adaptive brand color |
+BrandTheme exposes Accent (route/button fill), OnAccent (button labels), Tint (readable links/controls), Canvas, Surface, Ink, Muted and Border. Each Pink*/Tiffany* colour asset has Any/Dark variants. Light accents are #FF4F98 and #00C2CC. Dark backgrounds/text and light readable tints are derived tokens. OnAccent replaces the old scheme-only white/black rule; destructive Finish retains native styling.
 
-**Contrast rule for prominent buttons** (Start/Share use the accent as
-background): their label foreground is chosen from `colorScheme` — white in
-light mode (readable on `#463CFF`), black in dark mode (readable on lime).
-Destructive buttons (Finish) must NOT get that override — iOS renders them
-red-background/white-text natively.
+Flow vector sources and a palette proof live in design/branding. scripts/prepare-flow-assets.ps1 traces the provided board and exports the bundled transparent LogoHorizontal and opaque 1024px AppIcon variants. The image set remains a template, so SwiftUI/UIKit can tint it without distorting the traced reference outline. No custom font is needed. Theme choice does not dynamically switch the home-screen icon.
 
-**Logo assets** (`Assets.xcassets`): `AppIcon.appiconset` (light/dark/tinted,
-1024x1024, generated from the square mark) and `LogoHorizontal.imageset`
-(wordmark, `template-rendering-intent: template` — single alpha-mask PNG,
-recolor per-placement with `.foregroundStyle`/`.tintColor` rather than
-shipping separate black/white files). Both are derived from `logo.png` /
-`logo-horizontal.png` in the repo's `screenshots/` folder, which are raw,
-oversized design
-sources — never reference them directly from app code; regenerate the
-in-bundle assets from them instead if the source logo changes.
-`LogoHorizontal` is the Activities list's `.principal` toolbar item (replaces
-the "Activities" title text entirely — a bare image in `.topBarLeading`
-picks up iOS's "glass" toolbar chip background and looks like an accidental
-button, so it's centered instead). On the Profile cover card it sits
-top-trailing (where the now-removed cover-photo camera button used to be),
-forced `.foregroundStyle(.white)` regardless of `colorScheme` — the cover's
-gradient + darkening scrim are fixed brand colors now (no user photo), so the
-wordmark no longer needs to adapt per appearance mode.
+ShareImageComposer is an instance initialized with ShareStyle, a resolved UIKit palette captured by BrandTheme.shareStyle(for:). compose/composeMapCard read only that instance palette; mapSnapshot receives its light/dark style explicitly. ShareVideoComposer receives the same style for all frames. ShareActivityView refreshes image previews and cancels obsolete video work on appearance/theme changes or dismissal. Transparent classic PNG output and map fallback remain supported.
+
+ShareExportDocument snapshots the ready PNG or MP4 bytes before fileExporter presentation. ShareActivityView uses the selected template, quiet cancellation, success-only completion feedback and retry from retained bytes after a Files failure. The document adds no Photos permission or persistence schema.
+
+The static system launch screen retains neutral Canvas. The SwiftUI splash and app use the selected theme/appearance after launch.
 
 ## Conventions
 
@@ -79,24 +50,28 @@ Core/
   GPXParser.swift          stdlib XMLParser .gpx importer
   ShareImageComposer.swift 1080x1920 share card templates (Core Graphics + MapKit snapshot)
   ShareVideoComposer.swift AVAssetWriter-based animated route video export
+  ShareExportDocument.swift immutable PNG/MP4 snapshot for native Files export
   CameraCaptureView.swift  UIImagePickerController bridge (camera)
   BackupService.swift      JSON export + idempotent import (FileDocument)
   SeedData.swift           one-time sample activities (random-walk paths)
   Formatters.swift         distance/duration/pace/speed/elevation + ISO parse
   AppearanceMode.swift     light/dark/system toggle
+  BrandTheme.swift         persisted theme identity, shared SwiftUI/UIKit tokens
   Health/
     HealthKitService.swift optional HealthKit interop — write: finished activity →
                           HKWorkout (+ route); read: recent HR samples,
                           workout routes (healthkit_import source).
 
 Features/
-  Root/          RootTabView — 4 tabs (Activities, Record, Stats, Profile),
+  Root/          RootTabView — 5 tabs (Home, Activities, Record, Stats, Profile),
                   SplashView — animated launch splash (logo, theme-aware)
-  Record/        RecordView — live map, auto-save on finish, event name + auto-fill
+                  ThemeSelectionView — required first-launch colour selection
+  Home/          HomeDashboardView + HomeSummary — personal last-seven-days summary, recent real activities, recording shortcuts
+  Record/        RecordView — live map, local save attempt on finish, event name + auto-fill
   Activities/    ActivitiesListView (@Query), ActivityDetailView (hero map),
                   ImportGPXView, ImportHealthKitView, ShareActivityView, ActivitiesStore
   Stats/         StatsView — Swift Charts last-7-days + all-time + per-sport + personal bests
-  Profile/       ProfileView — cover card (fixed gradient, no photo upload) + name/bio, appearance, backup export/import
+  Profile/       ProfileView — cover card (fixed gradient, no photo upload) + name/bio, backup export/import; SettingsView — theme and appearance
 ```
 
 ## Data model
@@ -105,7 +80,7 @@ Features/
 (**active/moving** time — pauses excluded; computed by `LocationTracker`, not
 wall clock), `distanceMeters`, `elevationGainMeters`, `averageSpeedMps`, `maxSpeedMps`,
 `source` (`mobile` | `gpx_import` | `healthkit_import` | `sample`), `eventName` (optional user title;
-`EventNamer` ensures "Larping <Sport> N" auto names never collide), `createdAt`,
+`EventNamer` ensures "MURY <Sport> N" auto names never collide), `createdAt`,
 cascade `[CDTrackPoint]`.
 `averagePaceSecondsPerKm`/`calories` are `@Transient` computed, as are
 `maxHeartRateBpm`/`averageHeartRateBpm` (derived from track points; nil for
@@ -113,10 +88,10 @@ live recordings, populated for HealthKit imports).
 `CDTrackPoint`: `timestamp`, `lat/lng`, `altitudeMeters`, `speedMps`, optional
 heart rate/cadence (always nil today).
 
-`EventNamer.nextName(base:existing:)` — given the auto base title ("Larping
+`EventNamer.nextName(base:existing:)` — given the auto base title ("MURY
 Run") and the current event names, returns the base unchanged if it's unused,
-otherwise bumps to the next free number (existing "Larping Run" → next is
-"Larping Run 1"; holes and non-numeric suffixes are ignored). Live recorder
+otherwise bumps to the next free number (existing "MURY Run" → next is
+"MURY Run 1"; holes and non-numeric suffixes are ignored). Live recorder
 uses it both to auto-fill the field and to fill gaps left blank — recording the
 same sport repeatedly never produces duplicate titles. Old/imported activities
 with `eventName == nil` fall back to the base name at display time.
@@ -134,11 +109,7 @@ with a darkening scrim.
 
 ## Startup & seeding
 
-`larpingApp` shows a brief animated `SplashView` (logo wordmark, white in
-dark / black in light mode over the `Canvas` background, ~1.4s then fades)
-while booting. The static pre-SwiftUI launch screen is the same `Canvas`
-background via `UILaunchScreen` in the explicit `Info.plist`, so the handoff
-never flashes white/black.
+The app shows a short Flow splash using the persisted theme and appearance. When brandTheme is missing or invalid, mandatory colour selection precedes RootTabView. Later selections update the environment without resetting the tabs or recorder. The neutral static launch screen can briefly differ from the selected palette before SwiftUI starts.
 
 `RootTabView.task` → `SeedData.seedIfNeeded(context:)` then creates +
 refreshes `ActivitiesStore`. Seed inserts 7 activities (one per sport +
@@ -146,6 +117,12 @@ extra run) spread over the last 7 days with **random-walk loop paths**
 (`SeedData.randomPath` — organic, steered back to center; no routing API),
 guarded by the `seedSampleDataV1` UserDefaults flag so it runs on the first
 install only and never re-seeds after the user deletes everything.
+
+## Home and recording shortcuts
+
+Home is the initial tab. HomeSummary excludes source=sample and future timestamps at a common boundary for weekly totals and recent cards. The seven-day window is calendar start-of-day minus six days through now; older real activities may still appear among the newest three. Nil metrics contribute zero; no personal sample progress is fabricated or deleted. Fetch errors show Retry instead of stale personal results.
+
+Root sends the requested sport with a unique request ID. Record consumes each ID once and applies the sport only when idle; requests received during recording or pause are ignored without being deferred. Existing tracker ownership and view identity remain unchanged. Returning to Record preserves edited event names unless an idle sport change requires a new default title.
 
 ## Recording flow
 
@@ -198,7 +175,7 @@ picker default).
 `tracker.routeCoordinates.last` showing the selected sport's icon in an
 accent-filled circle, bouncing while actively recording (paused stops the
 bounce) — same visual language as the detail-view rider. Icon color is
-`colorScheme`-dependent (black in dark mode, white in light mode) since the
+theme-dependent via OnAccent since the
 accent fill is lime in dark mode — a white icon there had poor contrast.
 Falls back to `UserAnnotation()` before a route exists.
 
@@ -225,7 +202,7 @@ polyline progressively over ~5.5s using `TimelineView(.animation(paused:))`
 — it slices `coordinates.prefix(revealedCount)` by elapsed-time fraction, so
 it follows recorded point order (works for loops/backtracks, not just
 point-to-point). A sport-specific icon marker (the activity's `symbolName`
-in an accent-filled circle, `colorScheme`-dependent icon color, gently
+in an accent-filled circle, theme.onAccent icon color, gently
 bouncing while drawing — same styling as Record's live rider marker) rides
 at the current tip
 (`coordinates[revealedCount - 1]`), settling at the finish when the draw
@@ -262,9 +239,8 @@ Canvas 1080x1920.
    flipped so the brand mark reads first). No event title/date in the header
    anymore (moved to the footer, see below) — this template no longer names
    the event at all, just icon + brand mark.
-4. Route: accent-color polyline (16pt, round joins) — `Accent` asset color
-   resolved at draw time, so it follows system light/dark mode (lime dark,
-   `#463CFF` light). Fits into an aspect-matched, centered region
+4. Route: palette-colour polyline (16pt, round joins), using the resolved
+   selected theme and app appearance captured by ShareStyle. Fits into an aspect-matched, centered region
    (y≈504..970) → symmetric margins for any route size.
 5. Stats: one centered column, 3 rows (DISTANCE / DURATION / PACE).
 6. Footer: the activity **date** (30 semibold, 72% white) — replaces the old

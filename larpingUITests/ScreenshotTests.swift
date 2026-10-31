@@ -22,6 +22,10 @@ final class ScreenshotTests: XCTestCase {
     func testCaptureScreens() throws {
         let app = XCUIApplication()
         app.launch()
+        if app.buttons["theme-pink"].waitForExistence(timeout: 3) {
+            app.buttons["theme-pink"].tap()
+            app.buttons["theme-continue"].tap()
+        }
 
         addUIInterruptionMonitor(withDescription: "location permission") { alert in
             if alert.buttons["Allow While Using App"].exists {
@@ -33,6 +37,7 @@ final class ScreenshotTests: XCTestCase {
 
         let tabBar = app.tabBars.firstMatch
         XCTAssertTrue(tabBar.waitForExistence(timeout: 15), "tab bar never appeared")
+        tabBar.buttons["Activities"].tap()
 
         let hikeRow = app.buttons
             .matching(NSPredicate(format: "label CONTAINS '9.50 km'"))
@@ -60,6 +65,27 @@ final class ScreenshotTests: XCTestCase {
         app.tabBars.buttons["Stats"].tap()
         sleep(3)
         capture("4-stats", of: app)
+
+        for theme in ["Pink", "Tiffany Blue"] {
+            for mode in ["light", "dark"] {
+                app.tabBars.buttons["Profile"].tap()
+                app.buttons["profile-settings"].tap()
+                let picker = app.segmentedControls["profile-theme"]
+                XCTAssertTrue(picker.waitForExistence(timeout: 5))
+                picker.buttons[theme].tap()
+                app.buttons["appearance-" + mode].tap()
+                XCTAssertTrue(picker.buttons[theme].isSelected)
+                XCTAssertTrue(app.buttons["appearance-" + mode].isSelected)
+                capture(theme + "-" + mode + "-settings", of: app)
+                app.navigationBars["Settings"].buttons.firstMatch.tap()
+                XCTAssertTrue(app.navigationBars["Profile"].waitForExistence(timeout: 5))
+                capture(theme + "-" + mode + "-profile", of: app)
+                for tab in ["Home", "Activities", "Record", "Stats"] {
+                    app.tabBars.buttons[tab].tap()
+                    capture(theme + "-" + mode + "-" + tab, of: app)
+                }
+            }
+        }
     }
 
     @MainActor

@@ -550,3 +550,15 @@ Deferred / do-not-build items, so a fresh session doesn't re-propose them:
 - **HealthKit active energy / calories** — energy deliberately not written to
   Health (crude local formula); a stored `activeEnergyKiloJoules` field and
   real energy imports would be needed for accuracy.
+
+## 2026-10-30 — MURY 1.1 local implementation (uncommitted)
+
+Pink/Tiffany tokens, mandatory persisted initial choice, independent appearance, existing-screen styling and explicit sharing palettes are written locally on feature/mury-branding. Flow vectors/PNG assets are traced from the supplied board. Display name/version are MURY/1.1; compatibility identifiers and all protected service/model/workflow files remain unchanged. New private remote mury-ios remains empty. No commits/pushes/distribution/signing changes.
+
+Final local verification: asset checker passed all four combinations, RGB icon formats and protected-file hashes; Swift 6.4 Windows parser passed all 39 Swift files; git diff --check passed. Independent review found icon alpha-channel packaging and two legacy Photos permission labels, both corrected; icon regression check failed before correction and passed afterward. These are limited checks, not an iOS build. XCTest, visual simulator captures, upgrade from Build 1, and physical-device GPS/HealthKit remain pending. See mury-1.1-plan.md for final review and updated verification results.
+
+## 2026-10-31 — master completion scope (uncommitted)
+
+Added richer first-launch previews and dedicated Settings; Tiffany-first defaults and the master Pink/dark-surface palette values. Added Home with real-only recent/seven-day data and consume-once recording shortcuts, discarding shortcut requests during active/paused sessions in source. Added explicit native Save to Files for ready PNG/MP4 with immutable payload ownership, cancellation and retry feedback. Independent task source reviews approved all three changes.
+
+Lead checks: all 46 Swift app/test/UI files parse on Windows; actual asset/contrast/icon/protected hashes pass; repository-normalized git diff --check passes with line-ending advisories. HTML palette proof inspected at desktop/phone widths without overflow/page errors. Combined source review found Home clock staleness and omitted Home screenshots; both were corrected and scoped re-review found no new breakage. Full 46-file syntax, asset/protection and whitespace checks passed again afterward. No native typecheck/build/XCTest/simulator/device test has run; see mury-validation.md and mury-device-qa.md. No commit/push/workflow dispatch or distribution.

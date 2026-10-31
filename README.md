@@ -1,22 +1,14 @@
-# Larping
+# MURY
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="screenshots/logo-horizontal-dark.png">
-    <img src="screenshots/logo-horizontal.png" alt="Larping — actually works" width="300">
-  </picture>
-</p>
+MURY 1.1 development uses the approved Flow branding.
 
-**The offline, private Strava alternative.** Larping is a free,
+**Your private fitness and GPS tracker.** MURY is a free,
 open-source iOS app that records GPS activities — runs, rides, hikes, walks,
 swims — on a live map, with elevation gain and pause-aware timing (a
 20-minute run stays 20 minutes even if you pause in the middle). Finish
 auto-saves, so there's no lost workout.
 
-The whole thing lives on your device. **No account. No server. No ads. Zero
-networking.** All data is stored on-device in SwiftData (SQLite) — nothing
-ever leaves your phone. Think Strava, but just the recording, and private by
-construction.
+Activities are stored on-device in SwiftData (SQLite). **No app account, backend or ads.** Apple Maps may request map imagery; optional HealthKit, backup and sharing move data only through their existing user-selected flows.
 
 Open source, built with SwiftUI + SwiftData — no third-party
 dependencies. Optional extras that keep the privacy promise: GPX import,
@@ -24,7 +16,7 @@ HealthKit sync/import (you opt in), and JSON backup/restore via iCloud Drive.
 Works fully offline; GPS + Apple Maps tiles aside, the app itself never
 touches the network.
 
-## Screenshots
+## Historical screenshots (LARPING 1.0)
 
 <p align="center">
   <img src="screenshots/activities.png" alt="Activities" width="260">
@@ -34,11 +26,12 @@ touches the network.
 
 ## Features
 
+- **Home** — default tab with sport recording shortcuts, a calendar-based last-seven-days summary and the three newest personal activities. Sample and future-dated activities are excluded from Home metrics/cards; existing history remains unchanged. Home shortcuts preserve active or paused recordings. Native lifecycle validation is pending.
 - **Record** — GPS tracking (background-capable, elevation gain) with live
-  map. **Finish auto-saves**; no save form, no "discard your workout" risk.
+  map. **Finish attempts to save immediately** and shows an error if persistence fails.
   Pause time never counts toward the saved duration, pace, or average speed —
   a 20-minute run stays 20 minutes even it you paused in the middle.
-  Event name auto-fills as "Larping Run" / "Larping Run 1" / "Larping Run 2"…
+  Event name auto-fills as "MURY Run" / "MURY Run 1" / "MURY Run 2"…
   (bumps only when that name already exists) and stays editable, but is
   **required** — clear it and Start disables until you fill it back in.
   Sport picked via a compact picker beside the event field; the sport icon
@@ -76,13 +69,13 @@ touches the network.
   route drawing in over the same map. The map template's card title is the event name exactly as
   typed (casing preserved). Pace is shown without the ` /km` unit; speed
   sports keep `km/h`. Generated videos are temporary — share/save them before
-  leaving, then they're cleaned up. Shared via the system share sheet.
+  leaving, then they're cleaned up. Share through the system sheet or use **Save to Files** for the selected ready PNG/MP4. Save feedback distinguishes success, cancellation and retryable failures; the document owns its bytes before the picker opens. Native save behavior remains pending iOS validation.
 - **GPX import** — `.gpx` file → activity (`source: gpx_import`); the sport
   is auto-detected from the file's `<type>` element (unknown/absent keeps
   the picker default).
 - **HealthKit import** — Profile "Allow HealthKit access" (read) unlocks
   Activities → Import → "Import from Health": pick a Watch/iPhone workout,
-  override the sport, and bring it into Larping with route + heart rate where
+  override the sport, and bring it into MURY with route + heart rate where
   available (`source: healthkit_import`). Same graceful fallbacks as GPX — no
   route/HR means a metadata-only activity, never fabricated data.
 - **Stats** — last-7-days distance chart + per-sport totals (distance, time,
@@ -104,8 +97,8 @@ touches the network.
   gradient (no custom cover photo) behind avatar/name/bio and a full-height
   darkening scrim so the gradient never reads as raw lime/blue, and the
   horizontal wordmark small top-trailing, always white in both light and
-  dark mode. Appearance toggle is a compact icon-left/label-right control
-  (System/Light/Dark), and a small version footer sits at the bottom.
+  dark mode. Profile → Settings holds theme and the independent System/Light/Dark controls. A small version footer sits at the bottom.
+- **Themes** — mandatory first-launch Pink or Tiffany Blue selection, persisted locally and changeable in Profile → Settings. Theme is independent of System/Light/Dark appearance.
 - **Appearance** — light/dark/system toggle (icon picker), persisted.
 - **Splash** — branded launch: the horizontal logo wordmark over the app's
   canvas background, white in dark mode / black in light mode, with a static
@@ -121,6 +114,16 @@ Data lives only on this device. To keep it safe / move devices: **Profile →
 Export all activities** (save the JSON in iCloud Drive / Files), then
 **Profile → Import backup**. No scheduled/automatic backup yet
 (`docs/KNOWN_ISSUES.md`).
+
+## MURY 1.1 development
+
+Development branch: feature/mury-branding. New private destination: ferbogar-uk/mury-ios. Publication and validation checkpoints are recorded in docs/mury-master-progress.md and docs/mury-validation.md.
+
+See [the local palette/asset proof](design/branding/branding-preview.html), [master completion plan](docs/mury-master-plan.md), [current progress](docs/mury-master-progress.md), [validation evidence](docs/mury-validation.md) and [native acceptance checklist](docs/mury-device-qa.md). The proof is a static web review, not the native app.
+
+Compatibility identifiers remain unchanged: bundle rdyy.larping, SwiftData schema, HealthKit metadata and the backup discriminator app: "Larping". Existing activity titles and profile values are retained. The icon uses system light/dark/tinted variants; changing the in-app colour theme does not switch the home-screen icon.
+
+Windows checks: node scripts/check-branding.mjs verifies the actual colour assets and protected-file hashes. Swift parsing checks syntax only. iOS compilation/XCTest, four-combination screenshots and upgrade/GPS/HealthKit device checks remain pending. No distribution workflow, commit or push is authorized by implementation approval.
 
 ## Build & verify
 

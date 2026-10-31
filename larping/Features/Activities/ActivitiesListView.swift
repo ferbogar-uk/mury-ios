@@ -2,6 +2,7 @@ import SwiftData
 import SwiftUI
 
 struct ActivitiesListView: View {
+    @Environment(\.brandTheme) private var theme
     @Query(sort: \CDActivity.startedAt, order: .reverse) private var activities: [CDActivity]
     @State private var showGPXImport = false
     @State private var showHealthImport = false
@@ -27,6 +28,8 @@ struct ActivitiesListView: View {
     var body: some View {
         NavigationStack {
             content
+                .scrollContentBackground(.hidden)
+                .background(theme.canvas)
                 .navigationTitle("")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {

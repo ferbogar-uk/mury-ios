@@ -2,6 +2,7 @@ import Charts
 import SwiftUI
 
 struct StatsView: View {
+    @Environment(\.brandTheme) private var theme
     @Environment(ActivitiesStore.self) private var store
 
     private var lastWeek: [CDActivity] {
@@ -71,7 +72,7 @@ struct StatsView: View {
                             x: .value("Day", entry.day, unit: .day),
                             y: .value("Distance", entry.distanceMeters / 1000)
                         )
-                        .foregroundStyle(.tint)
+                        .foregroundStyle(theme.tint)
                     }
                     .chartXAxis {
                         AxisMarks(values: .stride(by: .day)) { AxisValueLabel(format: .dateTime.weekday(.narrow)) }
@@ -141,6 +142,8 @@ struct StatsView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(theme.canvas)
             .navigationTitle("Stats")
         }
     }

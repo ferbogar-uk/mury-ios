@@ -7,6 +7,7 @@ import SwiftUI
 /// Health is only a source here. Mirrors `ImportGPXView`'s shape —
 /// independent picker with a summary and a single Import action.
 struct ImportHealthKitView: View {
+    @Environment(\.brandTheme) private var theme
     @Environment(ActivitiesStore.self) private var activitiesStore
     @Environment(\.dismiss) private var dismiss
 
@@ -72,6 +73,8 @@ struct ImportHealthKitView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(theme.canvas)
             .navigationTitle("Import from Health")
             .toolbar {
                 if isAuthorized {
@@ -100,7 +103,7 @@ struct ImportHealthKitView: View {
                 .font(.headline)
             Text(status == .sharingDenied
                  ? "Enable it in Settings → Health → Data Access & Devices, then come back."
-                 : "Larping reads your Health workouts, routes, and heart rate so you can import them here. You stay in control — nothing is uploaded anywhere.")
+                 : "MURY reads your Health workouts, routes, and heart rate so you can import them here. You stay in control — nothing is uploaded anywhere.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

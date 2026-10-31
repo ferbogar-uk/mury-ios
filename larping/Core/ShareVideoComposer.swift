@@ -16,11 +16,20 @@ enum ShareVideoComposer {
         case writerFailed
     }
 
-    static func composeVideo(snapshot: MKMapSnapshotter.Snapshot?, coordinates: [CLLocationCoordinate2D], stats: ShareImageComposer.Stats) async throws -> URL {
+    static func composeVideo(snapshot: MKMapSnapshotter.Snapshot?, coordinates: [CLLocationCoordinate2D], stats: ShareImageComposer.Stats, style: ShareStyle) async throws -> URL {
+        try Task.checkCancellation()
+        let composer = ShareImageComposer(style: style)
         let size = ShareImageComposer.canvasSize
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("larping-share-\(UUID().uuidString).mp4")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("mury-share-\(UUID().uuidString).mp4")
 
         let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
+        var completed = false
+        defer {
+            if !completed {
+                writer.cancelWriting()
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
         let outputSettings: [String: Any] = [
             AVVideoCodecKey: AVVideoCodecType.h264,
             AVVideoWidthKey: Int(size.width),
@@ -42,23 +51,27 @@ enum ShareVideoComposer {
 
         let totalFrames = Int(duration * Double(frameRate))
         for frame in 0..<totalFrames {
+            try Task.checkCancellation()
             while !input.isReadyForMoreMediaData {
+                guard writer.status == .writing else { throw ComposeError.writerFailed }
                 try await Task.sleep(for: .milliseconds(2))
             }
             let progress = Double(frame) / Double(totalFrames - 1)
-            let image = ShareImageComposer.composeMapCard(
+            let image = composer.composeMapCard(
                 snapshot: snapshot,
                 coordinates: coordinates,
                 stats: stats,
                 routeRevealFraction: progress
             )
-            guard let buffer = pixelBuffer(from: image, size: size) else { continue }
-            adaptor.append(buffer, withPresentationTime: CMTime(value: CMTimeValue(frame), timescale: frameRate))
+            guard let buffer = pixelBuffer(from: image, size: size) else { throw ComposeError.writerFailed }
+            guard adaptor.append(buffer, withPresentationTime: CMTime(value: CMTimeValue(frame), timescale: frameRate)) else { throw ComposeError.writerFailed }
         }
 
         input.markAsFinished()
         await writer.finishWriting()
         guard writer.status == .completed else { throw ComposeError.writerFailed }
+        try Task.checkCancellation()
+        completed = true
         return url
     }
 

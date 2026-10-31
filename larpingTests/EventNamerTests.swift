@@ -2,6 +2,11 @@ import XCTest
 @testable import larping
 
 final class EventNamerTests: XCTestCase {
+    func testNewBrandNamesDoNotRenameOrCollideWithLegacyTitles() {
+        let existing = ["Larping Run", "MURY Run", "MURY Run 1"]
+        XCTAssertEqual(EventNamer.nextName(base: "MURY Run", existing: existing), "MURY Run 2")
+    }
+
     func testBaseNameWhenNothingExists() {
         XCTAssertEqual(EventNamer.nextName(base: "Larping Run", existing: []), "Larping Run")
     }

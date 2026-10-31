@@ -16,13 +16,14 @@ import UIKit
 ///
 /// System font throughout. The photo-less classic card is transparent; the map
 /// card is self-contained (map background + card). The route line always uses
-/// the adaptive brand accent (lime dark / #463CFF light).
-enum ShareImageComposer {
+/// the explicit Pink/Tiffany palette captured by the caller.
+struct ShareImageComposer {
+    let style: ShareStyle
     static let canvasSize = CGSize(width: 1080, height: 1920) // Instagram Story ratio
 
-    static let white = UIColor.white
-    static let spaceBlack = UIColor(red: 0.055, green: 0.067, blue: 0.082, alpha: 1) // Grok-style near-black
-    static var routeColor: UIColor { UIColor(named: "Accent") ?? white }
+    private let white = UIColor.white
+    private var spaceBlack: UIColor { style.backdrop }
+    private var routeColor: UIColor { style.route }
 
     struct Stats {
         let symbolName: String
@@ -48,7 +49,7 @@ enum ShareImageComposer {
     /// the output PNG can be pasted anywhere; `soft == true` (no photo) adds
     /// dark shadows under the white foreground so it stays legible on light
     /// targets.
-    static func compose(
+    func compose(
         photo: UIImage?,
         coordinates: [CLLocationCoordinate2D],
         stats: Stats,
@@ -56,13 +57,13 @@ enum ShareImageComposer {
     ) -> UIImage {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
-        let renderer = UIGraphicsImageRenderer(size: canvasSize, format: format)
+        let renderer = UIGraphicsImageRenderer(size: Self.canvasSize, format: format)
 
-        let width = canvasSize.width
+        let width = Self.canvasSize.width
         let softShadow = photo == nil
 
         return renderer.image { context in
-            let bounds = CGRect(origin: .zero, size: canvasSize)
+            let bounds = CGRect(origin: .zero, size: Self.canvasSize)
             let cgContext = context.cgContext
 
             if let photo {
@@ -85,15 +86,15 @@ enum ShareImageComposer {
     /// snapshot as the background, route overlaid on it, and one bottom card
     /// holding the activity info. If no snapshot is available (offline), falls
     /// back to a space-black background with the route drawn above the card.
-    static func composeMapCard(snapshot: MKMapSnapshotter.Snapshot?, coordinates: [CLLocationCoordinate2D], stats: Stats, routeRevealFraction: Double = 1) -> UIImage {
+    func composeMapCard(snapshot: MKMapSnapshotter.Snapshot?, coordinates: [CLLocationCoordinate2D], stats: Stats, routeRevealFraction: Double = 1) -> UIImage {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
-        let renderer = UIGraphicsImageRenderer(size: canvasSize, format: format)
+        let renderer = UIGraphicsImageRenderer(size: Self.canvasSize, format: format)
 
-        let width = canvasSize.width
+        let width = Self.canvasSize.width
 
         return renderer.image { context in
-            let bounds = CGRect(origin: .zero, size: canvasSize)
+            let bounds = CGRect(origin: .zero, size: Self.canvasSize)
             let cgContext = context.cgContext
 
             if let snapshot {
@@ -122,7 +123,7 @@ enum ShareImageComposer {
     /// Snapshots the route's bounding box into map tiles. `size` defaults to
     /// the full canvas so `snapshot.point(for:)` maps 1:1 onto canvas
     /// coordinates (no scaling needed when drawing the route back on top).
-    static func mapSnapshot(coordinates: [CLLocationCoordinate2D], size: CGSize = canvasSize) async -> MKMapSnapshotter.Snapshot? {
+    func mapSnapshot(coordinates: [CLLocationCoordinate2D], size: CGSize = ShareImageComposer.canvasSize) async -> MKMapSnapshotter.Snapshot? {
         guard coordinates.count > 1 else { return nil }
         let lats = coordinates.map(\.latitude)
         let lngs = coordinates.map(\.longitude)
@@ -140,11 +141,12 @@ enum ShareImageComposer {
         options.scale = 1
         options.mapType = .standard
         options.showsBuildings = false
+        options.traitCollection = UITraitCollection(userInterfaceStyle: style.interfaceStyle)
 
         return try? await MKMapSnapshotter(options: options).start()
     }
 
-    private static func draw(_ image: UIImage, filling rect: CGRect) {
+    private func draw(_ image: UIImage, filling rect: CGRect) {
         let scale = max(rect.width / image.size.width, rect.height / image.size.height)
         let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
         let origin = CGPoint(x: rect.midX - size.width / 2, y: rect.midY - size.height / 2)
@@ -157,7 +159,7 @@ enum ShareImageComposer {
     /// element, not the icon) beneath it — no event title/date here (moved to
     /// the footer). Extra top padding leaves room for Instagram Story's own
     /// UI (profile chip, close button) when shared there.
-    private static func drawHeader(_ stats: Stats, canvasWidth: CGFloat, soft: Bool) {
+    private func drawHeader(_ stats: Stats, canvasWidth: CGFloat, soft: Bool) {
         let iconBox: CGFloat = 130
         var cursorY: CGFloat = 190
 
@@ -198,7 +200,7 @@ enum ShareImageComposer {
     /// `revealFraction` (0...1) draws only the leading portion in recorded point
     /// order, for the animated video export… and the classic template's route
     /// (pass 1 at rest). No endpoint markers when fully revealed.
-    private static func drawRoute(_ coordinates: [CLLocationCoordinate2D], canvasWidth: CGFloat, availableRect: CGRect = CGRect(x: 54, y: 504, width: 972, height: 466), revealFraction: Double = 1) {
+    private func drawRoute(_ coordinates: [CLLocationCoordinate2D], canvasWidth: CGFloat, availableRect: CGRect = CGRect(x: 54, y: 504, width: 972, height: 466), revealFraction: Double = 1) {
         guard coordinates.count > 1 else { return }
 
         let lats = coordinates.map(\.latitude)
@@ -256,7 +258,7 @@ enum ShareImageComposer {
     }
 
     /// Stats rendered as one centered column — three rows of label + value.
-    private static func drawStats(_ stats: Stats, canvasWidth: CGFloat, startY: CGFloat = 1020, soft: Bool) {
+    private func drawStats(_ stats: Stats, canvasWidth: CGFloat, startY: CGFloat = 1020, soft: Bool) {
         let rows: [(String, String)] = [
             ("DISTANCE", stats.distance),
             ("DURATION", stats.duration),
@@ -275,7 +277,7 @@ enum ShareImageComposer {
     /// Date, raised above Instagram Story's reply input area — replaces the
     /// repo URL that used to live here (removed; the wordmark up top under
     /// the sport icon is branding enough).
-    private static func drawFooter(_ stats: Stats, canvasWidth: CGFloat, soft: Bool) {
+    private func drawFooter(_ stats: Stats, canvasWidth: CGFloat, soft: Bool) {
         let date = NSAttributedString(string: stats.date, attributes: textAttributes(white.withAlphaComponent(0.72), size: 30, weight: .semibold, soft: soft))
         drawCentered(date, atY: 1610, canvasWidth: canvasWidth)
     }
@@ -284,7 +286,7 @@ enum ShareImageComposer {
 
     /// Wordmark floated top-right over the map itself, separate from the info
     /// card — a dark backing keeps it legible over unpredictable map colors.
-    private static func drawTopRightLogo(canvasWidth: CGFloat) {
+    private func drawTopRightLogo(canvasWidth: CGFloat) {
         guard let logo = UIImage(named: "LogoHorizontal") else { return }
         let height: CGFloat = 52
         let size = CGSize(width: logo.size.width * (height / logo.size.height), height: height)
@@ -297,14 +299,14 @@ enum ShareImageComposer {
     /// Sport icon floated top-left over the map, mirroring the wordmark's
     /// top-right placement — keeps the info card's title/date flush left
     /// instead of indented past an icon.
-    private static func drawTopLeftIcon(_ stats: Stats) {
+    private func drawTopLeftIcon(_ stats: Stats) {
         guard let glyph = UIImage(systemName: stats.symbolName, withConfiguration: UIImage.SymbolConfiguration(pointSize: 44, weight: .bold)) else { return }
         let rect = CGRect(x: 54, y: 170, width: glyph.size.width, height: glyph.size.height)
         glyph.withTintColor(UIColor.black.withAlphaComponent(0.75)).draw(in: rect.offsetBy(dx: 0, dy: 5))
         glyph.withTintColor(white).draw(in: rect)
     }
 
-    private static func drawScrim(in bounds: CGRect, using cgContext: CGContext) {
+    private func drawScrim(in bounds: CGRect, using cgContext: CGContext) {
         let colors = [
             UIColor.black.withAlphaComponent(0).cgColor,
             UIColor.black.withAlphaComponent(0.62).cgColor,
@@ -322,7 +324,7 @@ enum ShareImageComposer {
     /// Draws the route over an already-rendered map snapshot. Works because the
     /// snapshot was requested at canvas size, so `point(for:)` already yields
     /// canvas coordinates.
-    private static func drawRoute(onto snapshot: MKMapSnapshotter.Snapshot, coordinates: [CLLocationCoordinate2D], routeRevealFraction: Double = 1) {
+    private func drawRoute(onto snapshot: MKMapSnapshotter.Snapshot, coordinates: [CLLocationCoordinate2D], routeRevealFraction: Double = 1) {
         guard coordinates.count > 1 else { return }
         let points = coordinates.map { snapshot.point(for: $0) }
         let count = max(2, Int(Double(points.count) * routeRevealFraction))
@@ -353,7 +355,7 @@ enum ShareImageComposer {
 
     /// Small labeled flag badge for the route's start/finish points on the
     /// finished map card — only shown once the route is fully drawn in.
-    private static func drawRouteEndpoint(at point: CGPoint, symbolName: String) {
+    private func drawRouteEndpoint(at point: CGPoint, symbolName: String) {
         guard let glyph = UIImage(systemName: symbolName, withConfiguration: UIImage.SymbolConfiguration(pointSize: 20, weight: .bold)) else { return }
         let badgeRadius: CGFloat = 22
         let badgeRect = CGRect(x: point.x - badgeRadius, y: point.y - badgeRadius, width: badgeRadius * 2, height: badgeRadius * 2)
@@ -371,7 +373,7 @@ enum ShareImageComposer {
     /// Bottom card over the map: event title + date and the three stats — no
     /// icon (moved top-left over the map) or repo URL, and sized to its own
     /// content instead of leaving empty space below.
-    private static func drawInfoCard(_ stats: Stats, canvasWidth: CGFloat) {
+    private func drawInfoCard(_ stats: Stats, canvasWidth: CGFloat) {
         let card = CGRect(x: 54, y: 1180, width: canvasWidth - 108, height: 380)
         UIColor.black.withAlphaComponent(0.5).setFill()
         UIBezierPath(roundedRect: card, cornerRadius: 48)
@@ -401,12 +403,12 @@ enum ShareImageComposer {
 
     // MARK: - Helpers
 
-    private static func displayTitle(_ stats: Stats) -> String {
+    private func displayTitle(_ stats: Stats) -> String {
         let trimmed = stats.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "Larping \(stats.sportLabel)" : trimmed
+        return trimmed.isEmpty ? "MURY \(stats.sportLabel)" : trimmed
     }
 
-    private static func textAttributes(_ color: UIColor, size: CGFloat, weight: UIFont.Weight, soft: Bool) -> [NSAttributedString.Key: Any] {
+    private func textAttributes(_ color: UIColor, size: CGFloat, weight: UIFont.Weight, soft: Bool) -> [NSAttributedString.Key: Any] {
         var attributes: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: size, weight: weight),
             .foregroundColor: color,
@@ -421,7 +423,7 @@ enum ShareImageComposer {
         return attributes
     }
 
-    private static func valueAttributes(_ size: CGFloat, soft: Bool) -> [NSAttributedString.Key: Any] {
+    private func valueAttributes(_ size: CGFloat, soft: Bool) -> [NSAttributedString.Key: Any] {
         var attributes: [NSAttributedString.Key: Any] = [
             .font: UIFont.monospacedDigitSystemFont(ofSize: size, weight: .heavy),
             .foregroundColor: white,
@@ -436,12 +438,12 @@ enum ShareImageComposer {
         return attributes
     }
 
-    private static func drawCentered(_ string: NSAttributedString, atY y: CGFloat, canvasWidth: CGFloat) {
+    private func drawCentered(_ string: NSAttributedString, atY y: CGFloat, canvasWidth: CGFloat) {
         let size = string.size()
         string.draw(at: CGPoint(x: (canvasWidth - size.width) / 2, y: y))
     }
 
-    private static func drawCentered(_ string: NSAttributedString, atY y: CGFloat, centerX: CGFloat) {
+    private func drawCentered(_ string: NSAttributedString, atY y: CGFloat, centerX: CGFloat) {
         string.draw(at: CGPoint(x: centerX - string.size().width / 2, y: y))
     }
 }

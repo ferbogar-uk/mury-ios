@@ -2,6 +2,8 @@ import MapKit
 import SwiftUI
 
 struct ActivityDetailView: View {
+    @Environment(\.brandTheme) private var theme
+
     let activity: CDActivity
 
     @Environment(ActivitiesStore.self) private var store
@@ -94,6 +96,7 @@ struct ActivityDetailView: View {
             }
             .padding()
         }
+        .background(theme.canvas)
         .navigationTitle("Activity")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -161,10 +164,11 @@ struct ActivityDetailView: View {
 }
 
 private struct RouteMap: View {
+    @Environment(\.brandTheme) private var theme
+
     let coordinates: [CLLocationCoordinate2D]
     let sportType: SportType
 
-    @Environment(\.colorScheme) private var colorScheme
     private static let drawDuration: TimeInterval = 5.5
 
     @State private var startDate = Date()
@@ -195,7 +199,7 @@ private struct RouteMap: View {
 
             Map(initialPosition: .region(region)) {
                 MapPolyline(coordinates: Array(coordinates.prefix(revealedCount)))
-                    .stroke(.accent, lineWidth: 4)
+                    .stroke(theme.accent, lineWidth: 4)
 
                 // The "person" marker: a sport-specific icon riding the tip of
                 // the route while it draws, bouncing gently — it comes to rest
@@ -203,9 +207,9 @@ private struct RouteMap: View {
                 Annotation("", coordinate: coordinates[revealedCount - 1]) {
                     Image(systemName: sportType.symbolName)
                         .font(.subheadline.bold())
-                        .foregroundStyle(colorScheme == .dark ? .black : .white)
+                        .foregroundStyle(theme.onAccent)
                         .padding(7)
-                        .background(.accent, in: Circle())
+                        .background(theme.accent, in: Circle())
                         .symbolEffect(.bounce, options: .repeating, isActive: !isDrawComplete)
                 }
             }
@@ -223,6 +227,8 @@ private struct RouteMap: View {
 }
 
 private struct StatTile: View {
+    @Environment(\.brandTheme) private var theme
+
     let title: String
     let value: String
 
@@ -236,6 +242,6 @@ private struct StatTile: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(.fill.tertiary, in: RoundedRectangle(cornerRadius: 12))
+        .background(theme.surface, in: RoundedRectangle(cornerRadius: 12))
     }
 }

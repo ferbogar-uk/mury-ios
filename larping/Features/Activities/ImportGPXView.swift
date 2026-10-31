@@ -2,6 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ImportGPXView: View {
+    @Environment(\.brandTheme) private var theme
     @Environment(ActivitiesStore.self) private var activitiesStore
     @Environment(\.dismiss) private var dismiss
 
@@ -46,6 +47,8 @@ struct ImportGPXView: View {
                     Section { Text(errorMessage).foregroundStyle(.red) }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(theme.canvas)
             .navigationTitle("Import GPX")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

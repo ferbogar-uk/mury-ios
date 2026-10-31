@@ -1,43 +1,63 @@
-//
-//  larpingUITests.swift
-//  larpingUITests
-//
-//  Created by Romadhan Edy on 10/09/26.
-//
-
 import XCTest
 
 final class larpingUITests: XCTestCase {
-
-    override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-
-        // In UI tests it is usually best to stop immediately when a failure occurs.
-        continueAfterFailure = false
-
-        // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
-    }
-
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
-    }
+    override func setUpWithError() throws { continueAfterFailure = false }
 
     @MainActor
-    func testExample() throws {
-        // UI tests must launch the application that they test.
+    func testFirstLaunchRequiresExplicitChoice() throws {
         let app = XCUIApplication()
         app.launch()
-
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // XCUIAutomation Documentation
-        // https://developer.apple.com/documentation/xcuiautomation
+        let button = app.buttons["theme-continue"]
+        guard button.waitForExistence(timeout: 5) else {
+            throw XCTSkip("Run on a clean simulator install to verify first launch; existing activity data is never reset by this test.")
+        }
+        XCTAssertTrue(app.staticTexts["Welcome to MURY"].exists)
+        XCTAssertTrue(app.buttons["theme-tiffany"].exists)
+        XCTAssertTrue(app.buttons["theme-pink"].exists)
+        XCTAssertFalse(button.isEnabled)
+        app.buttons["theme-tiffany"].tap()
+        XCTAssertTrue(button.isEnabled)
+        button.tap()
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
     }
 
     @MainActor
-    func testLaunchPerformance() throws {
-        // This measures how long it takes to launch your application.
-        measure(metrics: [XCTApplicationLaunchMetric()]) {
-            XCUIApplication().launch()
+    func testUnknownStoredThemeRequiresExplicitChoice() {
+        let app = XCUIApplication()
+        // A launch-domain preference leaves the existing persistent store intact.
+        app.launchArguments = ["-brandTheme", "unknown"]
+        app.launch()
+        XCTAssertTrue(app.buttons["theme-continue"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["theme-continue"].isEnabled)
+        XCTAssertFalse(app.tabBars.firstMatch.exists)
+        app.terminate()
+    }
+
+    @MainActor
+    func testThemeAndAppearanceAreIndependentAndPersist() throws {
+        let app = XCUIApplication()
+        app.launch()
+        if app.buttons["theme-pink"].waitForExistence(timeout: 3) {
+            app.buttons["theme-pink"].tap()
+            app.buttons["theme-continue"].tap()
         }
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
+        app.tabBars.buttons["Profile"].tap()
+        app.buttons["profile-settings"].tap()
+        let themes = app.segmentedControls["profile-theme"]
+        XCTAssertTrue(themes.waitForExistence(timeout: 5))
+        themes.buttons["Pink"].tap()
+        app.buttons["appearance-dark"].tap()
+        XCTAssertTrue(themes.buttons["Pink"].isSelected)
+        themes.buttons["Tiffany Blue"].tap()
+        XCTAssertTrue(app.buttons["appearance-dark"].isSelected)
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["theme-continue"].exists)
+        app.tabBars.buttons["Profile"].tap()
+        app.buttons["profile-settings"].tap()
+        XCTAssertTrue(app.segmentedControls["profile-theme"].buttons["Tiffany Blue"].isSelected)
+        XCTAssertTrue(app.buttons["appearance-dark"].isSelected)
     }
 }

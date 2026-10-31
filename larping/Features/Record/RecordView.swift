@@ -3,15 +3,25 @@ import SwiftUI
 
 struct RecordView: View {
     @Environment(ActivitiesStore.self) private var activitiesStore
+    @Environment(\.brandTheme) private var theme
     @Environment(\.colorScheme) private var colorScheme
     @State private var tracker = LocationTracker()
     @State private var selectedSport: SportType = .run
     @State private var eventName = ""
-    @State private var eventEdited = false
+    let initialSport: SportType
+    let requestID: UUID?
+    @State private var requests = RecordSportRequestState()
+    @State private var didInitializeName = false
     @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var showSavedConfirmation = false
     @State private var saveErrorMessage: String?
     @State private var savedDistance: Double = 0
+
+    init(initialSport: SportType = .run, requestID: UUID? = nil) {
+        self.initialSport = initialSport
+        self.requestID = requestID
+        _selectedSport = State(initialValue: initialSport)
+    }
 
     var body: some View {
         NavigationStack {
@@ -26,22 +36,22 @@ struct RecordView: View {
                         let points = activitiesStore.coordinates(for: pastActivity)
                         if points.count > 1 {
                             MapPolyline(coordinates: points)
-                                .stroke(Color.accentColor.opacity(0.12), lineWidth: 3)
+                                .stroke(theme.accent.opacity(0.12), lineWidth: 3)
                         }
                     }
 
                     if tracker.routeCoordinates.count > 1 {
                         MapPolyline(coordinates: tracker.routeCoordinates)
-                            .stroke(.accent, lineWidth: 5)
+                            .stroke(theme.accent, lineWidth: 5)
                     }
 
                     if let tip = tracker.routeCoordinates.last, tracker.state != .idle {
                         Annotation("", coordinate: tip) {
                             Image(systemName: selectedSport.symbolName)
                                 .font(.subheadline.bold())
-                                .foregroundStyle(colorScheme == .dark ? .black : .white)
+                                .foregroundStyle(theme.onAccent)
                                 .padding(7)
-                                .background(.accent, in: Circle())
+                                .background(theme.accent, in: Circle())
                                 .symbolEffect(.bounce, options: .repeating, isActive: tracker.state == .recording)
                         }
                     } else {
@@ -76,10 +86,17 @@ struct RecordView: View {
             }
             .task { tracker.requestPermission() }
             .onChange(of: selectedSport) {
-                guard !eventEdited else { return }
                 eventName = suggestedEventName(for: selectedSport)
             }
-            .onAppear { eventName = suggestedEventName(for: selectedSport) }
+            .onAppear {
+                if !didInitializeName {
+                    eventName = suggestedEventName(for: selectedSport)
+                    didInitializeName = true
+                }
+                consumeSportRequest()
+            }
+            .onChange(of: initialSport) { consumeSportRequest() }
+            .onChange(of: requestID) { consumeSportRequest() }
             .alert("Activity saved", isPresented: $showSavedConfirmation) {
                 Button("Done", role: .cancel) {}
             } message: {
@@ -122,11 +139,10 @@ struct RecordView: View {
                             .padding(.horizontal, 16)
                             .background(.fill.tertiary, in: RoundedRectangle(cornerRadius: 14))
                         }
+                        .accessibilityIdentifier("record-sport")
 
-                        TextField("Event name", text: Binding(
-                            get: { eventName },
-                            set: { eventName = $0; eventEdited = true }
-                        ))
+                        TextField("Event name", text: $eventName)
+                        .accessibilityIdentifier("record-event-name")
                         .font(.subheadline.weight(.medium))
                         .padding(.vertical, 14)
                         .padding(.horizontal, 16)
@@ -143,7 +159,7 @@ struct RecordView: View {
                 HStack(spacing: 8) {
                     Label(selectedSport.label, systemImage: selectedSport.symbolName)
                         .font(.headline)
-                        .foregroundStyle(tracker.state == .paused ? AnyShapeStyle(.secondary) : AnyShapeStyle(.accent))
+                        .foregroundStyle(tracker.state == .paused ? AnyShapeStyle(.secondary) : AnyShapeStyle(theme.tint))
                         .symbolEffect(.bounce, options: .repeating, isActive: tracker.state == .recording)
                     if tracker.state == .paused {
                         Text("PAUSED")
@@ -154,7 +170,7 @@ struct RecordView: View {
                             .background(.error, in: Capsule())
                     }
                     Spacer()
-                    Text(eventName.isEmpty ? "Larping \(selectedSport.label)" : eventName)
+                    Text(eventName.isEmpty ? "MURY \(selectedSport.label)" : eventName)
                         .font(.headline)
                         .lineLimit(1)
                         .foregroundStyle(.primary)
@@ -189,9 +205,10 @@ struct RecordView: View {
                 } label: {
                     Label("Start", systemImage: "play.fill")
                         .frame(maxWidth: .infinity)
-                        .foregroundStyle(colorScheme == .dark ? .black : .white)
+                        .foregroundStyle(theme.onAccent)
                 }
                 .buttonStyle(.borderedProminent)
+                .tint(theme.accent)
                 .controlSize(.large)
                 .disabled(
                     tracker.authorizationStatus == .denied || tracker.authorizationStatus == .restricted
@@ -254,6 +271,12 @@ struct RecordView: View {
         .padding(.top, 8)
     }
 
+    private func consumeSportRequest() {
+        if let sport = requests.consume(sport: initialSport, requestID: requestID, isIdle: tracker.state == .idle) {
+            selectedSport = sport
+        }
+    }
+
     private func startRecording() {
         tracker.start()
         cameraPosition = .userLocation(fallback: .automatic)
@@ -278,7 +301,6 @@ struct RecordView: View {
                 trackPointsPayloads: recording.trackPoints
             )
             showSavedConfirmation = true
-            eventEdited = false
             eventName = suggestedEventName(for: selectedSport)
             Task { await HealthKitService.saveWorkout(from: activity) }
         } catch {
@@ -287,7 +309,7 @@ struct RecordView: View {
     }
 
     private func suggestedEventName(for sport: SportType) -> String {
-        EventNamer.nextName(base: "Larping \(sport.label)", existing: activitiesStore.activities.compactMap(\.eventName))
+        EventNamer.nextName(base: "MURY \(sport.label)", existing: activitiesStore.activities.compactMap(\.eventName))
     }
 
     private func averageSpeedMps(_ recording: LocationTracker.Recording) -> Double? {
@@ -307,5 +329,18 @@ private struct StatColumn: View {
             Text(title.uppercased()).font(.caption2).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+// Consume active/paused requests too, so they cannot change sport after Finish.
+struct RecordSportRequestState {
+    private var consumedSport: SportType?
+    private var consumedRequestID: UUID?
+
+    mutating func consume(sport: SportType, requestID: UUID?, isIdle: Bool) -> SportType? {
+        guard consumedSport != sport || consumedRequestID != requestID else { return nil }
+        consumedSport = sport
+        consumedRequestID = requestID
+        return isIdle ? sport : nil
     }
 }

@@ -1,0 +1,17 @@
+{
+  "larping/Core/AppearanceMode.swift": "7f942cc5c973e99383dda64690069e0ea16fbfa6d58ecd0419b89ebfa548be42",
+  "larping/Core/BackupService.swift": "37782a41bc08b0ce60cfc5254a8f0111f63accebeda95bfba790a22a6bf361f0",
+  "larping/Core/GPXParser.swift": "abf570cf050a7e4b857a425ce1f8725bbbe4524858df7e6c87ca4a77ca190d9b",
+  "larping/Core/Health/HealthKitService.swift": "337f1a640db3e020bed258b5f295530090e6643d59c6cc689dbeafb2a86605f2",
+  "larping/Core/Location/LocationTracker.swift": "7e2dca2d00177e951b3f1ac7d227c56cacfe4c24ed70708dc519436d43ee2a63",
+  "larping/Core/Models/Activity.swift": "8ed630656f93bb1b2a433bcd2a5087a0beb7d15224556fd5c6e0f9c4d9cb21d0",
+  "larping/Core/Models/CDActivity.swift": "d622dc0ab96c85a6761732ae18af4e374a0ecf3b59bfbd09132d91b77f815f8d",
+  "larping/Core/Models/CDTrackPoint.swift": "06709a09e70a6733681bc7793a80281425a06772512fcdd8cdfea16376f7c682",
+  "larping/Core/SeedData.swift": "9cc7689d68275f94410bc9132beda99620b111acc20fbefc28a6c259ee572cf3",
+  "larping/Features/Activities/ActivitiesStore.swift": "e7230058ea0ba9aacc9b62c0129b14f5602dbe1ba25a37240cd97293c1561812",
+  "larping/Info.plist": "f21a24b0d40a4c4816cb779b1e6c2b056b5fd53b86cf84f04deb64d0f5cc45c0",
+  "larping/larping.entitlements": "e4911608f8822982e463bb892d665a630693d299077f1cde5c2878c465061a83",
+  ".github/workflows/ci.yml": "0f54dd2e2d6b1e395dd9ccb870ac82315b94f7438c535d36e0df98fe7ab6c9bc",
+  ".github/workflows/ios-testflight.yml": "8bddf5a7d1f7b67ee115074b7374241c9412ba33d9c94c79c6347d4834be4bc9",
+  "LICENSE": "3451379a98b75db0f54cb6775ba0ec08b09626896fa427146b3eb4dc455f5f96"
+}

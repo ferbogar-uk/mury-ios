@@ -5,9 +5,8 @@ import UniformTypeIdentifiers
 struct ProfileView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(ActivitiesStore.self) private var activitiesStore
-    @Environment(\.colorScheme) private var colorScheme
-    @AppStorage("appearanceMode") private var appearanceMode = AppearanceMode.system
-    @AppStorage("displayName") private var displayName = "Larping User"
+    @Environment(\.brandTheme) private var theme
+    @AppStorage("displayName") private var displayName = "MURY User"
     @AppStorage("bio") private var bio = "Chasing routes, one recording at a time."
     @AppStorage("lastBackupDate") private var lastBackupDate = ""
     @State private var showEdit = false
@@ -25,7 +24,7 @@ struct ProfileView: View {
                 Section {
                     ZStack(alignment: .bottomLeading) {
                         LinearGradient(
-                            colors: [Color.accentColor, .black],
+                            colors: [theme.accent, .black],
                             startPoint: .top,
                             endPoint: .bottom
                         )
@@ -87,37 +86,13 @@ struct ProfileView: View {
                     }
                 }
 
-                Section("Appearance") {
-                    HStack(spacing: 6) {
-                        ForEach(AppearanceMode.allCases) { mode in
-                            let isSelected = appearanceMode == mode
-                            Button {
-                                appearanceMode = mode
-                            } label: {
-                                HStack(spacing: 5) {
-                                    Image(systemName: mode.symbolName)
-                                        .font(.system(size: 13, weight: .semibold))
-                                    Text(mode.label)
-                                        .font(.footnote.weight(.medium))
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 8)
-                                .background(
-                                    isSelected ? Color.accentColor : Color.clear,
-                                    in: RoundedRectangle(cornerRadius: 20)
-                                )
-                                .foregroundStyle(
-                                    isSelected
-                                        ? (colorScheme == .dark ? Color.black : Color.white)
-                                        : Color.secondary
-                                )
-                            }
-                            .buttonStyle(.plain)
-                        }
+                Section {
+                    NavigationLink {
+                        SettingsView()
+                    } label: {
+                        Label("Settings", systemImage: "gearshape")
                     }
-                    .padding(4)
-                    .background(.fill.tertiary, in: RoundedRectangle(cornerRadius: 20))
-                    .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
+                    .accessibilityIdentifier("profile-settings")
                 }
 
                 Section("Backup") {
@@ -162,13 +137,15 @@ struct ProfileView: View {
                 }
 
                 Section {
-                    Text("Larping v\(appVersion) (\(appBuild))")
+                    Text("MURY v\(appVersion) (\(appBuild))")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                 }
                 .listRowBackground(Color.clear)
             }
+            .scrollContentBackground(.hidden)
+            .background(theme.canvas)
             .navigationTitle("Profile")
             .onAppear { healthAuthorized = HealthKitService.isAuthorized }
             .sheet(isPresented: $showEdit) {

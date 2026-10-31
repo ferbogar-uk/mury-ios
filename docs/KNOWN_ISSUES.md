@@ -21,18 +21,11 @@ Xcode's scheme location settings for realistic recording tests.
 ## Sample data only appears on a fresh install
 
 The one-time seed (`SeedData`, flag `seedSampleDataV1`) fires only when the
-database is empty AND the flag is unset. If you installed a build before the
-seed existed (or an older build), **uninstall the app** once to see the sample
-activities — deleting everything yourself never brings them back (by design).
+database is empty AND the flag is unset. Use a separate fresh simulator install when testing seeds. Do not uninstall a data-bearing installation to obtain samples — deleting everything yourself never brings them back (by design).
 
-## SwiftData schema changes = uninstall to reinstall
+## Upgrade validation must preserve installed data
 
-The store schema changed several times during development. Adding a new
-**optional** model property (like `CDActivity.eventName`) is a lightweight
-migration SwiftData applies automatically on launch and normally needs no
-reinstall. But a failing/missing auto-migration still reads as a crash on
-launch. When testing across schema-affecting changes: uninstall first, or
-`rm -rf ~/Library/Developer/Xcode/DerivedData/larping-*` and reinstall.
+MURY changes no SwiftData model or persistent schema. Validate an in-place upgrade over LARPING Build 1 after exporting a backup; do not uninstall or reset the data-bearing app. Historical schema experiments belong on disposable simulator installs. A failing migration must be investigated rather than concealed by deleting the store.
 
 ## Route map in detail needs a network
 
@@ -115,12 +108,17 @@ to remove or hide it. Clipping/cropping it out would violate Apple's usage
 terms and risks App Store rejection, so Record and Activity Detail's map
 views intentionally leave it as-is. Not a bug, not fixable within the rules.
 
-## Prominent-button text contrast is hand-managed
+## MURY button and link contrast
 
-`.borderedProminent` labels on the accent color need a `colorScheme`-based
-foreground (white in light mode on `#463CFF`, black in dark mode on lime) —
-Start, Share. Destructive buttons are red+white natively and must NOT get
-that override. Keep this in mind when adding buttons.
+Use theme.accent + theme.onAccent for prominent branded buttons. Use theme.tint for normal-size text and links. The reference accents alone are not readable enough for white body-size labels. Destructive buttons retain native red/white styling. The checked palette pairs meet 4.5:1 in all four theme/appearance combinations; composited maps/photos and device rendering still require visual review.
+
+## MURY validation is pending on iOS
+
+Windows Swift parser and asset checks do not prove an iOS build. Run XCTest and simulator captures through an authorized macOS build after publication is separately approved, then verify in-place upgrade from 1.0 Build 1, recording while changing theme, locked-screen GPS and HealthKit on an iPhone. Do not uninstall the user's app or reset data for this check. First-launch UI coverage requires a separate fresh simulator install and skips on an existing installation.
+
+## Flow source resolution
+
+The editable SVG outlines were traced from the supplied raster board, rather than supplied as original designer vector masters. Review fine strokes at device scale before distribution. The fixed app icon has system light/dark/tinted variants; the in-app theme picker does not change the home-screen icon.
 
 ## Heart-rate / cadence fields: live recordings stay nil
 
@@ -144,3 +142,10 @@ overkill for a post-hoc mirror); expect the deprecation warning in builds.
 The route's reported accuracy is re-claimed at the 50m ceiling the recorder
 accepted, so HealthKit consumers never see accuracy better than what was
 guaranteed.
+## Existing recording save recovery limit
+
+Finish stops the in-memory tracker before attempting the local database save. A persistence error is reported and rolled back, but automatic retry/crash recovery is not implemented; starting another recording clears the previous tracker route. This is a pre-existing limitation, not a verified new Home regression.
+
+## HealthKit import reproduction candidates
+
+Read-only QA identified two existing paths needing device verification: heart-rate reads gate on write authorization status, and route import handles completion before the final location batch. Missing heart rate or final route points are reproduction candidates, not demonstrated MURY regressions. The protected HealthKit service remains unchanged.

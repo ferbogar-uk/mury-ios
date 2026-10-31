@@ -5,20 +5,32 @@ struct RootTabView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var activitiesStore: ActivitiesStore?
 
+    private enum AppTab: Hashable { case home, activities, record, stats, profile }
+    @State private var selectedTab = AppTab.home
+    @State private var requestedSport = SportType.run
+    @State private var recordRequestID: UUID?
+
     var body: some View {
         Group {
             if let activitiesStore {
-                TabView {
-                    Tab("Activities", systemImage: "list.bullet") {
+                TabView(selection: $selectedTab) {
+                    Tab("Home", systemImage: "house.fill", value: AppTab.home) {
+                        HomeDashboardView { sport in
+                            requestedSport = sport
+                            recordRequestID = UUID()
+                            selectedTab = .record
+                        }
+                    }
+                    Tab("Activities", systemImage: "list.bullet", value: AppTab.activities) {
                         ActivitiesListView()
                     }
-                    Tab("Record", systemImage: "record.circle") {
-                        RecordView()
+                    Tab("Record", systemImage: "record.circle", value: AppTab.record) {
+                        RecordView(initialSport: requestedSport, requestID: recordRequestID)
                     }
-                    Tab("Stats", systemImage: "chart.bar.fill") {
+                    Tab("Stats", systemImage: "chart.bar.fill", value: AppTab.stats) {
                         StatsView()
                     }
-                    Tab("Profile", systemImage: "person.crop.circle") {
+                    Tab("Profile", systemImage: "person.crop.circle", value: AppTab.profile) {
                         ProfileView()
                     }
                 }

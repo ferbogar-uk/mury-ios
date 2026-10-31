@@ -1,6 +1,7 @@
 import AVKit
 import PhotosUI
 import SwiftUI
+import UniformTypeIdentifiers
 
 private enum ShareTemplate: Int, CaseIterable, Identifiable {
     case classic, mapCard, video
@@ -21,6 +22,7 @@ struct ShareActivityView: View {
     let coordinates: [CLLocationCoordinate2D]
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.brandTheme) private var theme
     @Environment(\.colorScheme) private var colorScheme
     @State private var photo: UIImage?
     @State private var photoPickerItem: PhotosPickerItem?
@@ -30,11 +32,20 @@ struct ShareActivityView: View {
     @State private var template: ShareTemplate = .classic
     @State private var videoURL: URL?
     @State private var isGeneratingVideo = false
+    @State private var videoTask: Task<Void, Never>?
+    @State private var exportDocument: ShareExportDocument?
+    @State private var showExporter = false
+    @State private var exportFilename = "MURY-activity"
+    @State private var exportError: String?
+    @State private var exportSucceeded = false
+
+    private var renderKey: String { theme.rawValue + (colorScheme == .dark ? "-dark" : "-light") }
+    private var imageComposer: ShareImageComposer { ShareImageComposer(style: theme.shareStyle(for: colorScheme)) }
     @State private var videoError: String?
     @State private var fullPreview: UIImage?
 
     /// The user-typed event title wins; casing is preserved exactly as entered.
-    /// Old/imported activities without one fall back to "Larping <Sport>".
+    /// Old/imported activities without one fall back to "MURY <Sport>".
     private var stats: ShareImageComposer.Stats {
         let pace = Formatters.paceOrSpeed(
             sportType: activity.sportType,
@@ -68,6 +79,18 @@ struct ShareActivityView: View {
 
                 shareSection
 
+                Button(action: saveToFiles) {
+                    Label("Save to Files", systemImage: "folder")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(!isReadyToSave || showExporter)
+
+                if exportSucceeded {
+                    Text("Saved to Files.")
+                        .font(.footnote)
+                }
+
                 if template == .classic {
                     HStack(spacing: 12) {
                         Button {
@@ -99,6 +122,7 @@ struct ShareActivityView: View {
                 Spacer(minLength: 0)
             }
             .padding()
+            .background(theme.canvas)
             .navigationTitle("Share")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -106,15 +130,26 @@ struct ShareActivityView: View {
                     Button("Done") { dismiss() }
                 }
             }
-            .onAppear {
+            .task(id: renderKey) {
+                clearExportFeedback()
+                videoTask?.cancel()
+                cleanupVideo()
+                mapCardImage = nil
                 recomposeClassic()
-                Task { await recomposeMapCard() }
+                await recomposeMapCard()
             }
-            .onChange(of: photo) { recomposeClassic() }
+            .onChange(of: photo) {
+                clearExportFeedback()
+                recomposeClassic()
+            }
+            .onChange(of: template) { clearExportFeedback() }
             .onChange(of: photoPickerItem) {
                 Task { await loadPickedPhoto() }
             }
-            .onDisappear { cleanupVideo() }
+            .onDisappear {
+                videoTask?.cancel()
+                cleanupVideo()
+            }
             .fullScreenCover(isPresented: $showCamera) {
                 CameraCaptureView { photo = $0 }
                     .ignoresSafeArea()
@@ -147,6 +182,37 @@ struct ShareActivityView: View {
                         }
                     }
                 }
+            }
+            .fileExporter(
+                isPresented: $showExporter,
+                document: exportDocument,
+                contentType: exportDocument?.contentType ?? .png,
+                defaultFilename: exportFilename
+            ) { result in
+                switch result {
+                case .success:
+                    exportSucceeded = true
+                case .failure(let error):
+                    let cocoaError = error as NSError
+                    if !(error is CancellationError),
+                       !(cocoaError.domain == NSCocoaErrorDomain && cocoaError.code == NSUserCancelledError) {
+                        exportError = error.localizedDescription
+                    }
+                }
+            }
+            .alert("Couldn't save to Files", isPresented: Binding(
+                get: { exportError != nil },
+                set: { if !$0 { exportError = nil } }
+            )) {
+                if exportDocument != nil {
+                    Button("Try again") {
+                        clearExportFeedback()
+                        showExporter = true
+                    }
+                }
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(exportError ?? "")
             }
             .alert("Couldn't create video", isPresented: Binding(
                 get: { videoError != nil },
@@ -229,13 +295,14 @@ struct ShareActivityView: View {
                 ShareLink(item: videoURL) {
                     Label("Share video", systemImage: "square.and.arrow.up")
                         .frame(maxWidth: .infinity)
-                        .foregroundStyle(colorScheme == .dark ? .black : .white)
+                        .foregroundStyle(theme.onAccent)
                 }
                 .buttonStyle(.borderedProminent)
+                .tint(theme.accent)
                 .controlSize(.large)
             } else {
                 Button {
-                    Task { await generateVideo() }
+                    videoTask = Task { await generateVideo() }
                 } label: {
                     if isGeneratingVideo {
                         ProgressView()
@@ -243,10 +310,11 @@ struct ShareActivityView: View {
                     } else {
                         Label("Generate video", systemImage: "film")
                             .frame(maxWidth: .infinity)
-                            .foregroundStyle(colorScheme == .dark ? .black : .white)
+                            .foregroundStyle(theme.onAccent)
                     }
                 }
                 .buttonStyle(.borderedProminent)
+                .tint(theme.accent)
                 .controlSize(.large)
                 .disabled(isGeneratingVideo)
             }
@@ -257,19 +325,60 @@ struct ShareActivityView: View {
     private func imageShareLink(_ image: UIImage?) -> some View {
         ShareLink(
             item: Image(uiImage: image ?? UIImage()),
-            preview: SharePreview("My Larping activity", image: Image(uiImage: image ?? UIImage()))
+            preview: SharePreview("My MURY activity", image: Image(uiImage: image ?? UIImage()))
         ) {
             Label("Share", systemImage: "square.and.arrow.up")
                 .frame(maxWidth: .infinity)
-                .foregroundStyle(colorScheme == .dark ? .black : .white)
+                .foregroundStyle(theme.onAccent)
         }
         .buttonStyle(.borderedProminent)
+        .tint(theme.accent)
         .controlSize(.large)
         .disabled(image == nil)
     }
 
+    private var isReadyToSave: Bool {
+        switch template {
+        case .classic: return composedImage != nil
+        case .mapCard: return mapCardImage != nil
+        case .video: return videoURL != nil && !isGeneratingVideo
+        }
+    }
+
+    private func clearExportFeedback() {
+        exportError = nil
+        exportSucceeded = false
+    }
+
+    private func saveToFiles() {
+        clearExportFeedback()
+        exportDocument = nil
+        guard isReadyToSave else { return }
+        do {
+            let name: String
+            switch template {
+            case .classic:
+                guard let composedImage else { return }
+                exportDocument = try ShareExportDocument(image: composedImage)
+                name = "classic"
+            case .mapCard:
+                guard let mapCardImage else { return }
+                exportDocument = try ShareExportDocument(image: mapCardImage)
+                name = "map"
+            case .video:
+                guard let videoURL else { return }
+                exportDocument = try ShareExportDocument(videoURL: videoURL)
+                name = "video"
+            }
+            exportFilename = "MURY-\(name)-\(activity.startedAt.formatted(.iso8601.year().month().day().dateSeparator(.dash)))"
+            showExporter = true
+        } catch {
+            exportError = error.localizedDescription
+        }
+    }
+
     private func recomposeClassic() {
-        composedImage = ShareImageComposer.compose(
+        composedImage = imageComposer.compose(
             photo: photo,
             coordinates: coordinates,
             stats: stats
@@ -277,16 +386,27 @@ struct ShareActivityView: View {
     }
 
     private func recomposeMapCard() async {
-        let snapshot = await ShareImageComposer.mapSnapshot(coordinates: coordinates)
-        mapCardImage = ShareImageComposer.composeMapCard(snapshot: snapshot, coordinates: coordinates, stats: stats)
+        let composer = imageComposer
+        let snapshot = await composer.mapSnapshot(coordinates: coordinates)
+        guard !Task.isCancelled else { return }
+        mapCardImage = composer.composeMapCard(snapshot: snapshot, coordinates: coordinates, stats: stats)
     }
 
     private func generateVideo() async {
         isGeneratingVideo = true
         defer { isGeneratingVideo = false }
         do {
-            let snapshot = await ShareImageComposer.mapSnapshot(coordinates: coordinates)
-            videoURL = try await ShareVideoComposer.composeVideo(snapshot: snapshot, coordinates: coordinates, stats: stats)
+            let style = theme.shareStyle(for: colorScheme)
+            let snapshot = await ShareImageComposer(style: style).mapSnapshot(coordinates: coordinates)
+            try Task.checkCancellation()
+            let url = try await ShareVideoComposer.composeVideo(snapshot: snapshot, coordinates: coordinates, stats: stats, style: style)
+            if Task.isCancelled {
+                try? FileManager.default.removeItem(at: url)
+            } else {
+                videoURL = url
+            }
+        } catch is CancellationError {
+            // Dismissal or a new appearance invalidates this export.
         } catch {
             videoError = error.localizedDescription
         }

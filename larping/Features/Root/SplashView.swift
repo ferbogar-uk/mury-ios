@@ -1,15 +1,11 @@
 import SwiftUI
 
-/// Animated splash — the brief branded screen over the app at launch. The
-/// `LogoHorizontal` wordmark tints white in dark mode / black in light mode
-/// (`colorScheme`-driven), so it always reads against the `Canvas` backdrop.
-/// The static pre-SwiftUI launch screen is just the `Canvas` background
-/// (`UILaunchScreen` in `Info.plist`), making the handoff seamless.
+/// The selected Flow palette is applied after the neutral system launch screen.
 struct SplashView: View {
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.brandTheme) private var theme
 
     var body: some View {
-        Color.canvas
+        theme.canvas
             .ignoresSafeArea()
             .overlay {
                 Image("LogoHorizontal")
@@ -17,7 +13,8 @@ struct SplashView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(height: 56)
-                    .foregroundStyle(colorScheme == .dark ? Color.white : Color.black)
+                    .foregroundStyle(theme.tint)
+                    .accessibilityLabel("MURY")
             }
     }
 }
