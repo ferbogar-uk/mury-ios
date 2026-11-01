@@ -62,7 +62,7 @@ Valid Apple credentials cannot be invented in a local file. First locate your or
 ## Verification and release boundary
 
 - Confirm all six names appear in MURY Settings after saving them; the list proves presence, not credential validity.
-- The simulator workflow needs no signing secrets. The last native CI run still had three UI test failures; this checklist does not resolve those failures.
+- The simulator workflow needs no signing secrets. The repaired simulator CI run 41306446344 passed: 75 tests passed, one first-launch test skipped, zero failures.
 - Credential validity is established only by an authorized signing/upload check. No signed build or TestFlight upload is authorized by creating this document.
 - Keep the existing workflow, signing configuration, bundle ID and LARPING secrets unchanged.
 
@@ -75,4 +75,4 @@ References: [GitHub Actions secrets](https://docs.github.com/en/actions/how-tos/
 - GitHub CLI confirmed all six required MURY repository secrets were saved: APP_STORE_CONNECT_API_KEY, APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_ISSUER_ID, IOS_DISTRIBUTION_P12, IOS_DISTRIBUTION_PASSWORD and IOS_PROVISIONING_PROFILE.
 - Reused an existing profile whose name, team and bundle ID match the workflow, with HealthKit enabled and expiration 30 October 2027. The original unnumbered profile lacks HealthKit; the numbered (1) and (2) copies match each other and include it.
 - Located the original distribution.p12 and its existing password file in the older local LARPING project, under privado/assinatura/ficheiros. Imported the certificate using ephemeral key storage: the password was accepted, its private key is present, it matches the selected provisioning profile, and it expires on 30 October 2027. Reused these originals without modifying them. No signing certificate or provisioning profile was issued or revoked. No workflow or signing configuration was changed.
-- Verification: GitHub listed all six exact names after successful secret-set commands; a read-only Apple API request authenticated with the new key returned HTTP 200 and matched rdyy.larping. Certificate/password/profile checks passed locally. A signed archive/export and upload have not been tested. No TestFlight upload was performed.
+- Verification: GitHub listed all six exact names after successful secret-set commands; a read-only Apple API request authenticated with the new key returned HTTP 200 and matched rdyy.larping. Certificate/password/profile checks passed locally. The signed archive, IPA export, Apple upload and runner cleanup passed in workflow 41308836404 after explicit owner approval. Apple confirmed MURY 1.1 (1) VALID and, after the owner-approved compliance declaration, IN_BETA_TESTING internally. External beta review was not submitted.

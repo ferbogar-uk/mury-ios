@@ -1,6 +1,6 @@
 # MapKit replay prototype — build, CI and TestFlight status
 
-Updated: 1 November 2026. This is a development prototype; it has not been uploaded to TestFlight.
+Updated: 1 November 2026. This development prototype was uploaded to App Store Connect as MURY 1.1 (build 1). Apple processing is VALID; export compliance is cleared and the build is IN_BETA_TESTING for internal testers. External testing is READY_FOR_BETA_SUBMISSION and has not been submitted.
 
 ## Repository and authorization
 - Owner approved “Full MURY main”: remote mury-ios/main was created at ac9ab42 and made the default branch. No merge commit, force push or history rewrite was needed.
@@ -38,7 +38,7 @@ Saved full test logs are in the ignored local coordination workspace under .supe
 PASS: actual production Swift timeline/playback compiled, linked and executed on Windows.
 PASS: 50 app/unit/UI Swift files passed syntax parsing before native CI; changed files were subsequently parsed.
 PASS: branding contrast/assets and protected SHA-256 checker; git diff --check.
-NOT RUN: final independent AI code review (child account usage limit), physical iPhone GPS/background/HealthKit regression, installation upgrade, signed archive/export, city coverage/low-camera visual QA and TestFlight upload.
+NOT RUN: final independent AI code review (child account usage limit), physical iPhone GPS/background/HealthKit regression, installation upgrade, city coverage/low-camera visual QA. Signed archive/export and Apple upload passed in run 41308836404.
 The full simulator CI suite is now green at 8e3c2f6 (75 passed, 1 skipped). This establishes simulator behavior, not physical-device or release readiness.
 
 ## Verified UI repair — 1 November 2026
@@ -74,6 +74,22 @@ Owner explicitly approved a separate MURY-GitHub-CI Apple Developer API key, inc
 No TestFlight credit purchase is needed; the ChatGPT child-agent usage limit is unrelated. GitHub Actions uses the account's included allowance, and macOS consumes it faster than baseline Linux. Current [GitHub billing documentation](https://docs.github.com/en/billing/concepts/product-billing/github-actions) describes included compute accounting; do not infer the account's remaining balance from a fixed multiplier. The current token cannot read the billing balance with its existing scope; the owner can check Settings → Billing and plans.
 
 ## Next actions
-Simulator CI and credential setup are verified. A read-only Apple build listing on 1 November 2026 returned only version 1.0, build 1, processing state VALID. The project currently specifies MURY version 1.1, build 1, Bundle ID rdyy.larping. The next action is explicit owner approval for the existing signed build/upload workflow on feature/mury-branding. No TestFlight upload is authorized by a CI result alone.
+Simulator CI and credential setup are verified. Owner explicitly approved the signed build/upload, which succeeded in workflow 41308836404. Apple confirms MURY 1.1 (1) is VALID; the owner-approved export-compliance declaration is now saved and internal testing is IN_BETA_TESTING. Original LARPING 1.0 (1) remains VALID and IN_BETA_TESTING. Another upload would require separate approval.
 
 Physical-device checks still need a disposable/test activity set: playback controls, gaps, coverage in London and a reference city, VoiceOver/Dynamic Type/Reduce Motion, real recording/pause/background, HealthKit and existing-data preservation. Native UI test success does not establish urban visual quality or map-video distribution rights.
+
+## Approved Apple upload — 1 November 2026
+
+Owner explicitly approved Build and upload to TestFlight for feature/mury-branding at c333700. [Workflow 41308836404](https://github.com/ferbogar-uk/mury-ios/actions/runs/41308836404) completed successfully: existing signing certificate installed, Release archive passed, IPA exported, artifact saved, Apple upload succeeded with no errors, and signing-file cleanup passed. No workflow, signing configuration or main-branch changes were made.
+
+Read-only App Store Connect API verification returned version 1.1, build 1, processingState VALID, with internal/external beta states MISSING_EXPORT_COMPLIANCE. Original version 1.0, build 1 remains VALID and IN_BETA_TESTING. That was the initial state before the owner-approved declaration. Final verification below confirms internal TestFlight availability. No App Store publication or beta review submission was performed.
+
+Source review found no custom encryption implementation or third-party package/binary dependencies in the app. Apple documents that encryption limited to its operating system does not require export-compliance documentation. Owner approved declaring usesNonExemptEncryption=false for this build. The API PATCH was attempted but rejected with HTTP 403 FORBIDDEN_ERROR, so no declaration change was accepted. Automatic approval review also initially rejected binding the existing Edge window because of possible exposure of unrelated Apple account pages. Owner then explicitly authorized that specific signed-in browser window solely for the build compliance action. The Apple UI accepted None of the algorithms mentioned above and Save; Missing Compliance cleared. API key permissions were not expanded.
+
+### Final App Store Connect verification
+
+Read-only Apple API GET returned HTTP 200 after the UI save:
+- MURY 1.1 (1): processingState VALID, usesNonExemptEncryption false, internalBuildState IN_BETA_TESTING, externalBuildState READY_FOR_BETA_SUBMISSION.
+- Original LARPING 1.0 (1): processingState VALID, internalBuildState IN_BETA_TESTING, externalBuildState IN_BETA_TESTING.
+
+[Open MURY 1.1 (1) in App Store Connect](https://appstoreconnect.apple.com/teams/0541a5bc-ac85-486e-a70f-97b94c432520/apps/6828629415/testflight/ios/e5b90445-d9fd-4bf4-9d91-da7fda55f9dc). Internal testers can select version 1.1 (1) under the existing LARPING TestFlight entry. Actual iPhone installation and physical-device behavior were not verified. No external beta review or App Store release was submitted, and no testers or groups were added or changed by the agent.
