@@ -9,6 +9,7 @@ struct ActivityDetailView: View {
     @Environment(ActivitiesStore.self) private var store
     @State private var showDeleteConfirmation = false
     @State private var showShareSheet = false
+    @State private var showReplay = false
     @State private var showRename = false
     @State private var renameText = ""
     @State private var actionErrorMessage: String?
@@ -59,6 +60,18 @@ struct ActivityDetailView: View {
                         .padding(16)
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 20))
+                }
+
+                if coordinates.count > 1 {
+                    Button {
+                        showReplay = true
+                    } label: {
+                        Label("Replay route", systemImage: "cube")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(theme.accent)
+                    .accessibilityIdentifier("activity-replay")
                 }
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
@@ -127,6 +140,11 @@ struct ActivityDetailView: View {
         }
         .sheet(isPresented: $showShareSheet) {
             ShareActivityView(activity: activity, coordinates: coordinates)
+        }
+        .sheet(isPresented: $showReplay) {
+            NavigationStack {
+                ActivityReplayView(activity: activity)
+            }
         }
         .alert("Rename event", isPresented: $showRename) {
             TextField("Event name", text: $renameText)
