@@ -8,6 +8,7 @@ struct RecordView: View {
     @State private var tracker = LocationTracker()
     @State private var selectedSport: SportType = .run
     @State private var eventName = ""
+    @FocusState private var isEditingEventName: Bool
     let initialSport: SportType
     let requestID: UUID?
     @State private var requests = RecordSportRequestState()
@@ -142,6 +143,9 @@ struct RecordView: View {
                         .accessibilityIdentifier("record-sport")
 
                         TextField("Event name", text: $eventName)
+                        .focused($isEditingEventName)
+                        .submitLabel(.done)
+                        .onSubmit { isEditingEventName = false }
                         .accessibilityIdentifier("record-event-name")
                         .font(.subheadline.weight(.medium))
                         .padding(.vertical, 14)

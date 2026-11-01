@@ -48,8 +48,10 @@ final class HomeDashboardTests: XCTestCase {
         let title = app.textFields["record-event-name"]
         title.tap()
         title.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: (title.value as? String ?? "").count))
-        title.typeText("Home title survives")
+        title.typeText("Home title survives\n")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
         app.tabBars.buttons["Home"].tap()
+        XCTAssertTrue(app.tabBars.buttons["Home"].isSelected)
         app.buttons["home-record-ride"].tap()
         XCTAssertEqual(title.value as? String, "Home title survives")
         app.tabBars.buttons["Home"].tap()

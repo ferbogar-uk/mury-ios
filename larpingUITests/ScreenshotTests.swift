@@ -67,15 +67,17 @@ final class ScreenshotTests: XCTestCase {
         capture("4-stats", of: app)
 
         for theme in ["Pink", "Tiffany Blue"] {
-            for mode in ["light", "dark"] {
+            for mode in ["Light", "Dark"] {
                 app.tabBars.buttons["Profile"].tap()
                 app.buttons["profile-settings"].tap()
                 let picker = app.segmentedControls["profile-theme"]
                 XCTAssertTrue(picker.waitForExistence(timeout: 5))
                 picker.buttons[theme].tap()
-                app.buttons["appearance-" + mode].tap()
+                let appearance = app.segmentedControls["profile-appearance"]
+                XCTAssertTrue(appearance.waitForExistence(timeout: 5))
+                appearance.buttons[mode].tap()
                 XCTAssertTrue(picker.buttons[theme].isSelected)
-                XCTAssertTrue(app.buttons["appearance-" + mode].isSelected)
+                XCTAssertTrue(appearance.buttons[mode].isSelected)
                 capture(theme + "-" + mode + "-settings", of: app)
                 app.navigationBars["Settings"].buttons.firstMatch.tap()
                 XCTAssertTrue(app.navigationBars["Profile"].waitForExistence(timeout: 5))

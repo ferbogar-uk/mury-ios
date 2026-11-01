@@ -46,11 +46,16 @@ final class larpingUITests: XCTestCase {
         app.buttons["profile-settings"].tap()
         let themes = app.segmentedControls["profile-theme"]
         XCTAssertTrue(themes.waitForExistence(timeout: 5))
+        let appearance = app.segmentedControls["profile-appearance"]
+        XCTAssertTrue(appearance.waitForExistence(timeout: 5))
+        for mode in ["System", "Light", "Dark"] {
+            XCTAssertTrue(appearance.buttons[mode].exists)
+        }
         themes.buttons["Pink"].tap()
-        app.buttons["appearance-dark"].tap()
+        appearance.buttons["Dark"].tap()
         XCTAssertTrue(themes.buttons["Pink"].isSelected)
         themes.buttons["Tiffany Blue"].tap()
-        XCTAssertTrue(app.buttons["appearance-dark"].isSelected)
+        XCTAssertTrue(appearance.buttons["Dark"].isSelected)
         app.terminate()
         app.launch()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
@@ -58,6 +63,6 @@ final class larpingUITests: XCTestCase {
         app.tabBars.buttons["Profile"].tap()
         app.buttons["profile-settings"].tap()
         XCTAssertTrue(app.segmentedControls["profile-theme"].buttons["Tiffany Blue"].isSelected)
-        XCTAssertTrue(app.buttons["appearance-dark"].isSelected)
+        XCTAssertTrue(appearance.buttons["Dark"].isSelected)
     }
 }
