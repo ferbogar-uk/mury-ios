@@ -6,8 +6,8 @@ final class larpingUITests: XCTestCase {
     @MainActor
     func testFirstLaunchOffersSingleContinue() {
         let app = XCUIApplication()
-        // Launch-domain values exercise onboarding without clearing owner data.
-        app.launchArguments = ["-brandTheme", ""]
+        // Seed only the onboarding preference; activity and profile data stay intact.
+        app.launchEnvironment["MURY_UI_TEST_BRAND_THEME"] = ""
         app.launch()
         let button = app.buttons["theme-continue"]
         XCTAssertTrue(button.waitForExistence(timeout: 5))
@@ -19,7 +19,7 @@ final class larpingUITests: XCTestCase {
         button.tap()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
         app.terminate()
-        app.launchArguments = []
+        app.launchEnvironment.removeValue(forKey: "MURY_UI_TEST_BRAND_THEME")
         app.launch()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["theme-continue"].exists)
@@ -28,7 +28,7 @@ final class larpingUITests: XCTestCase {
     @MainActor
     func testUnknownStoredThemeShowsUsableWelcome() {
         let app = XCUIApplication()
-        app.launchArguments = ["-brandTheme", "unknown"]
+        app.launchEnvironment["MURY_UI_TEST_BRAND_THEME"] = "unknown"
         app.launch()
         let button = app.buttons["theme-continue"]
         XCTAssertTrue(button.waitForExistence(timeout: 5))
@@ -36,13 +36,19 @@ final class larpingUITests: XCTestCase {
         XCTAssertFalse(app.tabBars.firstMatch.exists)
         button.tap()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
+        app.terminate()
+        app.launchEnvironment.removeValue(forKey: "MURY_UI_TEST_BRAND_THEME")
+        app.launch()
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["theme-continue"].exists)
     }
 
     @MainActor
     func testLegacyMarkersSkipWelcomeAndPreserveDarkAppearance() {
         for marker in ["pink", "tiffany", "mury"] {
             let app = XCUIApplication()
-            app.launchArguments = ["-brandTheme", marker, "-appearanceMode", "dark"]
+            app.launchEnvironment["MURY_UI_TEST_BRAND_THEME"] = marker
+            app.launchArguments = ["-appearanceMode", "dark"]
             app.launch()
             XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10), marker)
             XCTAssertFalse(app.buttons["theme-continue"].exists)

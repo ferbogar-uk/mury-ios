@@ -8,6 +8,16 @@ struct larpingApp: App {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showSplash = true
 
+    #if DEBUG
+    init() {
+        // Seed once per test launch so Continue can update persistent preferences normally.
+        if let seed = ProcessInfo.processInfo.environment["MURY_UI_TEST_BRAND_THEME"] {
+            UserDefaults.standard.set(seed, forKey: BrandTheme.storageKey)
+        }
+        _themeSelection = AppStorage(wrappedValue: "", BrandTheme.storageKey)
+    }
+    #endif
+
     private var theme: BrandTheme { BrandTheme.resolvePreference(themeSelection) ?? .mury }
 
     var body: some Scene {

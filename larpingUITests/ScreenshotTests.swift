@@ -65,26 +65,22 @@ final class ScreenshotTests: XCTestCase {
         sleep(3)
         capture("4-stats", of: app)
 
-        for theme in ["Pink", "Tiffany Blue"] {
-            for mode in ["Light", "Dark"] {
-                app.tabBars.buttons["Profile"].tap()
-                app.buttons["profile-settings"].tap()
-                let picker = app.segmentedControls["profile-theme"]
-                XCTAssertTrue(picker.waitForExistence(timeout: 5))
-                picker.buttons[theme].tap()
-                let appearance = app.segmentedControls["profile-appearance"]
-                XCTAssertTrue(appearance.waitForExistence(timeout: 5))
-                appearance.buttons[mode].tap()
-                XCTAssertTrue(picker.buttons[theme].isSelected)
-                XCTAssertTrue(appearance.buttons[mode].isSelected)
-                capture(theme + "-" + mode + "-settings", of: app)
-                app.navigationBars["Settings"].buttons.firstMatch.tap()
-                XCTAssertTrue(app.navigationBars["Profile"].waitForExistence(timeout: 5))
-                capture(theme + "-" + mode + "-profile", of: app)
-                for tab in ["Home", "Activities", "Record", "Stats"] {
-                    app.tabBars.buttons[tab].tap()
-                    capture(theme + "-" + mode + "-" + tab, of: app)
-                }
+        for mode in ["Light", "Dark"] {
+            app.tabBars.buttons["Profile"].tap()
+            app.buttons["profile-settings"].tap()
+            XCTAssertFalse(app.segmentedControls["profile-theme"].exists)
+            let appearance = app.segmentedControls["profile-appearance"]
+            XCTAssertTrue(appearance.waitForExistence(timeout: 5))
+            appearance.buttons[mode].tap()
+            XCTAssertTrue(app.staticTexts["Move. Explore. Achieve."].exists)
+            XCTAssertTrue(appearance.buttons[mode].isSelected)
+            capture("MURY-" + mode + "-settings", of: app)
+            app.navigationBars["Settings"].buttons.firstMatch.tap()
+            XCTAssertTrue(app.navigationBars["Profile"].waitForExistence(timeout: 5))
+            capture("MURY-" + mode + "-profile", of: app)
+            for tab in ["Home", "Activities", "Record", "Stats"] {
+                app.tabBars.buttons[tab].tap()
+                capture("MURY-" + mode + "-" + tab, of: app)
             }
         }
     }
