@@ -84,6 +84,18 @@ struct HomeDashboardView: View {
             .toolbarBackground(theme.navigation, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .navigationTitle("Home")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Image("LogoHorizontal")
+                        .renderingMode(.original)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 32)
+                        .accessibilityLabel("MURY")
+                        .accessibilityIdentifier("home-brand-logo")
+                }
+            }
             .onAppear { now = Date() }
             .refreshable { refresh() }
         }

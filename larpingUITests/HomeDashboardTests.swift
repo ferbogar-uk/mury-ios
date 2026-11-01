@@ -12,6 +12,7 @@ final class HomeDashboardTests: XCTestCase {
         }
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
         XCTAssertTrue(app.tabBars.buttons["Home"].isSelected)
+        XCTAssertTrue(app.images["home-brand-logo"].exists)
         return app
     }
 
