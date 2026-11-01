@@ -21,3 +21,7 @@ Branch feature/mury-branding only; main, signing, secrets, workflow definitions,
 ## Pending
 
 Run existing simulator CI on exact pushed commit, inspect build/unit/UI results, fix demonstrated failures. New TestFlight upload requires separate explicit per-upload approval. Real-iPhone GPS/background/HealthKit, outdoor readability, VoiceOver, large-text layout, real installed-data upgrade and MP4 playback remain device checks. Cinematic 3D video is not included.
+
+## Native CI candidate and typography completion
+
+First implementation commit fa608dd2e4b978a15c2beff8e7f2ed3f6b39615f was pushed to feature/mury-branding. CI run41320834629 passed its native Xcode Build and simulator preparation steps; tests were in progress when recorded. A final integration check found designed type on activity details/replay still used system fonts. The bounded follow-up applies scalable Rubik and navigation tokens in those two views, preserving SF symbols, controls, monospaced digits and behavior. Parent reran static branding, two-file Swift parse and diff checks: pass. Final-candidate CI must run on the follow-up commit; the first build is not final acceptance. Main remains ac9ab42af92ec41c764e16edb7c0d376fe5262b2.

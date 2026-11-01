@@ -35,21 +35,23 @@ struct ActivityReplayView: View {
         let frame = timeline.sample(at: playback.elapsedSeconds)
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Experimental route replay").font(.headline)
+                Text("Experimental route replay").font(MuryTypography.font(.headline, size: 17, weight: .semibold))
                 if timeline.segments.contains(where: { $0.count > 1 }) && timeline.duration > 0 {
                     replayMap(frame: frame)
                         .frame(height: 330)
                     controls(frame: frame)
                 } else {
                     ContentUnavailableView("Replay unavailable", systemImage: "map",
-                        description: Text("This activity needs at least two usable timed GPS points to replay."))
+                        description: Text("This activity needs at least two usable timed GPS points to replay.")
+                            .font(MuryTypography.font(.body, size: 17)))
                 }
-                Text("Saved activity totals").font(.headline)
+                Text("Saved activity totals").font(MuryTypography.font(.headline, size: 17, weight: .semibold))
                 Text("Distance: \(savedDistance) · Duration: \(savedDuration)")
+                    .font(MuryTypography.font(.body, size: 17))
                 Text("Replay elapsed time includes gaps in saved timestamps; it is not moving time.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(MuryTypography.font(.caption, size: 12)).foregroundStyle(.secondary)
                 Text("3D buildings and terrain depend on Apple Maps coverage. Route overlays may flatten terrain. Choose Top-down for a 2D overview. This prototype does not avoid buildings or guarantee camera clearance.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(MuryTypography.font(.caption, size: 12)).foregroundStyle(.secondary)
             }
             .padding()
         }
@@ -57,6 +59,8 @@ struct ActivityReplayView: View {
         .tint(theme.accent)
         .navigationTitle("Replay")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(theme.navigation, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Done") { playback.pause(); dismiss() }
@@ -123,12 +127,15 @@ struct ActivityReplayView: View {
     private func controls(frame: ReplayFrame) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Elapsed: \(Formatters.duration(seconds: Int(min(frame.elapsedSeconds, Double(Int.max / 2)))))")
+                .font(MuryTypography.font(.body, size: 17))
                 .monospacedDigit().accessibilityIdentifier("replay-elapsed")
             if frame.position == nil {
-                Text("GPS gap — position unavailable").foregroundStyle(.secondary)
+                Text("GPS gap — position unavailable")
+                    .font(MuryTypography.font(.body, size: 17))
+                    .foregroundStyle(.secondary)
             }
             Text("Speed: \(Formatters.speed(metersPerSecond: frame.speedMps)) · Altitude: \(Formatters.elevation(meters: frame.altitudeMeters))")
-                .font(.subheadline).monospacedDigit()
+                .font(MuryTypography.font(.subheadline, size: 15)).monospacedDigit()
             Slider(value: Binding(get: { playback.elapsedSeconds }, set: {
                 playback.seek(to: $0)
                 updateCamera(frame: timeline.sample(at: playback.elapsedSeconds))
@@ -164,7 +171,7 @@ struct ActivityReplayView: View {
                 else if mode == .aerial { updateCamera(frame: frame) }
             }
             if cameraMode == .topDown {
-                Text("2D overview").font(.caption)
+                Text("2D overview").font(MuryTypography.font(.caption, size: 12))
             }
             Button("Return to Follow") {
                 cameraMode = .aerial

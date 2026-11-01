@@ -49,11 +49,11 @@ struct ActivityDetailView: View {
 
                             VStack(alignment: .trailing, spacing: 2) {
                                 Text(title)
-                                    .font(.title3.bold())
+                                    .font(MuryTypography.font(.title3, size: 20, weight: .bold))
                                     .foregroundStyle(.white)
                                     .multilineTextAlignment(.trailing)
                                 Text(Formatters.displayDate(date: activity.startedAt))
-                                    .font(.caption)
+                                    .font(MuryTypography.font(.caption, size: 12))
                                     .foregroundStyle(.white.opacity(0.85))
                             }
                         }
@@ -112,6 +112,8 @@ struct ActivityDetailView: View {
         .background(theme.canvas)
         .navigationTitle("Activity")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(theme.navigation, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
@@ -256,10 +258,10 @@ private struct StatTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title.uppercased())
-                .font(.caption2)
+                .font(MuryTypography.font(.caption2, size: 11))
                 .foregroundStyle(.secondary)
             Text(value)
-                .font(.title3.monospacedDigit().bold())
+                .font(MuryTypography.font(.title3, size: 20, weight: .bold).monospacedDigit())
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
