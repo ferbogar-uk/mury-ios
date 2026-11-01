@@ -34,6 +34,8 @@ struct SettingsView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 8)
                             .frame(minHeight: 44)
+                            .accessibilityIdentifier("appearance-" + mode.rawValue)
+                            .accessibilityAddTraits(isSelected ? .isSelected : [])
                             .background(
                                 isSelected ? theme.accent : Color.clear,
                                 in: RoundedRectangle(cornerRadius: 20)
@@ -45,10 +47,6 @@ struct SettingsView: View {
                             )
                         }
                         .buttonStyle(.plain)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(mode.label)
-                        .accessibilityIdentifier("appearance-" + mode.rawValue)
-                        .accessibilityAddTraits(isSelected ? .isSelected : [])
                     }
                 }
                 .padding(4)
