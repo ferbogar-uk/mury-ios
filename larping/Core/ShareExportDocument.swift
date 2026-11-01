@@ -1,3 +1,4 @@
+import CoreTransferable
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
@@ -46,5 +47,21 @@ struct ShareExportDocument: FileDocument {
             case .emptyFile: return "The export file is empty or unreadable. Please try again."
             }
         }
+    }
+}
+
+struct SharePNG: Transferable {
+    let data: Data
+
+    init(image: UIImage) throws {
+        data = try ShareExportDocument(image: image).data
+    }
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .png) { $0.data }
+    }
+
+    func copyToPasteboard() {
+        UIPasteboard.general.setItems([[UTType.png.identifier: data]])
     }
 }

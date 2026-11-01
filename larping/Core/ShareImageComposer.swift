@@ -49,6 +49,86 @@ struct ShareImageComposer {
         }
     }
 
+
+    enum OverlayLayout: String, CaseIterable, Identifiable {
+        case column = "Statistics", compact = "Compact", route = "Route + stats"
+        var id: String { rawValue }
+    }
+
+    enum OverlayMetric: String, CaseIterable {
+        case distance, duration, paceOrSpeed, elevation, averageHeartRate, maxHeartRate
+    }
+
+    struct OverlayValue: Identifiable {
+        let id: OverlayMetric
+        let label: String
+        let value: String
+    }
+
+    static func overlayMetrics(for activity: CDActivity) -> [OverlayValue] {
+        var values: [OverlayValue] = []
+        if let distance = activity.distanceMeters, distance >= 0 {
+            values.append(.init(id: .distance, label: "DISTANCE", value: Formatters.distance(meters: Double(distance))))
+        }
+        if let duration = activity.durationSeconds, duration >= 0 {
+            values.append(.init(id: .duration, label: "TIME", value: Formatters.duration(seconds: duration)))
+        }
+        let pace = Formatters.paceOrSpeed(sportType: activity.sportType,
+                                         averagePaceSecondsPerKm: activity.averagePaceSecondsPerKm,
+                                         averageSpeedMps: activity.averageSpeedMps)
+        if pace != "–" {
+            values.append(.init(id: .paceOrSpeed, label: activity.sportType.usesPaceMetric ? "PACE" : "SPEED", value: pace))
+        }
+        if let elevation = activity.elevationGainMeters, elevation >= 0 {
+            values.append(.init(id: .elevation, label: "ELEVATION GAIN", value: Formatters.elevation(meters: Double(elevation))))
+        }
+        if let heartRate = activity.averageHeartRateBpm, heartRate > 0 {
+            values.append(.init(id: .averageHeartRate, label: "AVG HEART RATE", value: "\(heartRate) bpm"))
+        }
+        if let heartRate = activity.maxHeartRateBpm, heartRate > 0 {
+            values.append(.init(id: .maxHeartRate, label: "MAX HEART RATE", value: "\(heartRate) bpm"))
+        }
+        return values
+    }
+
+    func composeOverlay(layout: OverlayLayout, coordinates: [CLLocationCoordinate2D],
+                        stats: Stats, metrics: [OverlayValue]) -> UIImage {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = false
+        return UIGraphicsImageRenderer(size: Self.canvasSize, format: format).image { _ in
+            if let logo = UIImage(named: "LogoBlueWhite") {
+                let height: CGFloat = 92
+                let width = logo.size.width * height / logo.size.height
+                logo.draw(in: CGRect(x: (Self.canvasSize.width - width) / 2, y: 190, width: width, height: height))
+            }
+            guard !metrics.isEmpty else { return }
+            drawOverlayText(displayTitle(stats), in: CGRect(x: 80, y: 340, width: 920, height: 80), size: 42, weight: .semibold)
+            drawOverlayText(stats.date, in: CGRect(x: 80, y: 420, width: 920, height: 60), size: 28, weight: .regular)
+            if layout == .route {
+                drawRoute(coordinates, canvasWidth: Self.canvasSize.width,
+                          availableRect: CGRect(x: 100, y: 540, width: 880, height: 500))
+            }
+            for (index, metric) in metrics.prefix(6).enumerated() {
+                let column = layout == .column
+                let x: CGFloat = column ? 80 : 80 + CGFloat(index % 2) * 470
+                let y: CGFloat = column ? 570 + CGFloat(index) * 172 : 1140 + CGFloat(index / 2) * 174
+                let width: CGFloat = column ? 920 : 450
+                drawOverlayText(metric.label, in: CGRect(x: x, y: y, width: width, height: 42), size: 25, weight: .semibold)
+                drawOverlayText(metric.value, in: CGRect(x: x, y: y + 44, width: width, height: 90), size: column ? 66 : 50, weight: .bold)
+            }
+        }
+    }
+
+    private func drawOverlayText(_ text: String, in rect: CGRect, size: CGFloat, weight: MuryTypography.Weight) {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        paragraph.lineBreakMode = .byTruncatingTail
+        var attributes = textAttributes(white, size: size, weight: weight, soft: true)
+        attributes[.paragraphStyle] = paragraph
+        NSAttributedString(string: text, attributes: attributes).draw(in: rect)
+    }
+
     /// Classic template. `photo == nil` leaves the background transparent so
     /// the output PNG can be pasted anywhere; `soft == true` (no photo) adds
     /// dark shadows under the white foreground so it stays legible on light
@@ -61,6 +141,7 @@ struct ShareImageComposer {
     ) -> UIImage {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
+        format.opaque = false
         let renderer = UIGraphicsImageRenderer(size: Self.canvasSize, format: format)
 
         let width = Self.canvasSize.width
@@ -190,8 +271,6 @@ struct ShareImageComposer {
             let height: CGFloat = 110
             let size = CGSize(width: logo.size.width * (height / logo.size.height), height: height)
             let rect = CGRect(x: (canvasWidth - size.width) / 2, y: cursorY, width: size.width, height: size.height)
-            spaceBlack.withAlphaComponent(0.88).setFill()
-            UIBezierPath(roundedRect: rect.insetBy(dx: -24, dy: -24), cornerRadius: 20).fill()
             logo.draw(in: rect)
         }
     }

@@ -54,6 +54,23 @@ final class ShareExportDocumentTests: XCTestCase {
         XCTAssertThrowsError(try ShareExportDocument(videoURL: url))
     }
 
+    func testPNGSharingAndClipboardPreserveAlphaAndBytes() throws {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = false
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 4, height: 4), format: format).image { context in
+            UIColor.white.setFill()
+            context.fill(CGRect(x: 1, y: 1, width: 2, height: 2))
+        }
+        let png = try SharePNG(image: image)
+        let document = try ShareExportDocument(image: image)
+        XCTAssertEqual(png.data, document.data)
+        XCTAssertEqual(Array(png.data.prefix(8)), [137, 80, 78, 71, 13, 10, 26, 10])
+        png.copyToPasteboard()
+        XCTAssertEqual(UIPasteboard.general.data(forPasteboardType: UTType.png.identifier), png.data)
+        XCTAssertThrowsError(try SharePNG(image: UIImage()))
+    }
+
     private func temporaryVideoURL() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent("mury-export-test-\(UUID().uuidString).mp4")
     }

@@ -4,11 +4,32 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 private enum ShareTemplate: Int, CaseIterable, Identifiable {
-    case classic, mapCard, video
+    case classic, mapCard, video, column, compact, route
+
+    var title: String {
+        switch self {
+        case .classic: return "Classic"
+        case .mapCard: return "Map"
+        case .video: return "Video"
+        case .column: return "Statistics"
+        case .compact: return "Compact"
+        case .route: return "Route + stats"
+        }
+    }
+
+    var overlayLayout: ShareImageComposer.OverlayLayout? {
+        switch self {
+        case .column: return .column
+        case .compact: return .compact
+        case .route: return .route
+        default: return nil
+        }
+    }
     var id: Int { rawValue }
 }
 
-/// Lets the user export the route as three swipeable templates — a plain card
+/// Exports photo, map and video cards plus three transparent statistics overlays.
+/// The original plain card
 /// (path line over a custom photo, or a transparent PNG on its own), a map
 /// template (real MapKit imagery + route + info card), and an animated video
 /// over the same map — and share whichever is on screen via the system share
@@ -24,6 +45,9 @@ struct ShareActivityView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.brandTheme) private var theme
     @Environment(\.colorScheme) private var colorScheme
+    @State private var overlayImages: [ShareImageComposer.OverlayLayout: UIImage] = [:]
+    @State private var selectedMetrics = Set(ShareImageComposer.OverlayMetric.allCases)
+    @State private var copiedPNG = false
     @State private var photo: UIImage?
     @State private var photoPickerItem: PhotosPickerItem?
     @State private var showCamera = false
@@ -67,15 +91,66 @@ struct ShareActivityView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 14) {
+                Picker("Template", selection: $template) {
+                    ForEach(ShareTemplate.allCases) { item in
+                        Text(item.title).tag(item)
+                    }
+                }
+                .pickerStyle(.menu)
+                .accessibilityIdentifier("share-template")
+
                 TabView(selection: $template) {
                     classicPreview.tag(ShareTemplate.classic)
                     preview(mapCardImage).tag(ShareTemplate.mapCard)
                     videoPreview.tag(ShareTemplate.video)
+                    ForEach([ShareTemplate.column, .compact, .route]) { item in
+                        if let layout = item.overlayLayout {
+                            transparentPreview(overlayImages[layout]).tag(item)
+                        }
+                    }
                 }
                 .tabViewStyle(.page)
                 .frame(maxHeight: 640)
 
-                shareSection
+                if template.overlayLayout != nil {
+                    Menu {
+                        ForEach(availableMetrics) { metric in
+                            Toggle(metric.label, isOn: Binding(
+                                get: { selectedMetrics.contains(metric.id) },
+                                set: { selected in
+                                    if selected { selectedMetrics.insert(metric.id) }
+                                    else { selectedMetrics.remove(metric.id) }
+                                }
+                            ))
+                            .accessibilityIdentifier("share-metric-\(metric.id.rawValue)")
+                        }
+                    } label: {
+                        Label("Metrics", systemImage: "slider.horizontal.3")
+                    }
+                    .disabled(availableMetrics.isEmpty)
+                    .accessibilityIdentifier("share-metrics")
+                    if template == .route && coordinates.count < 2 {
+                        Text("No route recorded. Only available statistics are shown.")
+                            .font(.footnote)
+                    }
+                }
+
+                HStack {
+                    shareSection
+                    if template != .video {
+                        Button(action: copyPNG) {
+                            Label("Copy PNG", systemImage: "doc.on.doc")
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(selectedImage == nil)
+                        .accessibilityIdentifier("share-copy-png")
+                    }
+                }
+                if copiedPNG {
+                    Text("PNG copied. Paste it over a photo in a compatible app.")
+                        .font(.footnote)
+                        .accessibilityIdentifier("share-copy-success")
+                }
 
                 Button(action: saveToFiles) {
                     Label("Save to Files", systemImage: "folder")
@@ -110,7 +185,7 @@ struct ShareActivityView: View {
                         Button(role: .destructive) {
                             photo = nil
                         } label: {
-                            Label("Plain background", systemImage: "xmark.circle")
+                            Label("Transparent background", systemImage: "xmark.circle")
                                 .font(.subheadline)
                         }
                         .buttonStyle(.plain)
@@ -136,6 +211,7 @@ struct ShareActivityView: View {
                 cleanupVideo()
                 mapCardImage = nil
                 recomposeClassic()
+                recomposeOverlays()
                 await recomposeMapCard()
             }
             .onChange(of: photo) {
@@ -143,6 +219,10 @@ struct ShareActivityView: View {
                 recomposeClassic()
             }
             .onChange(of: template) { clearExportFeedback() }
+            .onChange(of: selectedMetrics) {
+                clearExportFeedback()
+                recomposeOverlays()
+            }
             .onChange(of: photoPickerItem) {
                 Task { await loadPickedPhoto() }
             }
@@ -200,7 +280,7 @@ struct ShareActivityView: View {
                     }
                 }
             }
-            .alert("Couldn't save to Files", isPresented: Binding(
+            .alert("Couldn't prepare export", isPresented: Binding(
                 get: { exportError != nil },
                 set: { if !$0 { exportError = nil } }
             )) {
@@ -225,25 +305,39 @@ struct ShareActivityView: View {
         }
     }
 
-    /// The classic template's photo-less card is a *transparent* PNG (see
-    /// `ShareImageComposer.compose`) — its white content disappears against a
-    /// light-mode background. A black backing here makes it visible in the
-    /// preview only; the exported/shared image stays transparent.
-    @ViewBuilder
+    private var availableMetrics: [ShareImageComposer.OverlayValue] {
+        ShareImageComposer.overlayMetrics(for: activity)
+    }
+
+    private var selectedImage: UIImage? {
+        switch template {
+        case .classic: return composedImage
+        case .mapCard: return mapCardImage
+        case .video: return nil
+        case .column, .compact, .route:
+            return template.overlayLayout.flatMap { overlayImages[$0] }
+        }
+    }
+
     private var classicPreview: some View {
-        if let composedImage {
-            Image(uiImage: composedImage)
+        transparentPreview(composedImage, transparent: photo == nil)
+    }
+
+    @ViewBuilder
+    private func transparentPreview(_ image: UIImage?, transparent: Bool = true) -> some View {
+        if let image {
+            Image(uiImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .background(photo == nil ? Color.black : Color.clear)
+                .background {
+                    if transparent { TransparencyCheckerboard().accessibilityHidden(true) }
+                }
                 .clipShape(RoundedRectangle(cornerRadius: 20))
                 .contentShape(RoundedRectangle(cornerRadius: 20))
-                .onTapGesture { fullPreview = composedImage }
+                .accessibilityLabel("Activity sharing preview")
+                .onTapGesture { fullPreview = image }
         } else {
-            RoundedRectangle(cornerRadius: 20)
-                .fill(.fill.tertiary)
-                .aspectRatio(0.5625, contentMode: .fit)
-                .overlay { ProgressView() }
+            ProgressView()
         }
     }
 
@@ -286,10 +380,8 @@ struct ShareActivityView: View {
     @ViewBuilder
     private var shareSection: some View {
         switch template {
-        case .classic:
-            imageShareLink(composedImage)
-        case .mapCard:
-            imageShareLink(mapCardImage)
+        case .classic, .mapCard, .column, .compact, .route:
+            imageShareLink(selectedImage)
         case .video:
             if let videoURL {
                 ShareLink(item: videoURL) {
@@ -323,18 +415,37 @@ struct ShareActivityView: View {
 
     @ViewBuilder
     private func imageShareLink(_ image: UIImage?) -> some View {
-        ShareLink(
-            item: Image(uiImage: image ?? UIImage()),
-            preview: SharePreview("My MURY activity", image: Image(uiImage: image ?? UIImage()))
-        ) {
-            Label("Share", systemImage: "square.and.arrow.up")
-                .frame(maxWidth: .infinity)
-                .foregroundStyle(theme.onAccent)
+        if let image, let png = try? SharePNG(image: image) {
+            ShareLink(item: png, preview: SharePreview("My MURY activity", image: Image(uiImage: image))) {
+                Label("Share", systemImage: "square.and.arrow.up")
+                    .frame(maxWidth: .infinity)
+                    .foregroundStyle(theme.onAccent)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(theme.accent)
+            .controlSize(.large)
+        } else {
+            Button("Share") {}
+                .disabled(true)
         }
-        .buttonStyle(.borderedProminent)
-        .tint(theme.accent)
-        .controlSize(.large)
-        .disabled(image == nil)
+    }
+
+    private func copyPNG() {
+        guard let selectedImage else { return }
+        clearExportFeedback()
+        do {
+            try SharePNG(image: selectedImage).copyToPasteboard()
+            copiedPNG = true
+        } catch {
+            exportError = error.localizedDescription
+        }
+    }
+
+    private func recomposeOverlays() {
+        let metrics = availableMetrics.filter { selectedMetrics.contains($0.id) }
+        for layout in ShareImageComposer.OverlayLayout.allCases {
+            overlayImages[layout] = imageComposer.composeOverlay(layout: layout, coordinates: coordinates, stats: stats, metrics: metrics)
+        }
     }
 
     private var isReadyToSave: Bool {
@@ -342,10 +453,12 @@ struct ShareActivityView: View {
         case .classic: return composedImage != nil
         case .mapCard: return mapCardImage != nil
         case .video: return videoURL != nil && !isGeneratingVideo
+        case .column, .compact, .route: return selectedImage != nil
         }
     }
 
     private func clearExportFeedback() {
+        copiedPNG = false
         exportError = nil
         exportSucceeded = false
     }
@@ -365,6 +478,10 @@ struct ShareActivityView: View {
                 guard let mapCardImage else { return }
                 exportDocument = try ShareExportDocument(image: mapCardImage)
                 name = "map"
+            case .column, .compact, .route:
+                guard let selectedImage else { return }
+                exportDocument = try ShareExportDocument(image: selectedImage)
+                name = "overlay-\(template.rawValue)"
             case .video:
                 guard let videoURL else { return }
                 exportDocument = try ShareExportDocument(videoURL: videoURL)
@@ -422,5 +539,20 @@ struct ShareActivityView: View {
               let data = try? await photoPickerItem.loadTransferable(type: Data.self),
               let image = UIImage(data: data) else { return }
         photo = image
+    }
+}
+
+private struct TransparencyCheckerboard: View {
+    var body: some View {
+        Canvas { context, size in
+            let tile: CGFloat = 16
+            context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(white: 0.28)))
+            for row in 0..<Int(ceil(size.height / tile)) {
+                for column in 0..<Int(ceil(size.width / tile)) where (row + column).isMultiple(of: 2) {
+                    let rect = CGRect(x: CGFloat(column) * tile, y: CGFloat(row) * tile, width: tile, height: tile)
+                    context.fill(Path(rect), with: .color(Color(white: 0.38)))
+                }
+            }
+        }
     }
 }

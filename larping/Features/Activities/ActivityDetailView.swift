@@ -117,13 +117,12 @@ struct ActivityDetailView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    if coordinates.count > 1 {
-                        Button {
-                            showShareSheet = true
-                        } label: {
-                            Label("Share", systemImage: "square.and.arrow.up")
-                        }
+                    Button {
+                        showShareSheet = true
+                    } label: {
+                        Label("Share", systemImage: "square.and.arrow.up")
                     }
+                    .accessibilityIdentifier("activity-share")
                     Button {
                         renameText = title
                         showRename = true
@@ -138,6 +137,7 @@ struct ActivityDetailView: View {
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
+                .accessibilityIdentifier("activity-actions")
             }
         }
         .sheet(isPresented: $showShareSheet) {
