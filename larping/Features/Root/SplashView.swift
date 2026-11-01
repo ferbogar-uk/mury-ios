@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The selected Flow palette is applied after the neutral system launch screen.
+/// The supplied identity follows the selected appearance after the system launch screen.
 struct SplashView: View {
     @Environment(\.brandTheme) private var theme
 
@@ -9,11 +9,10 @@ struct SplashView: View {
             .ignoresSafeArea()
             .overlay {
                 Image("LogoHorizontal")
-                    .renderingMode(.template)
+                    .renderingMode(.original)
                     .resizable()
                     .scaledToFit()
                     .frame(height: 56)
-                    .foregroundStyle(theme.tint)
                     .accessibilityLabel("MURY")
             }
     }

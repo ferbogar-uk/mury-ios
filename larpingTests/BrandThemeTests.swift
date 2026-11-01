@@ -5,20 +5,57 @@ import XCTest
 
 @MainActor
 final class BrandThemeTests: XCTestCase {
-    func testTiffanyIsPresentedFirst() {
-        XCTAssertEqual(BrandTheme.allCases, [.tiffany, .pink])
-        XCTAssertEqual(EnvironmentValues().brandTheme, .tiffany)
+    func testSingleMuryIdentityAndDefault() {
+        XCTAssertEqual(BrandTheme.allCases, [.mury])
+        XCTAssertEqual(EnvironmentValues().brandTheme, .mury)
+        XCTAssertEqual(BrandTheme.storageKey, "brandTheme")
     }
 
-    func testMasterCanvasAndDarkSurfaces() {
-        assertRGB(BrandTheme.pink.uiColor("Canvas", for: .light), [255, 240, 246])
-        assertRGB(BrandTheme.pink.uiColor("Surface", for: .dark), [74, 44, 58])
-        assertRGB(BrandTheme.tiffany.uiColor("Surface", for: .dark), [11, 61, 74])
+    func testPreferenceResolutionAcceptsOnlyKnownOnboardingMarkers() {
+        for value: String? in [nil, "", "unknown", "MURY", " pink "] {
+            XCTAssertNil(BrandTheme.resolvePreference(value))
+        }
+        for value in ["pink", "tiffany", "mury"] {
+            XCTAssertEqual(BrandTheme.resolvePreference(value), .mury)
+        }
     }
 
-    func testMissingAndUnknownPreferencesRequireSelection() {
-        XCTAssertNil(BrandTheme(rawValue: ""))
-        XCTAssertNil(BrandTheme(rawValue: "unknown"))
+    func testLegacyResolutionDoesNotWritePreferences() {
+        let suite = UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set("dark", forKey: "appearanceMode")
+        defaults.set("Existing name", forKey: "displayName")
+        defaults.set(Data([1, 2, 3]), forKey: "existingData")
+        for marker in ["pink", "tiffany", "mury"] {
+            defaults.set(marker, forKey: BrandTheme.storageKey)
+            let before = defaults.dictionaryRepresentation()
+            XCTAssertEqual(BrandTheme.resolvePreference(defaults.string(forKey: BrandTheme.storageKey)), .mury)
+            XCTAssertEqual(defaults.dictionaryRepresentation() as NSDictionary, before as NSDictionary)
+        }
+    }
+
+    func testSuppliedPaletteAndFixedRoute() {
+        let theme = BrandTheme.mury
+        assertRGB(theme.uiColor("Canvas", for: .light), [249, 250, 251])
+        assertRGB(theme.uiColor("Surface", for: .dark), [31, 41, 55])
+        assertRGB(theme.uiColor("Accent", for: .light), [178, 14, 28])
+        assertRGB(theme.uiColor("Accent", for: .dark), [167, 216, 243])
+        assertRGB(theme.uiColor("Navigation", for: .light), [167, 216, 243])
+        for scheme in [ColorScheme.light, .dark] {
+            assertRGB(theme.shareStyle(for: scheme).route, [178, 14, 28])
+            assertRGB(theme.uiColor("RouteCasing", for: scheme), [255, 255, 255])
+        }
+    }
+
+    func testBundledRubikFontsLoadAndScale() throws {
+        for weight in [MuryTypography.Weight.regular, .semibold, .bold] {
+            let font = MuryTypography.uiFont(size: 20, weight: weight)
+            XCTAssertTrue(font.fontName.hasPrefix("Rubik"))
+            let normal = UIFontMetrics(forTextStyle: .body).scaledFont(for: font, compatibleWith: UITraitCollection(preferredContentSizeCategory: .large))
+            let large = UIFontMetrics(forTextStyle: .body).scaledFont(for: font, compatibleWith: UITraitCollection(preferredContentSizeCategory: .accessibilityExtraExtraExtraLarge))
+            XCTAssertGreaterThan(large.pointSize, normal.pointSize)
+        }
     }
 
     func testThemesRoundTripWithoutChangingAppearance() {

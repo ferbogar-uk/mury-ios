@@ -13,7 +13,7 @@ struct HomeDashboardView: View {
             List {
                 Section {
                     Text("Make your move")
-                        .font(.largeTitle.bold())
+                        .font(MuryTypography.font(.largeTitle, size: 34, weight: .bold))
                     Text("Choose a sport and make time for yourself.")
                         .foregroundStyle(theme.muted)
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 90))], spacing: 12) {
@@ -21,7 +21,7 @@ struct HomeDashboardView: View {
                             Button { onRecord(sport) } label: {
                                 VStack(spacing: 8) {
                                     Image(systemName: sport.symbolName).font(.title2)
-                                    Text(sport.label).font(.subheadline.weight(.semibold))
+                                    Text(sport.label).font(MuryTypography.font(.subheadline, size: 15, weight: .semibold))
                                 }
                                 .frame(maxWidth: .infinity, minHeight: 70)
                                 .foregroundStyle(theme.onAccent)
@@ -81,6 +81,8 @@ struct HomeDashboardView: View {
             }
             .scrollContentBackground(.hidden)
             .background(theme.canvas)
+            .toolbarBackground(theme.navigation, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .navigationTitle("Home")
             .onAppear { now = Date() }
             .refreshable { refresh() }
@@ -107,12 +109,12 @@ struct HomeDashboardView: View {
                 .frame(width: 32)
             VStack(alignment: .leading, spacing: 4) {
                 Text(name.isEmpty ? activity.sportType.label : name)
-                    .font(.headline)
+                    .font(MuryTypography.font(.headline, size: 17, weight: .semibold))
                 Text(Formatters.displayDate(date: activity.startedAt))
-                    .font(.caption)
+                    .font(MuryTypography.font(.caption, size: 12, weight: .regular))
                     .foregroundStyle(theme.muted)
                 Text("\(Formatters.distance(meters: activity.distanceMeters.map(Double.init))) · \(Formatters.duration(seconds: activity.durationSeconds))")
-                    .font(.subheadline.monospacedDigit())
+                    .font(MuryTypography.font(.subheadline, size: 15, weight: .regular).monospacedDigit())
             }
         }
         .padding(.vertical, 4)

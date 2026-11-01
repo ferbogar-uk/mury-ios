@@ -95,19 +95,24 @@ struct ActivityReplayView: View {
         Map(position: $camera) {
             ForEach(Array(timeline.segments.enumerated()), id: \.offset) { _, segment in
                 MapPolyline(coordinates: segment.map(coordinate))
-                    .stroke(theme.accent.opacity(0.25), lineWidth: 4)
+                    .stroke(theme.routeCasing, lineWidth: 8)
+                MapPolyline(coordinates: segment.map(coordinate))
+                    .stroke(theme.route.opacity(0.25), lineWidth: 4)
             }
             ForEach(Array(frame.revealedSegments.enumerated()), id: \.offset) { _, segment in
                 MapPolyline(coordinates: segment.map(coordinate))
-                    .stroke(theme.accent, lineWidth: 5)
+                    .stroke(theme.routeCasing, lineWidth: 9)
+                MapPolyline(coordinates: segment.map(coordinate))
+                    .stroke(theme.route, lineWidth: 5)
             }
             if let position = frame.position {
                 Annotation("Replay position", coordinate: coordinate(position)) {
                     Image(systemName: symbol)
                         .font(.headline)
-                        .foregroundStyle(theme.onAccent)
+                        .foregroundStyle(theme.routeCasing)
                         .padding(8)
-                        .background(theme.accent, in: Circle())
+                        .background(theme.route, in: Circle())
+                        .overlay(Circle().strokeBorder(theme.routeCasing, lineWidth: 2))
                 }
             }
         }

@@ -1,0 +1,20 @@
+@font-face{font-family:Rubik;src:url("fonts/Rubik-Variable.ttf") format("truetype");font-weight:300 900;font-display:swap;}
+:root{
+ --mury-blue:#A7D8F3;
+ --mury-red:#B20E1C;
+ --mury-white:#FFFFFF;
+ --mury-surface:#F9FAFB;
+ --mury-charcoal:#1F2937;
+ --mury-muted:#566475;
+ --mury-control-border:#64748B;
+ --mury-dark-muted:#CBD5E1;
+ --mury-dark-border:#94A3B8;
+ --font-ui:Rubik,system-ui,sans-serif;
+}
+[data-theme="light"]{--canvas:#F9FAFB;--panel:#FFFFFF;--navigation:#A7D8F3;--text:#1F2937;--mutedText:#566475;--action:#B20E1C;--actionText:#FFFFFF;--focus:#1F2937;--interactiveBorder:#64748B;--route:#B20E1C;--routeCasing:#FFFFFF;--selectedNavigation:#B20E1C;}
+[data-theme="dark"]{--canvas:#1F2937;--panel:#1F2937;--navigation:#1F2937;--text:#F9FAFB;--mutedText:#CBD5E1;--action:#A7D8F3;--actionText:#1F2937;--focus:#A7D8F3;--interactiveBorder:#94A3B8;--route:#B20E1C;--routeCasing:#FFFFFF;--selectedNavigation:#A7D8F3;}
+.metric{font-variant-numeric:tabular-nums;}
+
+.mury-button{min-height:52px;border-radius:16px;padding:12px 24px;font-weight:600;}
+.mury-focus:focus-visible{outline:2px solid var(--focus);outline-offset:3px;}
+.mury-metric{font-variant-numeric:tabular-nums;font-weight:700;}

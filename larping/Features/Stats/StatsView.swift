@@ -91,7 +91,7 @@ struct StatsView: View {
                                     Text(Formatters.distance(meters: entry.distanceMeters))
                                         .foregroundStyle(.secondary)
                                     Text("\(Formatters.duration(seconds: entry.durationSeconds)) · \(entry.count) \(entry.count == 1 ? "activity" : "activities")\(entry.maxHeartRateBpm.map { " · max \($0) bpm" } ?? "")")
-                                        .font(.caption2)
+                                        .font(MuryTypography.font(.caption2, size: 11, weight: .regular))
                                         .foregroundStyle(.secondary)
                                 }
                             }
@@ -144,6 +144,8 @@ struct StatsView: View {
             }
             .scrollContentBackground(.hidden)
             .background(theme.canvas)
+            .toolbarBackground(theme.navigation, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .navigationTitle("Stats")
         }
     }
@@ -184,8 +186,8 @@ private struct StatColumn: View {
 
     var body: some View {
         VStack(spacing: 2) {
-            Text(value).font(.title3.monospacedDigit().bold())
-            Text(title.uppercased()).font(.caption2).foregroundStyle(.secondary)
+            Text(value).font(MuryTypography.font(.title3, size: 20, weight: .bold).monospacedDigit())
+            Text(title.uppercased()).font(MuryTypography.font(.caption2, size: 11, weight: .regular)).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
     }

@@ -11,5 +11,11 @@
 		<key>UIColorName</key>
 		<string>Canvas</string>
 	</dict>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Rubik-Regular.ttf</string>
+		<string>Rubik-SemiBold.ttf</string>
+		<string>Rubik-Bold.ttf</string>
+	</array>
 </dict>
 </plist>

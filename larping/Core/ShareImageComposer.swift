@@ -1,3 +1,4 @@
+import CoreText
 import CoreLocation
 import MapKit
 import UIKit
@@ -14,9 +15,9 @@ import UIKit
 ///    stats/logo/URL. `routeRevealFraction` lets the video composer reveal the
 ///    route in recorded order frame-by-frame over the same map.
 ///
-/// System font throughout. The photo-less classic card is transparent; the map
+/// Supplied Rubik typography throughout. The photo-less classic card is transparent; the map
 /// card is self-contained (map background + card). The route line always uses
-/// the explicit Pink/Tiffany palette captured by the caller.
+/// the fixed MURY red route, independently of the selected action tint.
 struct ShareImageComposer {
     let style: ShareStyle
     static let canvasSize = CGSize(width: 1080, height: 1920) // Instagram Story ratio
@@ -33,8 +34,10 @@ struct ShareImageComposer {
         let duration: String
         let paceOrSpeed: String
         let date: String
+        let usesPaceMetric: Bool
+        var metricLabel: String { usesPaceMetric ? "PACE" : "SPEED" }
 
-        init(symbolName: String, sportLabel: String, distance: String, duration: String, paceOrSpeed: String, date: String, title: String = "") {
+        init(symbolName: String, sportLabel: String, distance: String, duration: String, paceOrSpeed: String, date: String, title: String = "", usesPaceMetric: Bool = true) {
             self.symbolName = symbolName
             self.sportLabel = sportLabel
             self.title = title
@@ -42,6 +45,7 @@ struct ShareImageComposer {
             self.duration = duration
             self.paceOrSpeed = paceOrSpeed
             self.date = date
+            self.usesPaceMetric = usesPaceMetric
         }
     }
 
@@ -182,14 +186,13 @@ struct ShareImageComposer {
             cursorY = rect.maxY + 24
         }
 
-        if let logo = UIImage(named: "LogoHorizontal") {
+        if let logo = UIImage(named: "LogoBlueWhite") {
             let height: CGFloat = 110
             let size = CGSize(width: logo.size.width * (height / logo.size.height), height: height)
             let rect = CGRect(x: (canvasWidth - size.width) / 2, y: cursorY, width: size.width, height: size.height)
-            if soft {
-                logo.withTintColor(UIColor.black.withAlphaComponent(0.8), renderingMode: .alwaysTemplate).draw(in: rect.offsetBy(dx: 0, dy: 6))
-            }
-            logo.withTintColor(white.withAlphaComponent(0.92), renderingMode: .alwaysTemplate).draw(in: rect)
+            spaceBlack.withAlphaComponent(0.88).setFill()
+            UIBezierPath(roundedRect: rect.insetBy(dx: -24, dy: -24), cornerRadius: 20).fill()
+            logo.draw(in: rect)
         }
     }
 
@@ -238,10 +241,13 @@ struct ShareImageComposer {
         let path = UIBezierPath()
         path.move(to: visiblePoints[0])
         visiblePoints.dropFirst().forEach { path.addLine(to: $0) }
-        path.lineWidth = 16
         path.lineJoinStyle = .round
         path.lineCapStyle = .round
-        routeColor.withAlphaComponent(0.95).setStroke()
+        path.lineWidth = 24
+        white.setStroke()
+        path.stroke()
+        path.lineWidth = 16
+        routeColor.setStroke()
         path.stroke()
 
         // Leading dot marks the current tip while the route is still being
@@ -262,12 +268,12 @@ struct ShareImageComposer {
         let rows: [(String, String)] = [
             ("DISTANCE", stats.distance),
             ("DURATION", stats.duration),
-            ("PACE", stats.paceOrSpeed),
+            (stats.metricLabel, stats.paceOrSpeed),
         ]
 
         var y: CGFloat = startY
         for row in rows {
-            drawCentered(NSAttributedString(string: row.0, attributes: textAttributes(white.withAlphaComponent(0.62), size: 34, weight: .medium, soft: soft)), atY: y, canvasWidth: canvasWidth)
+            drawCentered(NSAttributedString(string: row.0, attributes: textAttributes(white.withAlphaComponent(0.62), size: 34, weight: .semibold, soft: soft)), atY: y, canvasWidth: canvasWidth)
             let value = NSAttributedString(string: row.1, attributes: valueAttributes(64, soft: soft))
             drawCentered(value, atY: y + 42, canvasWidth: canvasWidth)
             y += 42 + value.size().height + 46
@@ -285,15 +291,13 @@ struct ShareImageComposer {
     // MARK: - Map card drawing
 
     /// Wordmark floated top-right over the map itself, separate from the info
-    /// card — a dark backing keeps it legible over unpredictable map colors.
+    /// card; preserve the supplied light-blue symbol and white wordmark.
     private func drawTopRightLogo(canvasWidth: CGFloat) {
-        guard let logo = UIImage(named: "LogoHorizontal") else { return }
+        guard let logo = UIImage(named: "LogoBlueWhite") else { return }
         let height: CGFloat = 52
         let size = CGSize(width: logo.size.width * (height / logo.size.height), height: height)
         let rect = CGRect(x: canvasWidth - size.width - 54, y: 170, width: size.width, height: size.height)
-        logo.withTintColor(UIColor.black.withAlphaComponent(0.75), renderingMode: .alwaysTemplate)
-            .draw(in: rect.offsetBy(dx: 0, dy: 5))
-        logo.withTintColor(white.withAlphaComponent(0.95), renderingMode: .alwaysTemplate).draw(in: rect)
+        logo.draw(in: rect)
     }
 
     /// Sport icon floated top-left over the map, mirroring the wordmark's
@@ -333,9 +337,12 @@ struct ShareImageComposer {
         let path = UIBezierPath()
         path.move(to: visible[0])
         visible.dropFirst().forEach { path.addLine(to: $0) }
-        path.lineWidth = 14
         path.lineJoinStyle = .round
         path.lineCapStyle = .round
+        path.lineWidth = 22
+        white.setStroke()
+        path.stroke()
+        path.lineWidth = 14
         routeColor.setStroke()
         path.stroke()
 
@@ -379,7 +386,7 @@ struct ShareImageComposer {
         UIBezierPath(roundedRect: card, cornerRadius: 48)
             .fill()
 
-        let title = NSAttributedString(string: displayTitle(stats), attributes: textAttributes(white, size: 56, weight: .heavy, soft: false))
+        let title = NSAttributedString(string: displayTitle(stats), attributes: textAttributes(white, size: 56, weight: .bold, soft: false))
         let date = NSAttributedString(string: stats.date, attributes: textAttributes(white.withAlphaComponent(0.72), size: 30, weight: .semibold, soft: false))
         let textX = card.minX + 44
         var y: CGFloat = card.minY + 44
@@ -391,12 +398,12 @@ struct ShareImageComposer {
         let rows: [(String, String)] = [
             ("DISTANCE", stats.distance),
             ("DURATION", stats.duration),
-            ("PACE", stats.paceOrSpeed),
+            (stats.metricLabel, stats.paceOrSpeed),
         ]
         let colWidth = (card.width - 88) / 3
         for (index, row) in rows.enumerated() {
             let centerX = card.minX + 44 + colWidth * CGFloat(index) + colWidth / 2
-            drawCentered(NSAttributedString(string: row.0, attributes: textAttributes(white.withAlphaComponent(0.6), size: 24, weight: .medium, soft: false)), atY: card.minY + 224, centerX: centerX)
+            drawCentered(NSAttributedString(string: row.0, attributes: textAttributes(white.withAlphaComponent(0.6), size: 24, weight: .semibold, soft: false)), atY: card.minY + 224, centerX: centerX)
             drawCentered(NSAttributedString(string: row.1, attributes: valueAttributes(50, soft: false)), atY: card.minY + 260, centerX: centerX)
         }
     }
@@ -408,9 +415,9 @@ struct ShareImageComposer {
         return trimmed.isEmpty ? "MURY \(stats.sportLabel)" : trimmed
     }
 
-    private func textAttributes(_ color: UIColor, size: CGFloat, weight: UIFont.Weight, soft: Bool) -> [NSAttributedString.Key: Any] {
+    private func textAttributes(_ color: UIColor, size: CGFloat, weight: MuryTypography.Weight, soft: Bool) -> [NSAttributedString.Key: Any] {
         var attributes: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: size, weight: weight),
+            .font: MuryTypography.uiFont(size: size, weight: weight),
             .foregroundColor: color,
         ]
         if soft {
@@ -424,8 +431,14 @@ struct ShareImageComposer {
     }
 
     private func valueAttributes(_ size: CGFloat, soft: Bool) -> [NSAttributedString.Key: Any] {
+        let descriptor = MuryTypography.uiFont(size: size, weight: .bold).fontDescriptor.addingAttributes([
+            .featureSettings: [[
+                UIFontDescriptor.FeatureKey.type: kNumberSpacingType,
+                UIFontDescriptor.FeatureKey.selector: kMonospacedNumbersSelector,
+            ]],
+        ])
         var attributes: [NSAttributedString.Key: Any] = [
-            .font: UIFont.monospacedDigitSystemFont(ofSize: size, weight: .heavy),
+            .font: UIFont(descriptor: descriptor, size: size),
             .foregroundColor: white,
         ]
         if soft {

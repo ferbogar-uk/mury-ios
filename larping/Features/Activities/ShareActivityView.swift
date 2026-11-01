@@ -57,12 +57,10 @@ struct ShareActivityView: View {
             sportLabel: activity.sportType.label,
             distance: Formatters.distance(meters: activity.distanceMeters.map(Double.init)),
             duration: Formatters.duration(seconds: activity.durationSeconds),
-            // Pace is always per-km; the "/km" unit is redundant on the share card.
-            paceOrSpeed: activity.sportType.usesPaceMetric
-                ? pace.replacingOccurrences(of: " /km", with: "")
-                : pace,
+            paceOrSpeed: pace,
             date: Formatters.displayDate(date: activity.startedAt),
-            title: activity.eventName ?? ""
+            title: activity.eventName ?? "",
+            usesPaceMetric: activity.sportType.usesPaceMetric
         )
     }
 
@@ -88,7 +86,7 @@ struct ShareActivityView: View {
 
                 if exportSucceeded {
                     Text("Saved to Files.")
-                        .font(.footnote)
+                        .font(MuryTypography.font(.footnote, size: 13, weight: .regular))
                 }
 
                 if template == .classic {
@@ -123,6 +121,8 @@ struct ShareActivityView: View {
             }
             .padding()
             .background(theme.canvas)
+            .toolbarBackground(theme.navigation, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .navigationTitle("Share")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

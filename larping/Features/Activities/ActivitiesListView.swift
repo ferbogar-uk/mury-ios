@@ -30,16 +30,18 @@ struct ActivitiesListView: View {
             content
                 .scrollContentBackground(.hidden)
                 .background(theme.canvas)
+                .toolbarBackground(theme.navigation, for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
                 .navigationTitle("")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .principal) {
                         Image("LogoHorizontal")
-                            .renderingMode(.template)
+                            .renderingMode(.original)
                             .resizable()
                             .scaledToFit()
                             .frame(height: 22)
-                            .foregroundStyle(.primary)
+                            .accessibilityLabel("MURY")
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         Menu {
@@ -116,8 +118,8 @@ private struct WeekStatColumn: View {
 
     var body: some View {
         VStack(spacing: 2) {
-            Text(value).font(.subheadline.monospacedDigit().bold())
-            Text(title.uppercased()).font(.caption2).foregroundStyle(.secondary)
+            Text(value).font(MuryTypography.font(.subheadline, size: 15, weight: .bold).monospacedDigit())
+            Text(title.uppercased()).font(MuryTypography.font(.caption2, size: 11, weight: .regular)).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
     }
@@ -140,10 +142,10 @@ private struct ActivityRow: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.headline)
+                    .font(MuryTypography.font(.headline, size: 17, weight: .semibold))
                     .lineLimit(1)
                 Text(Formatters.displayDate(date: activity.startedAt))
-                    .font(.caption)
+                    .font(MuryTypography.font(.caption, size: 12, weight: .regular))
                     .foregroundStyle(.secondary)
             }
 
@@ -151,9 +153,9 @@ private struct ActivityRow: View {
 
             VStack(alignment: .trailing, spacing: 2) {
                 Text(Formatters.distance(meters: activity.distanceMeters.map(Double.init)))
-                    .font(.subheadline.monospacedDigit())
+                    .font(MuryTypography.font(.subheadline, size: 15, weight: .regular).monospacedDigit())
                 Text("\(Formatters.duration(seconds: activity.durationSeconds)) · \(Formatters.paceOrSpeed(sportType: activity.sportType, averagePaceSecondsPerKm: activity.averagePaceSecondsPerKm, averageSpeedMps: activity.averageSpeedMps))")
-                    .font(.caption)
+                    .font(MuryTypography.font(.caption, size: 12, weight: .regular))
                     .foregroundStyle(.secondary)
             }
         }

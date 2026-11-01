@@ -4,65 +4,82 @@ final class larpingUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
     @MainActor
-    func testFirstLaunchRequiresExplicitChoice() throws {
+    func testFirstLaunchOffersSingleContinue() {
         let app = XCUIApplication()
+        // Launch-domain values exercise onboarding without clearing owner data.
+        app.launchArguments = ["-brandTheme", ""]
         app.launch()
         let button = app.buttons["theme-continue"]
-        guard button.waitForExistence(timeout: 5) else {
-            throw XCTSkip("Run on a clean simulator install to verify first launch; existing activity data is never reset by this test.")
-        }
+        XCTAssertTrue(button.waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Welcome to MURY"].exists)
-        XCTAssertTrue(app.buttons["theme-tiffany"].exists)
-        XCTAssertTrue(app.buttons["theme-pink"].exists)
-        XCTAssertFalse(button.isEnabled)
-        app.buttons["theme-tiffany"].tap()
+        XCTAssertTrue(app.staticTexts["Move. Explore. Achieve."].exists)
+        XCTAssertFalse(app.buttons["theme-tiffany"].exists)
+        XCTAssertFalse(app.buttons["theme-pink"].exists)
         XCTAssertTrue(button.isEnabled)
+        button.tap()
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
+        app.terminate()
+        app.launchArguments = []
+        app.launch()
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["theme-continue"].exists)
+    }
+
+    @MainActor
+    func testUnknownStoredThemeShowsUsableWelcome() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-brandTheme", "unknown"]
+        app.launch()
+        let button = app.buttons["theme-continue"]
+        XCTAssertTrue(button.waitForExistence(timeout: 5))
+        XCTAssertTrue(button.isEnabled)
+        XCTAssertFalse(app.tabBars.firstMatch.exists)
         button.tap()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
     }
 
     @MainActor
-    func testUnknownStoredThemeRequiresExplicitChoice() {
-        let app = XCUIApplication()
-        // A launch-domain preference leaves the existing persistent store intact.
-        app.launchArguments = ["-brandTheme", "unknown"]
-        app.launch()
-        XCTAssertTrue(app.buttons["theme-continue"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["theme-continue"].isEnabled)
-        XCTAssertFalse(app.tabBars.firstMatch.exists)
-        app.terminate()
+    func testLegacyMarkersSkipWelcomeAndPreserveDarkAppearance() {
+        for marker in ["pink", "tiffany", "mury"] {
+            let app = XCUIApplication()
+            app.launchArguments = ["-brandTheme", marker, "-appearanceMode", "dark"]
+            app.launch()
+            XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10), marker)
+            XCTAssertFalse(app.buttons["theme-continue"].exists)
+            app.tabBars.buttons["Profile"].tap()
+            app.buttons["profile-settings"].tap()
+            let appearance = app.segmentedControls["profile-appearance"]
+            XCTAssertTrue(appearance.waitForExistence(timeout: 5))
+            XCTAssertTrue(appearance.buttons["Dark"].isSelected, marker)
+            XCTAssertFalse(app.segmentedControls["profile-theme"].exists)
+            app.terminate()
+        }
     }
 
     @MainActor
-    func testThemeAndAppearanceAreIndependentAndPersist() throws {
+    func testAppearancePersistsWithSingleIdentity() {
         let app = XCUIApplication()
         app.launch()
-        if app.buttons["theme-pink"].waitForExistence(timeout: 3) {
-            app.buttons["theme-pink"].tap()
+        if app.buttons["theme-continue"].waitForExistence(timeout: 3) {
             app.buttons["theme-continue"].tap()
         }
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
         app.tabBars.buttons["Profile"].tap()
         app.buttons["profile-settings"].tap()
-        let themes = app.segmentedControls["profile-theme"]
-        XCTAssertTrue(themes.waitForExistence(timeout: 5))
         let appearance = app.segmentedControls["profile-appearance"]
         XCTAssertTrue(appearance.waitForExistence(timeout: 5))
         for mode in ["System", "Light", "Dark"] {
             XCTAssertTrue(appearance.buttons[mode].exists)
+            appearance.buttons[mode].tap()
+            XCTAssertTrue(appearance.buttons[mode].isSelected)
         }
-        themes.buttons["Pink"].tap()
-        appearance.buttons["Dark"].tap()
-        XCTAssertTrue(themes.buttons["Pink"].isSelected)
-        themes.buttons["Tiffany Blue"].tap()
-        XCTAssertTrue(appearance.buttons["Dark"].isSelected)
         app.terminate()
         app.launch()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["theme-continue"].exists)
         app.tabBars.buttons["Profile"].tap()
         app.buttons["profile-settings"].tap()
-        XCTAssertTrue(app.segmentedControls["profile-theme"].buttons["Tiffany Blue"].isSelected)
+        XCTAssertTrue(appearance.waitForExistence(timeout: 5))
         XCTAssertTrue(appearance.buttons["Dark"].isSelected)
     }
 }

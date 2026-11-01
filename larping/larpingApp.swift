@@ -8,12 +8,12 @@ struct larpingApp: App {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showSplash = true
 
-    private var theme: BrandTheme { BrandTheme(rawValue: themeSelection) ?? .tiffany }
+    private var theme: BrandTheme { BrandTheme.resolvePreference(themeSelection) ?? .mury }
 
     var body: some Scene {
         WindowGroup {
             ZStack {
-                if BrandTheme(rawValue: themeSelection) != nil {
+                if BrandTheme.resolvePreference(themeSelection) != nil {
                     RootTabView()
                 } else {
                     ThemeSelectionView(selection: $themeSelection)

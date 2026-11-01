@@ -1,0 +1,128 @@
+{
+  "blue": {
+    "hex": "#A7D8F3",
+    "rgb": [
+      167,
+      216,
+      243
+    ],
+    "cmyk_unprofiled_approx": [
+      31,
+      11,
+      0,
+      5
+    ]
+  },
+  "red": {
+    "hex": "#B20E1C",
+    "rgb": [
+      178,
+      14,
+      28
+    ],
+    "cmyk_unprofiled_approx": [
+      0,
+      92,
+      84,
+      30
+    ]
+  },
+  "white": {
+    "hex": "#FFFFFF",
+    "rgb": [
+      255,
+      255,
+      255
+    ],
+    "cmyk_unprofiled_approx": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "surface": {
+    "hex": "#F9FAFB",
+    "rgb": [
+      249,
+      250,
+      251
+    ],
+    "cmyk_unprofiled_approx": [
+      1,
+      0,
+      0,
+      2
+    ]
+  },
+  "charcoal": {
+    "hex": "#1F2937",
+    "rgb": [
+      31,
+      41,
+      55
+    ],
+    "cmyk_unprofiled_approx": [
+      44,
+      25,
+      0,
+      78
+    ]
+  },
+  "muted": {
+    "hex": "#566475",
+    "rgb": [
+      86,
+      100,
+      117
+    ],
+    "cmyk_unprofiled_approx": [
+      26,
+      15,
+      0,
+      54
+    ]
+  },
+  "control-border": {
+    "hex": "#64748B",
+    "rgb": [
+      100,
+      116,
+      139
+    ],
+    "cmyk_unprofiled_approx": [
+      28,
+      17,
+      0,
+      45
+    ]
+  },
+  "dark-muted": {
+    "hex": "#CBD5E1",
+    "rgb": [
+      203,
+      213,
+      225
+    ],
+    "cmyk_unprofiled_approx": [
+      10,
+      5,
+      0,
+      12
+    ]
+  },
+  "dark-border": {
+    "hex": "#94A3B8",
+    "rgb": [
+      148,
+      163,
+      184
+    ],
+    "cmyk_unprofiled_approx": [
+      20,
+      11,
+      0,
+      28
+    ]
+  }
+}

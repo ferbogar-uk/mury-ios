@@ -7,8 +7,7 @@ final class HomeDashboardTests: XCTestCase {
     private func launchHome() -> XCUIApplication {
         let app = XCUIApplication()
         app.launch()
-        if app.buttons["theme-tiffany"].waitForExistence(timeout: 3) {
-            app.buttons["theme-tiffany"].tap()
+        if app.buttons["theme-continue"].waitForExistence(timeout: 3) {
             app.buttons["theme-continue"].tap()
         }
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))

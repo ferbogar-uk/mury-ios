@@ -1,0 +1,154 @@
+{
+  "status": "Open Air / smooth symbol / Rubik option 3 / cinematic route correction / v1.3",
+  "direction": "Open Air / selected direction 1",
+  "brand": {
+    "blue": "#A7D8F3",
+    "red": "#B20E1C",
+    "white": "#FFFFFF",
+    "surface": "#F9FAFB",
+    "charcoal": "#1F2937",
+    "muted": "#566475",
+    "control-border": "#64748B",
+    "dark-muted": "#CBD5E1",
+    "dark-border": "#94A3B8"
+  },
+  "themes": {
+    "light": {
+      "canvas": "#F9FAFB",
+      "panel": "#FFFFFF",
+      "navigation": "#A7D8F3",
+      "text": "#1F2937",
+      "mutedText": "#566475",
+      "action": "#B20E1C",
+      "actionText": "#FFFFFF",
+      "focus": "#1F2937",
+      "interactiveBorder": "#64748B",
+      "route": "#B20E1C",
+      "routeCasing": "#FFFFFF",
+      "selectedNavigation": "#B20E1C"
+    },
+    "dark": {
+      "canvas": "#1F2937",
+      "panel": "#1F2937",
+      "navigation": "#1F2937",
+      "text": "#F9FAFB",
+      "mutedText": "#CBD5E1",
+      "action": "#A7D8F3",
+      "actionText": "#1F2937",
+      "focus": "#A7D8F3",
+      "interactiveBorder": "#94A3B8",
+      "route": "#B20E1C",
+      "routeCasing": "#FFFFFF",
+      "selectedNavigation": "#A7D8F3"
+    }
+  },
+  "type": {
+    "family": "Rubik",
+    "nativeIos": "system font",
+    "display": [
+      40,
+      48,
+      700
+    ],
+    "title": [
+      28,
+      36,
+      700
+    ],
+    "section": [
+      20,
+      28,
+      600
+    ],
+    "body": [
+      16,
+      24,
+      400
+    ],
+    "label": [
+      14,
+      20,
+      600
+    ],
+    "caption": [
+      12,
+      18,
+      400
+    ],
+    "metric": [
+      48,
+      56,
+      700
+    ],
+    "numericFeature": "tabular-nums"
+  },
+  "spacing": [
+    4,
+    8,
+    12,
+    16,
+    24,
+    32,
+    48
+  ],
+  "radii": {
+    "button": 16,
+    "card": 20,
+    "pill": 999
+  },
+  "minimumTouchTarget": 44,
+  "routeStyle": {
+    "foreground": "#B20E1C",
+    "foregroundWidth": 4,
+    "casing": "#FFFFFF",
+    "casingWidth": 8,
+    "note": "Flat 2D map: red stroke with white casing. Cinematic replay: white core inside red band/glow. Distinct treatments; validate in the actual renderer.",
+    "cinematic": {
+      "core": "#FFFFFF",
+      "coreWidthFactor": 0.55,
+      "redBand": "#B20E1C",
+      "redBandWidthFactor": 1.8,
+      "glow": "#B20E1C",
+      "glowWidthFactor": 3.5,
+      "glowBlurFactor": 1.25,
+      "progressMarker": {
+        "fill": "#B20E1C",
+        "border": "#FFFFFF"
+      },
+      "use": "Photographic Flyover/replay and video sharing; white core inside red band/glow."
+    }
+  },
+  "components": {
+    "button": {
+      "height": 52,
+      "radius": 16,
+      "horizontalPadding": 24
+    },
+    "input": {
+      "minHeight": 48,
+      "borderWidth": 1
+    },
+    "navigation": {
+      "itemMinTarget": 44,
+      "recordTarget": 60
+    },
+    "route": {
+      "stroke": 4,
+      "casing": 8,
+      "endMarker": 12
+    },
+    "focus": {
+      "width": 2,
+      "offset": 3
+    },
+    "disabled": {
+      "text": "#566475",
+      "surface": "#E5E7EB"
+    },
+    "motion": {
+      "pressMs": 120,
+      "transitionMs": 200,
+      "reduceMotion": "Crossfade or static frame; avoid automatic camera travel."
+    }
+  }
+}

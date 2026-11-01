@@ -22,8 +22,7 @@ final class ShareImageComposerTests: XCTestCase {
 
     func testRouteUsesExplicitPaletteRegardlessOfAmbientAppearance() throws {
         let fixtures: [(BrandTheme, ColorScheme, [Double])] = [
-            (.pink, .light, [255, 79, 152]), (.pink, .dark, [255, 126, 185]),
-            (.tiffany, .light, [0, 194, 204]), (.tiffany, .dark, [52, 217, 226]),
+            (.mury, .light, [178, 14, 28]), (.mury, .dark, [178, 14, 28]),
         ]
         for (theme, scheme, expected) in fixtures {
             let composer = ShareImageComposer(style: theme.shareStyle(for: scheme))
@@ -36,12 +35,31 @@ final class ShareImageComposerTests: XCTestCase {
         }
     }
 
+    func testWhiteCasingSeparatesRedRouteFromBackground() throws {
+        for scheme in [ColorScheme.light, .dark] {
+            let composer = ShareImageComposer(style: BrandTheme.mury.shareStyle(for: scheme))
+            let classic = composer.compose(photo: nil, coordinates: coordinates, stats: stats)
+            XCTAssertEqual(try pixel(classic, x: 554, y: 737), [255, 255, 255, 255])
+            let map = composer.composeMapCard(snapshot: nil, coordinates: coordinates, stats: stats)
+            XCTAssertEqual(try pixel(map, x: 554, y: 640), [255, 255, 255, 255])
+        }
+    }
+
     func testMapFallbackIsOpaqueWithoutNetworkOrRoute() throws {
         for theme in BrandTheme.allCases {
             let image = ShareImageComposer(style: theme.shareStyle(for: .dark)).composeMapCard(snapshot: nil, coordinates: [], stats: stats)
             XCTAssertEqual(image.size, CGSize(width: 1080, height: 1920))
             XCTAssertEqual(try pixel(image, x: 0, y: 0)[3], 255)
         }
+    }
+
+    func testPaceAndSpeedLabelsPreserveTheirUnits() {
+        let pace = ShareImageComposer.Stats(symbolName: "figure.run", sportLabel: "Run", distance: "5 km", duration: "0:30:00", paceOrSpeed: "6:00 /km", date: "")
+        let speed = ShareImageComposer.Stats(symbolName: "bicycle", sportLabel: "Ride", distance: "20 km", duration: "1:00:00", paceOrSpeed: "20.0 km/h", date: "", usesPaceMetric: false)
+        XCTAssertEqual(pace.metricLabel, "PACE")
+        XCTAssertEqual(pace.paceOrSpeed, "6:00 /km")
+        XCTAssertEqual(speed.metricLabel, "SPEED")
+        XCTAssertEqual(speed.paceOrSpeed, "20.0 km/h")
     }
 
     private func pixel(_ image: UIImage, x: Int, y: Int) throws -> [UInt8] {

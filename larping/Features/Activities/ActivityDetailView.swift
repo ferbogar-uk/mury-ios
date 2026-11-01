@@ -217,7 +217,9 @@ private struct RouteMap: View {
 
             Map(initialPosition: .region(region)) {
                 MapPolyline(coordinates: Array(coordinates.prefix(revealedCount)))
-                    .stroke(theme.accent, lineWidth: 4)
+                    .stroke(theme.routeCasing, lineWidth: 8)
+                MapPolyline(coordinates: Array(coordinates.prefix(revealedCount)))
+                    .stroke(theme.route, lineWidth: 4)
 
                 // The "person" marker: a sport-specific icon riding the tip of
                 // the route while it draws, bouncing gently — it comes to rest
@@ -225,9 +227,10 @@ private struct RouteMap: View {
                 Annotation("", coordinate: coordinates[revealedCount - 1]) {
                     Image(systemName: sportType.symbolName)
                         .font(.subheadline.bold())
-                        .foregroundStyle(theme.onAccent)
+                        .foregroundStyle(theme.routeCasing)
                         .padding(7)
-                        .background(theme.accent, in: Circle())
+                        .background(theme.route, in: Circle())
+                        .overlay(Circle().strokeBorder(theme.routeCasing, lineWidth: 2))
                         .symbolEffect(.bounce, options: .repeating, isActive: !isDrawComplete)
                 }
             }

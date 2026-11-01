@@ -1,0 +1,82 @@
+[
+  {
+    "pair": "Red on baby blue",
+    "foreground": "#B20E1C",
+    "background": "#A7D8F3",
+    "ratio": 4.629,
+    "AA_normal_text": true,
+    "nontext_3_to_1": true
+  },
+  {
+    "pair": "Charcoal on baby blue",
+    "foreground": "#1F2937",
+    "background": "#A7D8F3",
+    "ratio": 9.618,
+    "AA_normal_text": true,
+    "nontext_3_to_1": true
+  },
+  {
+    "pair": "White on blood red",
+    "foreground": "#FFFFFF",
+    "background": "#B20E1C",
+    "ratio": 7.065,
+    "AA_normal_text": true,
+    "nontext_3_to_1": true
+  },
+  {
+    "pair": "Red on soft white",
+    "foreground": "#B20E1C",
+    "background": "#F9FAFB",
+    "ratio": 6.76,
+    "AA_normal_text": true,
+    "nontext_3_to_1": true
+  },
+  {
+    "pair": "Red on charcoal \u2014 avoid plain icon/text",
+    "foreground": "#B20E1C",
+    "background": "#1F2937",
+    "ratio": 2.078,
+    "AA_normal_text": false,
+    "nontext_3_to_1": false
+  },
+  {
+    "pair": "Blue on charcoal",
+    "foreground": "#A7D8F3",
+    "background": "#1F2937",
+    "ratio": 9.618,
+    "AA_normal_text": true,
+    "nontext_3_to_1": true
+  },
+  {
+    "pair": "Muted on soft white",
+    "foreground": "#566475",
+    "background": "#F9FAFB",
+    "ratio": 5.782,
+    "AA_normal_text": true,
+    "nontext_3_to_1": true
+  },
+  {
+    "pair": "Dark muted on charcoal",
+    "foreground": "#CBD5E1",
+    "background": "#1F2937",
+    "ratio": 9.887,
+    "AA_normal_text": true,
+    "nontext_3_to_1": true
+  },
+  {
+    "pair": "Light control border",
+    "foreground": "#64748B",
+    "background": "#FFFFFF",
+    "ratio": 4.759,
+    "AA_normal_text": true,
+    "nontext_3_to_1": true
+  },
+  {
+    "pair": "Dark control border",
+    "foreground": "#94A3B8",
+    "background": "#1F2937",
+    "ratio": 5.725,
+    "AA_normal_text": true,
+    "nontext_3_to_1": true
+  }
+]

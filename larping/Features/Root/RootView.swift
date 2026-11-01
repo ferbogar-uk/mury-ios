@@ -2,6 +2,7 @@ import SwiftData
 import SwiftUI
 
 struct RootTabView: View {
+    @Environment(\.brandTheme) private var theme
     @Environment(\.modelContext) private var modelContext
     @State private var activitiesStore: ActivitiesStore?
 
@@ -35,6 +36,8 @@ struct RootTabView: View {
                     }
                 }
                 .environment(activitiesStore)
+                .toolbarBackground(theme.navigation, for: .tabBar)
+                .toolbarBackground(.visible, for: .tabBar)
             } else {
                 ProgressView()
             }

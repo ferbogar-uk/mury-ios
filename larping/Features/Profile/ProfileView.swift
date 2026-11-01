@@ -48,11 +48,11 @@ struct ProfileView: View {
                                 .font(.system(size: 46))
                                 .foregroundStyle(.white)
                             Text(displayName)
-                                .font(.headline.bold())
+                                .font(MuryTypography.font(.headline, size: 17, weight: .bold))
                                 .foregroundStyle(.white)
                             if !bio.isEmpty {
                                 Text(bio)
-                                    .font(.caption)
+                                    .font(MuryTypography.font(.caption, size: 12, weight: .regular))
                                     .foregroundStyle(.white.opacity(0.9))
                                     .multilineTextAlignment(.center)
                                     .lineLimit(1)
@@ -64,11 +64,12 @@ struct ProfileView: View {
                         .padding(.horizontal, 14)
                         .padding(.top, 14)
 
-                        Image("LogoHorizontal")
-                            .renderingMode(.template)
+                        Image("LogoBlueWhite")
+                            .renderingMode(.original)
                             .resizable()
                             .scaledToFit()
-                            .frame(height: 14)
+                            .frame(height: 24)
+                            .accessibilityLabel("MURY")
                             .foregroundStyle(.white)
                             .padding(15)
                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
@@ -138,7 +139,7 @@ struct ProfileView: View {
 
                 Section {
                     Text("MURY v\(appVersion) (\(appBuild))")
-                        .font(.caption2)
+                        .font(MuryTypography.font(.caption2, size: 11, weight: .regular))
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                 }
@@ -146,6 +147,8 @@ struct ProfileView: View {
             }
             .scrollContentBackground(.hidden)
             .background(theme.canvas)
+            .toolbarBackground(theme.navigation, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .navigationTitle("Profile")
             .onAppear { healthAuthorized = HealthKitService.isAuthorized }
             .sheet(isPresented: $showEdit) {

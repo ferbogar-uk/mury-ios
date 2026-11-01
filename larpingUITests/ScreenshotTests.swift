@@ -22,8 +22,7 @@ final class ScreenshotTests: XCTestCase {
     func testCaptureScreens() throws {
         let app = XCUIApplication()
         app.launch()
-        if app.buttons["theme-pink"].waitForExistence(timeout: 3) {
-            app.buttons["theme-pink"].tap()
+        if app.buttons["theme-continue"].waitForExistence(timeout: 3) {
             app.buttons["theme-continue"].tap()
         }
 

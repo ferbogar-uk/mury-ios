@@ -37,22 +37,26 @@ struct RecordView: View {
                         let points = activitiesStore.coordinates(for: pastActivity)
                         if points.count > 1 {
                             MapPolyline(coordinates: points)
-                                .stroke(theme.accent.opacity(0.12), lineWidth: 3)
+                                .stroke(theme.route.opacity(0.12), lineWidth: 3)
                         }
                     }
 
                     if tracker.routeCoordinates.count > 1 {
                         MapPolyline(coordinates: tracker.routeCoordinates)
-                            .stroke(theme.accent, lineWidth: 5)
+                            .stroke(theme.routeCasing, lineWidth: 9)
+                        MapPolyline(coordinates: tracker.routeCoordinates)
+                            .stroke(theme.route, lineWidth: 5)
                     }
 
                     if let tip = tracker.routeCoordinates.last, tracker.state != .idle {
                         Annotation("", coordinate: tip) {
                             Image(systemName: selectedSport.symbolName)
                                 .font(.subheadline.bold())
-                                .foregroundStyle(theme.onAccent)
+                                .foregroundStyle(theme.routeCasing)
                                 .padding(7)
-                                .background(theme.accent, in: Circle())
+                                .background(theme.route, in: Circle())
+                                .overlay { Circle().stroke(theme.routeCasing, lineWidth: 2) }
+                                .accessibilityLabel("Current recording position")
                                 .symbolEffect(.bounce, options: .repeating, isActive: tracker.state == .recording)
                         }
                     } else {
@@ -73,9 +77,8 @@ struct RecordView: View {
                     .padding(.bottom, 8)
             }
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.black.opacity(0.75), for: .tabBar)
-            .toolbarBackground(colorScheme == .dark ? .visible : .automatic, for: .tabBar)
-            .toolbarColorScheme(colorScheme == .dark ? .dark : nil, for: .tabBar)
+            .toolbarBackground(theme.navigation, for: .navigationBar, .tabBar)
+            .toolbarBackground(.visible, for: .navigationBar, .tabBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -155,7 +158,7 @@ struct RecordView: View {
 
                     if eventName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         Text("Event name is required to start.")
-                            .font(.caption)
+                            .font(MuryTypography.font(.caption, size: 12, weight: .regular))
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -175,7 +178,7 @@ struct RecordView: View {
                     }
                     Spacer()
                     Text(eventName.isEmpty ? "MURY \(selectedSport.label)" : eventName)
-                        .font(.headline)
+                        .font(MuryTypography.font(.headline, size: 17, weight: .semibold))
                         .lineLimit(1)
                         .foregroundStyle(.primary)
                         .frame(maxWidth: .infinity, alignment: .trailing)
@@ -262,12 +265,12 @@ struct RecordView: View {
 
             if tracker.authorizationStatus == .denied || tracker.authorizationStatus == .restricted {
                 Text("Location access is off. Enable it in Settings to record a route.")
-                    .font(.footnote)
+                    .font(MuryTypography.font(.footnote, size: 13, weight: .regular))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             } else if tracker.authorizationStatus == .notDetermined {
                 Text("Allow location access to see your route on the map.")
-                    .font(.footnote)
+                    .font(MuryTypography.font(.footnote, size: 13, weight: .regular))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
@@ -329,8 +332,8 @@ private struct StatColumn: View {
 
     var body: some View {
         VStack(spacing: 2) {
-            Text(value).font(.title3.monospacedDigit().bold())
-            Text(title.uppercased()).font(.caption2).foregroundStyle(.secondary)
+            Text(value).font(MuryTypography.font(.title3, size: 20, weight: .bold).monospacedDigit())
+            Text(title.uppercased()).font(MuryTypography.font(.caption2, size: 11, weight: .regular)).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
     }

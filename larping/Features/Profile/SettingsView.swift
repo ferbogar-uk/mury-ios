@@ -2,22 +2,22 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(\.brandTheme) private var theme
-    @AppStorage(BrandTheme.storageKey) private var themeSelection = ""
     @AppStorage("appearanceMode") private var appearanceMode = AppearanceMode.system
 
     var body: some View {
         List {
-            Section("Theme") {
-                Picker("Colour theme", selection: $themeSelection) {
-                    ForEach(BrandTheme.allCases) { option in
-                        Text(option.label).tag(option.rawValue)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .frame(minHeight: 44)
-                .accessibilityIdentifier("profile-theme")
+            Section {
+                Image("LogoHorizontal")
+                    .renderingMode(.original)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 180)
+                    .accessibilityLabel("MURY")
+                Text("Move. Explore. Achieve.")
+                    .font(MuryTypography.font(.body, size: 17))
             }
-    
+            .listRowBackground(theme.surface)
+
             Section("Appearance") {
                 Picker("Appearance", selection: $appearanceMode) {
                     ForEach(AppearanceMode.allCases) { mode in
@@ -32,5 +32,7 @@ struct SettingsView: View {
         .scrollContentBackground(.hidden)
         .background(theme.canvas)
         .navigationTitle("Settings")
+        .toolbarBackground(theme.navigation, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
     }
 }
