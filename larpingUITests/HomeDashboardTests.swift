@@ -39,6 +39,12 @@ final class HomeDashboardTests: XCTestCase {
         let menu = app.buttons["record-sport"]
         XCTAssertTrue(menu.waitForExistence(timeout: 5))
         XCTAssertTrue(menu.label.contains("Ride"))
+        // Resolve first-use location permission before the tap that focuses the field.
+        let locationAlert = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch
+        if locationAlert.waitForExistence(timeout: 3) {
+            let allow = locationAlert.buttons["Allow While Using App"]
+            if allow.exists { allow.tap() }
+        }
         let title = app.textFields["record-event-name"]
         title.tap()
         title.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: (title.value as? String ?? "").count))
