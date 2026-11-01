@@ -1,31 +1,59 @@
-# MURY 1.1 build 2 — validation record
+# MURY 1.1 build 2 — validation and delivery
 
-Status: implemented and independently source-reviewed; awaiting exact-commit macOS CI.
+Status: native build, automated tests, signed IPA upload and Apple internal-beta state VERIFIED. Real-device acceptance remains pending.
 
-## Implemented
+## Delivered candidate
 
-Supplied Open Air identity, owner-approved red/white/light-blue logo palette, Rubik resources and scalable designed text, single-identity welcome with legacy pink/tiffany compatibility, independent System/Light/Dark appearance, fixed red routes with white casing, existing image/flat-map video branding and correct pace/speed labels/units. App target version remains1.1; build incremented to2.
+- App: MURY 1.1 (2), existing bundle rdyy.larping and existing App Store Connect entry LARPING.
+- Source commit: 918279435fddfe1eefb82ad9917f69a99414fe79 on feature/mury-branding.
+- Native CI: https://github.com/ferbogar-uk/mury-ios/actions/runs/41323360486 — SUCCESS.
+- Signed archive/export/upload: https://github.com/ferbogar-uk/mury-ios/actions/runs/41325110241 — SUCCESS, same source commit.
+- Apple build ID: 1f60cf1d-825f-4b50-916f-9db6cd79f3c9.
+- Apple build page: https://appstoreconnect.apple.com/teams/0541a5bc-ac85-486e-a70f-97b94c432520/apps/6828629415/testflight/ios/1f60cf1d-825f-4b50-916f-9db6cd79f3c9.
+- Read-only Apple API HTTP200 after compliance save: processingState VALID, usesNonExemptEncryption false, internalBuildState IN_BETA_TESTING, externalBuildState READY_FOR_BETA_SUBMISSION. External review and App Store publication were not submitted; no tester/group membership was changed.
 
-## Evidence before CI
+## Resulting behavior
 
-- Parent node scripts/check-branding.mjs: PASS, exit0, repeated after final implementation. Checks exact supplied tokens, contrast, deployed logo source bytes/palette, font names/resources, icon formats, preference gate, export labels and protected content.
-- Parent Swift frontend parse:22 changed/new Swift files, zero failures. After replay-test setup/persistence edits, both edited UI test files parsed again without errors. Syntax only on Windows. Worker reports parsing all51 Swift files; native typechecking remains CI gate.
-- Parent git diff --check with normal repository line-ending settings: PASS. An alternate core.autocrlf=false run flagged CRLF as whitespace; no content defect, normal repository check passes.
-- Parent separately checked18 supplied icon dimensions/RGB and actual Rubik PostScript names. Imported source pack104 inventory-listed files matched SHA256, zero mismatches.
-- Independent source review of maps and combined implementation: spec PASS, quality APPROVE; scoped final review of replay setup and onboarding relaunch tests also approved. No native test execution implied.
+Supplied Open Air logo, Rubik and icon assets are integrated. Owner override uses only red/white/light-blue in logo/Mury lettering; navy remains available elsewhere in the interface. The single adaptive identity replaces Pink/Tiffany selection while accepting legacy onboarding markers. System/Light/Dark preference remains independent. Designed content uses scalable Rubik with native control typography retained. Routes remain red with white casing in both appearances. Existing image and flat-map route-video exports use approved branding and accurate pace/speed labels/units.
 
-## Protection
+GPS/data algorithms, SwiftData models/storage, HealthKit, permissions and backup discriminator Larping are unchanged. Cinematic street-level 3D video is outside this branding build.
 
-Branch feature/mury-branding only; main, signing, secrets, workflow definitions, rdyy.larping, GPS algorithms, activity models/storage, HealthKit and backup discriminator preserved. Info.plist changes only add exact static Rubik UIAppFonts. Existing protected-content hashes remain unchanged; static checker permits line-ending equivalence and strips only that authorized font block.
+## Acceptance evidence
 
-## Pending
+| Check | Result | Evidence |
+|---|---|---|
+| Native Xcode compilation | PASS | CI41323360486 Build step succeeded. |
+| Unit suite | PASS | Downloaded test.log:69tests,0failures. Includes actual font loading/scaling, legacy preference resolution/no-write checks, exact palette, image route/casing/alpha and export logic. |
+| UI suite | PASS | Same log:12tests,0failures. Home, replay, single welcome/Continue, fresh/unknown-marker relaunch persistence, legacy bypass, appearance persistence, Light/Dark screenshot journeys and launch checks passed. |
+| Combined automated total | PASS | 81tests,0failures,0skips; TEST SUCCEEDED. |
+| Static branding/protection | PASS | Parent ran node scripts/check-branding.mjs repeatedly after final edits: exit0. Exact supplied tokens/contrast, logo provenance/palette, fonts, icon metadata, preference/export contracts and protected original content pass. |
+| Swift parsing | PASS | Windows frontend parsing of changed files, including DEBUG/Release repair paths. Syntax only; native compilation is evidenced separately above. |
+| Whitespace | PASS | Parent git diff --check with repository settings: exit0. |
+| Signed archive/export | PASS | Actual workflow log: ARCHIVE SUCCEEDED and EXPORT SUCCEEDED. |
+| Apple upload | PASS | Actual log: UPLOAD SUCCEEDED with no errors. IPA artifact retained7days by unchanged workflow. |
+| Apple processing/compliance | PASS | HTTP200 build API plus UI declaration saved under explicit owner approval; states above. |
+| Actual iPhone behavior | NOT RUN | GPS/background/HealthKit, outdoor readability, VoiceOver, large-text fit, installed-data upgrade and MP4 playback still require device acceptance. |
 
-Run existing simulator CI on exact pushed commit, inspect build/unit/UI results, fix demonstrated failures. New TestFlight upload requires separate explicit per-upload approval. Real-iPhone GPS/background/HealthKit, outdoor readability, VoiceOver, large-text layout, real installed-data upgrade and MP4 playback remain device checks. Cinematic 3D video is not included.
+## Authorization and protection
 
-## Native CI candidate and typography completion
+Ricardo explicitly chose Upload to TestFlight for version1.1(2) and exact source9182794, including the same usesNonExemptEncryption=false declaration as the previous build if Apple asked. Branch SHA was checked before dispatch. Existing signing secrets/certificates/profiles and workflow definitions were used without alteration. No new API key or broader access was created. No credential values were written into repository files or logs.
 
-First implementation commit fa608dd2e4b978a15c2beff8e7f2ed3f6b39615f was pushed to feature/mury-branding. CI run41320834629 passed its native Xcode Build and simulator preparation steps; tests were in progress when recorded. A final integration check found designed type on activity details/replay still used system fonts. The bounded follow-up applies scalable Rubik and navigation tokens in those two views, preserving SF symbols, controls, monospaced digits and behavior. Parent reran static branding, two-file Swift parse and diff checks: pass. Final-candidate CI must run on the follow-up commit; the first build is not final acceptance. Main remains ac9ab42af92ec41c764e16edb7c0d376fe5262b2.
+Remote main remained ac9ab42af92ec41c764e16edb7c0d376fe5262b2 when checked. Original LARPING1.0(1) and earlier MURY1.1(1) were not expired or changed. The only Info.plist addition is exact Rubik UIAppFonts; protected manifest hashes remain unchanged, and static checking permits equivalent line endings while excluding only that authorized font block.
 
-## Final-candidate CI failure and targeted repair
+## Implementation and repair history
 
-Run41321722698 on b2c16ab passed native Build, simulator setup and all69 unit tests. Native font load/scaling, accepted legacy markers/no-write resolution, exact palette/fixed routes and image-composer checks passed. UI suite12executed:9passed,3failed. Replay controls, Home flows, legacy onboarding bypass and persisted appearance passed. Failures: ScreenshotTests line73 expected removed profile-theme; fresh/unknown onboarding tests failed after Continue while -brandTheme launch-domain override remained pinned. Unfiltered GitHub test.log downloaded and inspected. Repair is bounded to DEBUG-only one-time theme preference seeding for UI tests, preserving Release behavior, plus screenshot Light/Dark loop for the single identity. Existing assertions remain; a new exact-commit CI is required. No Apple upload.
+- fa608dd: supplied branding, source assets, safe preference resolution, screens/exports/tests. CI41320834629 compiled and prepared simulator; cancelled as superseded while tests ran. No test pass claimed from that run.
+- b2c16ab: completed designed typography/navigation styling in the two maps-owned views. CI41321722698 compiled,69unitspassed;9of12UIpassed. ThreeUI failures: obsolete screenshot theme picker and two onboarding tests whose launch arguments shadowed preference writes.
+- 9182794: DEBUG-only one-time theme seed for UI testing, seed removal before persistence relaunch, single-identity Light/Dark screenshot loop. Actual Foundation reproduction supported the diagnosis; no assertions were dropped. Scoped independent source review approved. Full native CI then passed81tests.
+
+Independent source reviews covered map presentation, combined implementation and both scoped follow-ups; parent separately inspected actual diffs and reran local checks. Those reviews are distinct from the native test evidence.
+
+## Decisions made during execution
+
+- Reused the dedicated feature branch/shared workspace as requested; precise disjoint file ownership limited conflict risk.
+- Read-only advisory sessions retained their scope; a full-capability app implementation worker handled writes.
+- Map and main branding changes used disjoint files concurrently under explicit owner parallel-work instructions; shared theme/project changes stayed serialized.
+- Incremented app build number to2 in Debug/Release because the unchanged upload workflow has no build-number input; kept version1.1.
+- Added only a DEBUG UI-test preference seed to avoid launch-domain overrides; Release excludes that hook.
+
+These decisions can be revised locally if owner device review identifies a gap; no history rewrite or main merge was performed.
