@@ -106,234 +106,255 @@ struct ShareActivityView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 14) {
-                Picker("Template", selection: $template) {
-                    ForEach(ShareTemplate.allCases) { item in
-                        Text(item.title).tag(item)
+        NavigationStack { exportContent }
+    }
+
+    private var sharingContent: some View {
+        VStack(spacing: 14) {
+            Picker("Template", selection: $template) {
+                ForEach(ShareTemplate.allCases) { item in
+                    Text(item.title).tag(item)
+                }
+            }
+            .pickerStyle(.menu)
+            .accessibilityIdentifier("share-template")
+
+            TabView(selection: $template) {
+                classicPreview.tag(ShareTemplate.classic)
+                preview(mapCardImage).tag(ShareTemplate.mapCard)
+                videoPreview.tag(ShareTemplate.video)
+                ForEach([ShareTemplate.column, .compact, .route, .ticket, .edge, .receipt]) { item in
+                    if let layout = item.overlayLayout {
+                        transparentPreview(overlayImages[layout]).tag(item)
                     }
                 }
-                .pickerStyle(.menu)
-                .accessibilityIdentifier("share-template")
-
-                TabView(selection: $template) {
-                    classicPreview.tag(ShareTemplate.classic)
-                    preview(mapCardImage).tag(ShareTemplate.mapCard)
-                    videoPreview.tag(ShareTemplate.video)
-                    ForEach([ShareTemplate.column, .compact, .route, .ticket, .edge, .receipt]) { item in
-                        if let layout = item.overlayLayout {
-                            transparentPreview(overlayImages[layout]).tag(item)
-                        }
-                    }
-                }
-                .tabViewStyle(.page)
-                .frame(maxHeight: 640)
-
-                if template.overlayLayout != nil {
-                    Menu {
-                        ForEach(availableMetrics) { metric in
-                            Toggle(metric.label, isOn: Binding(
-                                get: { selectedMetrics.contains(metric.id) },
-                                set: { selected in
-                                    if selected { selectedMetrics.insert(metric.id) }
-                                    else { selectedMetrics.remove(metric.id) }
-                                }
-                            ))
-                            .accessibilityIdentifier("share-metric-\(metric.id.rawValue)")
-                        }
-                    } label: {
-                        Label("Metrics", systemImage: "slider.horizontal.3")
-                    }
-                    .disabled(availableMetrics.isEmpty)
-                    .accessibilityIdentifier("share-metrics")
-                    if template == .route && coordinates.count < 2 {
-                        Text("No route recorded. Only available statistics are shown.")
-                            .font(.footnote)
-                    }
-                }
-
-                if template == .video {
-                    videoDurationPicker
-                    if isGeneratingVideo { videoGenerationControls }
-                }
-
-                HStack {
-                    shareSection
-                    if template != .video {
-                        Button(action: copyPNG) {
-                            Label("Copy PNG", systemImage: "doc.on.doc")
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(selectedImage == nil)
-                        .accessibilityIdentifier("share-copy-png")
-                    }
-                }
-                if copiedPNG {
-                    Text("PNG copied. Paste it over a photo in a compatible app.")
-                        .font(.footnote)
-                        .accessibilityIdentifier("share-copy-success")
-                }
-
-                Button(action: saveToFiles) {
-                    Label("Save to Files", systemImage: "folder")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .disabled(!isReadyToSave || showExporter)
-
-                if exportSucceeded {
-                    Text("Saved to Files.")
-                        .font(MuryTypography.font(.footnote, size: 13, weight: .regular))
-                }
-
-                if template == .classic {
-                    HStack(spacing: 12) {
-                        Button {
-                            showCamera = true
-                        } label: {
-                            Label("Camera", systemImage: "camera.fill")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-
-                        PhotosPicker(selection: $photoPickerItem, matching: .images) {
-                            Label("Gallery", systemImage: "photo.fill")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                    }
-
-                    if photo != nil {
-                        Button(role: .destructive) {
-                            photo = nil
-                        } label: {
-                            Label("Transparent background", systemImage: "xmark.circle")
-                                .font(.subheadline)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-
-                Spacer(minLength: 0)
             }
-            .padding()
-            .background(theme.canvas)
-            .toolbarBackground(theme.navigation, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .navigationTitle("Share")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
-            .task(id: renderKey) {
-                clearExportFeedback()
-                invalidateVideo()
-                mapCardImage = nil
-                recomposeClassic()
-                recomposeOverlays()
-                await recomposeMapCard()
-            }
-            .onChange(of: photo) {
-                clearExportFeedback()
-                recomposeClassic()
-            }
-            .onChange(of: template) {
-                clearExportFeedback()
-                recomposeOverlays()
-            }
-            .onChange(of: videoDuration) { invalidateVideo() }
-            .onChange(of: scenePhase) { _, phase in
-                if phase != .active { invalidateVideo() }
-            }
-            .onChange(of: selectedMetrics) {
-                clearExportFeedback()
-                recomposeOverlays()
-            }
-            .onChange(of: photoPickerItem) {
-                Task { await loadPickedPhoto() }
-            }
-            .onDisappear {
-                invalidateVideo()
-            }
-            .fullScreenCover(isPresented: $showCamera) {
-                CameraCaptureView { photo = $0 }
-                    .ignoresSafeArea()
-            }
-            .fullScreenCover(isPresented: Binding(
-                get: { fullPreview != nil },
-                set: { if !$0 { fullPreview = nil } }
-            )) {
-                if let fullPreview {
-                    ZStack {
-                        Color.black.ignoresSafeArea()
-                        ScrollView {
-                            Image(uiImage: fullPreview)
-                                .resizable()
-                                .scaledToFit()
-                        }
-                        VStack {
-                            HStack {
-                                Spacer()
-                                Button {
-                                    self.fullPreview = nil
-                                } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.title)
-                                        .foregroundStyle(.white)
-                                        .padding()
-                                }
+            .tabViewStyle(.page)
+            .frame(maxHeight: 640)
+
+            if template.overlayLayout != nil {
+                Menu {
+                    ForEach(availableMetrics) { metric in
+                        Toggle(metric.label, isOn: Binding(
+                            get: { selectedMetrics.contains(metric.id) },
+                            set: { selected in
+                                if selected { selectedMetrics.insert(metric.id) }
+                                else { selectedMetrics.remove(metric.id) }
                             }
-                            Spacer()
-                        }
+                        ))
+                        .accessibilityIdentifier("share-metric-\(metric.id.rawValue)")
                     }
+                } label: {
+                    Label("Metrics", systemImage: "slider.horizontal.3")
+                }
+                .disabled(availableMetrics.isEmpty)
+                .accessibilityIdentifier("share-metrics")
+                if template == .route && coordinates.count < 2 {
+                    Text("No route recorded. Only available statistics are shown.")
+                        .font(.footnote)
                 }
             }
-            .fileExporter(
-                isPresented: $showExporter,
-                document: exportDocument,
-                contentType: exportDocument?.contentType ?? .png,
-                defaultFilename: exportFilename
-            ) { result in
-                switch result {
-                case .success:
-                    exportSucceeded = true
-                case .failure(let error):
-                    let cocoaError = error as NSError
-                    if !(error is CancellationError),
-                       !(cocoaError.domain == NSCocoaErrorDomain && cocoaError.code == NSUserCancelledError) {
-                        exportError = error.localizedDescription
+
+            if template == .video {
+                videoDurationPicker
+                if isGeneratingVideo { videoGenerationControls }
+            }
+
+            HStack {
+                shareSection
+                if template != .video {
+                    Button(action: copyPNG) {
+                        Label("Copy PNG", systemImage: "doc.on.doc")
                     }
+                    .buttonStyle(.bordered)
+                    .disabled(selectedImage == nil)
+                    .accessibilityIdentifier("share-copy-png")
                 }
             }
-            .alert("Couldn't prepare export", isPresented: Binding(
-                get: { exportError != nil },
-                set: { if !$0 { exportError = nil } }
-            )) {
-                if exportDocument != nil {
-                    Button("Try again") {
-                        clearExportFeedback()
-                        showExporter = true
+            if copiedPNG {
+                Text("PNG copied. Paste it over a photo in a compatible app.")
+                    .font(.footnote)
+                    .accessibilityIdentifier("share-copy-success")
+            }
+
+            Button(action: saveToFiles) {
+                Label("Save to Files", systemImage: "folder")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .disabled(!isReadyToSave || showExporter)
+
+            if exportSucceeded {
+                Text("Saved to Files.")
+                    .font(MuryTypography.font(.footnote, size: 13, weight: .regular))
+            }
+
+            if template == .classic {
+                HStack(spacing: 12) {
+                    Button {
+                        showCamera = true
+                    } label: {
+                        Label("Camera", systemImage: "camera.fill")
+                            .frame(maxWidth: .infinity)
                     }
+                    .buttonStyle(.bordered)
+
+                    PhotosPicker(selection: $photoPickerItem, matching: .images) {
+                        Label("Gallery", systemImage: "photo.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
                 }
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(exportError ?? "")
+
+                if photo != nil {
+                    Button(role: .destructive) {
+                        photo = nil
+                    } label: {
+                        Label("Transparent background", systemImage: "xmark.circle")
+                            .font(.subheadline)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
-            .sheet(item: $sharedVideo) { file in
-                VideoShareSheet(file: file)
-            }
-            .alert("Couldn't create video", isPresented: Binding(
-                get: { videoError != nil },
-                set: { if !$0 { videoError = nil } }
-            )) {
-                Button("Retry") { startVideo() }
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(String(localized: "Try again. If the problem continues, choose a shorter video or share a PNG.") + "\n" + (videoError ?? ""))
+
+            Spacer(minLength: 0)
+        }
+        .padding()
+        .background(theme.canvas)
+        .toolbarBackground(theme.navigation, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .navigationTitle("Share")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Done") { dismiss() }
             }
         }
+    }
+
+    private var lifecycleContent: some View {
+        sharingContent
+        .task(id: renderKey) {
+            clearExportFeedback()
+            invalidateVideo()
+            mapCardImage = nil
+            recomposeClassic()
+            recomposeOverlays()
+            await recomposeMapCard()
+        }
+        .onChange(of: photo) {
+            clearExportFeedback()
+            recomposeClassic()
+        }
+        .onChange(of: template) {
+            clearExportFeedback()
+            recomposeOverlays()
+        }
+        .onChange(of: videoDuration) { invalidateVideo() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { invalidateVideo() }
+        }
+        .onChange(of: selectedMetrics) {
+            clearExportFeedback()
+            recomposeOverlays()
+        }
+        .onChange(of: photoPickerItem) {
+            Task { await loadPickedPhoto() }
+        }
+        .onDisappear {
+            invalidateVideo()
+        }
+    }
+
+    private var previewContent: some View {
+        lifecycleContent
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraCaptureView { photo = $0 }
+                .ignoresSafeArea()
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { fullPreview != nil },
+            set: { if !$0 { fullPreview = nil } }
+        )) {
+            if let fullPreview {
+                ZStack {
+                    Color.black.ignoresSafeArea()
+                    ScrollView {
+                        Image(uiImage: fullPreview)
+                            .resizable()
+                            .scaledToFit()
+                    }
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Button {
+                                self.fullPreview = nil
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.title)
+                                    .foregroundStyle(.white)
+                                    .padding()
+                            }
+                        }
+                        Spacer()
+                    }
+                }
+            }
+        }
+    }
+
+    private var exportContent: some View {
+        previewContent
+        .fileExporter(
+            isPresented: $showExporter,
+            document: exportDocument,
+            contentType: exportDocument?.contentType ?? .png,
+            defaultFilename: exportFilename
+        ) { result in
+            switch result {
+            case .success:
+                exportSucceeded = true
+            case .failure(let error):
+                let cocoaError = error as NSError
+                if !(error is CancellationError),
+                   !(cocoaError.domain == NSCocoaErrorDomain && cocoaError.code == NSUserCancelledError) {
+                    exportError = error.localizedDescription
+                }
+            }
+        }
+        .alert("Couldn't prepare export", isPresented: exportErrorPresented) {
+            if exportDocument != nil {
+                Button("Try again") {
+                    clearExportFeedback()
+                    showExporter = true
+                }
+            }
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(exportError ?? "")
+        }
+        .sheet(item: $sharedVideo) { file in
+            VideoShareSheet(file: file)
+        }
+        .alert("Couldn't create video", isPresented: videoErrorPresented) {
+            Button("Retry") { startVideo() }
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(videoErrorMessage)
+        }
+    }
+
+    private var exportErrorPresented: Binding<Bool> {
+        Binding(get: { exportError != nil }, set: { if !$0 { exportError = nil } })
+    }
+
+    private var videoErrorPresented: Binding<Bool> {
+        Binding(get: { videoError != nil }, set: { if !$0 { videoError = nil } })
+    }
+
+    private var videoErrorMessage: String {
+        let guidance = String(localized: "Try again. If the problem continues, choose a shorter video or share a PNG.")
+        return guidance + "\n" + (videoError ?? "")
     }
 
     private var videoDurationPicker: some View {
