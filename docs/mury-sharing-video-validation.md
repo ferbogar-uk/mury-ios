@@ -1,6 +1,6 @@
 # MURY sharing video — validation record
 
-Status: implementation, task reviews and final scoped source review passed; final native validation pending. No new TestFlight upload authorized or performed. Last delivered build remains 1.1 (3).
+Status: implementation and scoped source reviews passed; final native validation is blocked because GitHub did not start the job. No new TestFlight upload authorized or performed. Last delivered build remains 1.1 (3).
 
 ## Scope
 
@@ -13,9 +13,10 @@ The owner approved export reliability, requested Classic composition, reference-
 - Hardened writer/artwork commit `fcd92a4`, [CI 41428577033](https://github.com/ferbogar-uk/mury-ios/actions/runs/41428577033): 84 unit + 13 UI = 97 tests passed, 0 failures. All 18 image-compositor tests and the unchanged complete 6-second video regression passed. This candidate precedes the new duration/UI integration.
 - Full-feature commit `9b834c4`, [CI 41434548911](https://github.com/ferbogar-uk/mury-ios/actions/runs/41434548911): app compilation stopped at the duration Picker because SwiftUI could not type-check the large expression in reasonable time. No new XCTest/export ran. A scoped repair separates typed duration/progress view expressions; native rerun pending.
 - First compiler repair `945d460`, [CI 41436175067](https://github.com/ferbogar-uk/mury-ios/actions/runs/41436175067): compilation passed the duration control but stopped at the final video-alert expression in the same long SwiftUI modifier chain. No tests ran. A second scoped repair introduces computed view boundaries with identical containers, state and modifier order; native rerun pending.
-- Final 15/30/60-second export and new sharing UI: native validation pending; do not infer a pass from earlier candidates.
+- Second compiler repair `71ed618`, [CI 41437321194](https://github.com/ferbogar-uk/mury-ios/actions/runs/41437321194): GitHub rejected the job before any steps started (11:30:07–11:30:09 UTC). Check-run annotation: “The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings”. No compiler or test result exists for this candidate. The annotation gives alternative causes; account billing details and remaining allowance were not accessible or verified. No billing, runner or workflow settings were changed.
+- Final 15/30/60-second export and new sharing UI: native validation blocked; do not infer a pass from earlier candidates.
 
-Complete test logs are retained in each run's larping-test-logs artifact. AppIntents metadata extraction warnings are not skipped XCTest cases. The successful comparison run logged an initial missing simulator store directory followed by successful recovery; no storage code was changed.
+Runs that reached tests retain complete test logs in their larping-test-logs artifact. Build-only failures retain failed-job logs; the pre-start billing rejection has no job log or test artifact. AppIntents metadata extraction warnings are not skipped XCTest cases. The successful comparison run logged an initial missing simulator store directory followed by successful recovery; no storage code was changed.
 
 ## Resource observation limits
 
@@ -43,4 +44,4 @@ No 3D export selector or renderer was added. Existing route video animates over 
 
 ## Remaining acceptance
 
-Run the full final native suite and inspect exact candidate/logs. Then recheck Generate video and sharing on both reported iPhones, including 15/30/60, cancellation, backgrounding and file cleanup. Native error Retry and real-device responsiveness remain explicit gaps until exercised. Keep workflows, signing, secrets, bundle ID, recording, storage, HealthKit and backup compatibility unchanged. A new TestFlight upload requires approval of the final candidate.
+The owner must review the actual GitHub account notice in [Billing & plans](https://github.com/settings/billing); this is a GitHub Actions account restriction, not a TestFlight fee. Once the restriction is resolved, rerun the existing simulator workflow on exact source candidate `71ed618` (or a source-identical documentation successor), then inspect the full native results. Do not change signing/workflows or weaken tests to bypass this gate. Then recheck Generate video and sharing on both reported iPhones, including 15/30/60, cancellation, backgrounding and file cleanup. Native error Retry and real-device responsiveness remain explicit gaps until exercised. Keep workflows, signing, secrets, bundle ID, recording, storage, HealthKit and backup compatibility unchanged. A new TestFlight upload requires approval of the final candidate.
