@@ -83,6 +83,15 @@ for (const [asset,source] of [['LogoHorizontal','red'],['LogoWhite','white'],['L
         assert.ok(fills.every(c=>['#B20E1C','#FFFFFF','#A7D8F3'].includes(c)),'approved logo palette');
     }
 }
+const stackedDir = assets+'LogoStackedBlueWhite.imageset/';
+const stackedMetadata = await json(stackedDir+'Contents.json');
+assert.equal(stackedMetadata.properties['template-rendering-intent'],'original');
+assert.equal(stackedMetadata.properties['preserves-vector-representation'],true);
+assert.deepEqual(stackedMetadata.images,[{filename:'mury-stacked-dark.svg',idiom:'universal'}]);
+const stacked = await bytes(stackedDir+'mury-stacked-dark.svg');
+assert.equal(hash(stacked),hash(await bytes(pack+'01-Logos/mury-stacked-dark.svg')),'original supplied stacked logo');
+assert.deepEqual([...new Set([...stacked.toString('utf8').matchAll(/fill="(#[0-9a-fA-F]{6})"/g)].map(m=>m[1].toUpperCase()))].sort(),['#A7D8F3','#FFFFFF']);
+assert.doesNotMatch(stacked.toString('utf8'),/<text[\s>]/,'stacked lettering remains original paths');
 const iconDir = assets+'AppIcon.appiconset/';
 const icons = await json(iconDir+'Contents.json');
 assert.equal(hash(await bytes(iconDir+'Contents.json')),hash(await bytes(pack+'03-App-icons/AppIcon.appiconset/Contents.json')));

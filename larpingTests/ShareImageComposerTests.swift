@@ -65,8 +65,8 @@ final class ShareImageComposerTests: XCTestCase {
     func testClassicLogoHasNoFilledPlaque() throws {
         let composer = ShareImageComposer(style: BrandTheme.mury.shareStyle(for: .light))
         let image = composer.compose(photo: nil, coordinates: [], stats: stats)
-        // Inside the old plaque, outside the actual logo pixels.
-        XCTAssertEqual(try pixel(image, x: 540, y: 334)[3], 0)
+        // Beside the stacked identity, inside the former plaque footprint.
+        XCTAssertEqual(try pixel(image, x: 360, y: 334)[3], 0)
     }
 
     func testOverlayLayoutsPreserveAlphaThroughPNGExport() throws {
@@ -80,7 +80,16 @@ final class ShareImageComposerTests: XCTestCase {
             XCTAssertEqual(try pixel(decoded, x: 0, y: 0)[3], 0)
             XCTAssertEqual(try pixel(decoded, x: 540, y: 150)[3], 0)
             XCTAssertEqual(try pixel(decoded, x: 70, y: 190)[3], 0)
-            XCTAssertGreaterThan(try visiblePixelCount(decoded, rect: CGRect(x: 80, y: 190, width: 920, height: 92)), 1000)
+            let identityRegion: CGRect
+            switch layout {
+            case .column, .route: identityRegion = CGRect(x: 80, y: 190, width: 920, height: 92)
+            case .compact: identityRegion = CGRect(x: 150, y: 650, width: 780, height: 550)
+            case .ticket: identityRegion = CGRect(x: 330, y: 680, width: 420, height: 70)
+            case .edge: identityRegion = CGRect(x: 115, y: 115, width: 270, height: 60)
+            case .receipt: identityRegion = CGRect(x: 115, y: 1580, width: 270, height: 60)
+            }
+            XCTAssertNotNil(try coloredBounds(decoded, rect: identityRegion, color: [167, 216, 243]), layout.rawValue)
+            XCTAssertGreaterThan(try visiblePixelCount(decoded, rect: identityRegion), 500, layout.rawValue)
         }
     }
 
@@ -146,6 +155,13 @@ final class ShareImageComposerTests: XCTestCase {
         let white = try XCTUnwrap(coloredBounds(image, rect: sportBand, color: [255, 255, 255]),
             "A white sport glyph must begin below the route and above the statistics")
         XCTAssertGreaterThan(white.width, 4)
+        let fullGlyph = try XCTUnwrap(coloredBounds(image, rect: CGRect(x: 430, y: 984, width: 220, height: 120), color: [255, 255, 255]))
+        XCTAssertGreaterThanOrEqual(fullGlyph.minY, 990)
+        XCTAssertLessThanOrEqual(fullGlyph.maxY, 1071)
+        XCTAssertGreaterThan(fullGlyph.height, 50)
+        XCTAssertEqual(fullGlyph.midX, 540, accuracy: 8)
+        XCTAssertEqual(try visiblePixelCount(image, rect: CGRect(x: 430, y: 1088, width: 220, height: 22)), 0,
+                       "The complete sport glyph must finish before statistics start")
         XCTAssertNotEqual(try croppedPNG(image, rect: sportBand),
                           try croppedPNG(noGlyph, rect: sportBand))
         let header = CGRect(x: 80, y: 150, width: 920, height: 340)
@@ -175,6 +191,102 @@ final class ShareImageComposerTests: XCTestCase {
                     XCTAssertEqual(try pixel(image, x: corner.0, y: corner.1)[3], 0, name)
                 }
             }
+        }
+    }
+
+    func testClassicUsesOriginalStackedAssetInHeader() throws {
+        let logo = try XCTUnwrap(UIImage(named: "LogoStackedBlueWhite"))
+        XCTAssertEqual(logo.size.width / logo.size.height, 220.41 / 227, accuracy: 0.01)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = false
+        let expected = UIGraphicsImageRenderer(size: CGSize(width: 1080, height: 1920), format: format).image { _ in
+            let width = logo.size.width * 280 / logo.size.height
+            logo.draw(in: CGRect(x: (1080 - width) / 2, y: 190, width: width, height: 280))
+        }
+        let actual = ShareImageComposer(style: BrandTheme.mury.shareStyle(for: .dark))
+            .compose(photo: nil, coordinates: coordinates, stats: stats)
+        let header = CGRect(x: 80, y: 150, width: 920, height: 340)
+        XCTAssertEqual(try croppedPNG(actual, rect: header), try croppedPNG(expected, rect: header))
+    }
+
+    func testReferenceLayoutsDrawTheirDistinctTransparentGeometry() throws {
+        let composer = ShareImageComposer(style: BrandTheme.mury.shareStyle(for: .dark))
+        let values = [ShareImageComposer.OverlayValue(id: .duration, label: "TIME", value: "30:00")]
+        let chips = composer.composeOverlay(layout: .compact, coordinates: [], stats: stats, metrics: values)
+        XCTAssertGreaterThan(try visiblePixelCount(chips, rect: CGRect(x: 150, y: 700, width: 780, height: 520)), 2000)
+        XCTAssertEqual(try visiblePixelCount(chips, rect: CGRect(x: 0, y: 1250, width: 1080, height: 670)), 0)
+        let ticket = composer.composeOverlay(layout: .ticket, coordinates: [], stats: stats, metrics: values)
+        XCTAssertGreaterThan(try pixel(ticket, x: 250, y: 650)[3], 200)
+        XCTAssertEqual(try pixel(ticket, x: 300, y: 650)[3], 0, "Ticket outline must not become an opaque card")
+        XCTAssertNotNil(try coloredBounds(ticket, rect: CGRect(x: 450, y: 800, width: 180, height: 180), color: [178, 14, 28]))
+        let edge = composer.composeOverlay(layout: .edge, coordinates: [], stats: stats, metrics: values)
+        XCTAssertGreaterThan(try visiblePixelCount(edge, rect: CGRect(x: 900, y: 190, width: 100, height: 1540)), 100)
+        XCTAssertEqual(try visiblePixelCount(edge, rect: CGRect(x: 180, y: 300, width: 650, height: 1400)), 0)
+        let receipt = composer.composeOverlay(layout: .receipt, coordinates: [], stats: stats, metrics: values)
+        XCTAssertEqual(try visiblePixelCount(receipt, rect: CGRect(x: 0, y: 300, width: 1080, height: 1200)), 0)
+        XCTAssertGreaterThan(try visiblePixelCount(receipt, rect: CGRect(x: 350, y: 1738, width: 300, height: 10)), 20,
+                             "Receipt must connect its bottom label/value row with visible dots")
+    }
+
+    func testChipsPreservesSelectedTitleAndBoundsLongTitles() throws {
+        let composer = ShareImageComposer(style: BrandTheme.mury.shareStyle(for: .dark))
+        let values = [ShareImageComposer.OverlayValue(id: .duration, label: "TIME", value: "30:00")]
+        func image(title: String, metrics: [ShareImageComposer.OverlayValue]) -> UIImage {
+            let fixture = ShareImageComposer.Stats(symbolName: stats.symbolName, sportLabel: stats.sportLabel,
+                distance: stats.distance, duration: stats.duration, paceOrSpeed: stats.paceOrSpeed,
+                date: stats.date, title: title)
+            return composer.composeOverlay(layout: .compact, coordinates: [], stats: fixture, metrics: metrics)
+        }
+        XCTAssertNotEqual(image(title: "Morning route", metrics: values).pngData(),
+                          image(title: "Evening route", metrics: values).pngData())
+        XCTAssertEqual(image(title: "", metrics: values).pngData(),
+                       image(title: " \n ", metrics: values).pngData(), "Empty title adds no fallback sport pill")
+        XCTAssertEqual(image(title: "Morning route", metrics: []).pngData(),
+                       image(title: "Evening route", metrics: []).pngData(), "No selected metrics still means logo only")
+        let long = image(title: String(repeating: "Caminhada de quarta-feira — ", count: 20), metrics: values)
+        XCTAssertEqual(try pixel(long, x: 0, y: 0)[3], 0)
+        XCTAssertEqual(try visiblePixelCount(long, rect: CGRect(x: 0, y: 0, width: 100, height: 1920)), 0)
+        XCTAssertEqual(try visiblePixelCount(long, rect: CGRect(x: 980, y: 0, width: 100, height: 1920)), 0)
+        XCTAssertEqual(try visiblePixelCount(long, rect: CGRect(x: 0, y: 1700, width: 1080, height: 220)), 0)
+    }
+
+    func testTicketUsesSuppliedWeekdayWithoutParsingDateText() throws {
+        let composer = ShareImageComposer(style: BrandTheme.mury.shareStyle(for: .dark))
+        let localized = ShareImageComposer.Stats(symbolName: "figure.run", sportLabel: "Corrida", distance: "5 km",
+            duration: "30:00", paceOrSpeed: "6:00 /km", date: "31 de outubro", weekday: "sábado")
+        let noWeekday = ShareImageComposer.Stats(symbolName: "figure.run", sportLabel: "Corrida", distance: "5 km",
+            duration: "30:00", paceOrSpeed: "6:00 /km", date: "31 de outubro")
+        XCTAssertEqual(noWeekday.weekday, "")
+        let values = [ShareImageComposer.OverlayValue(id: .duration, label: "TEMPO", value: "30:00")]
+        let withDay = composer.composeOverlay(layout: .ticket, coordinates: [], stats: localized, metrics: values)
+        let withoutDay = composer.composeOverlay(layout: .ticket, coordinates: [], stats: noWeekday, metrics: values)
+        let dayRegion = CGRect(x: 280, y: 1030, width: 520, height: 76)
+        XCTAssertGreaterThan(try visiblePixelCount(withDay, rect: dayRegion), 100)
+        XCTAssertEqual(try visiblePixelCount(withoutDay, rect: dayRegion), 0)
+        XCTAssertEqual(try croppedPNG(withDay, rect: CGRect(x: 280, y: 1120, width: 520, height: 60)),
+                       try croppedPNG(withoutDay, rect: CGRect(x: 280, y: 1120, width: 520, height: 60)))
+    }
+
+    func testAllOverlayLayoutsBoundLongLocalizedContentAndRenderOnlySixMetrics() throws {
+        let composer = ShareImageComposer(style: BrandTheme.mury.shareStyle(for: .light))
+        let long = String(repeating: "Última atividade de quarta-feira — ", count: 8)
+        let localized = ShareImageComposer.Stats(symbolName: "bicycle", sportLabel: long, distance: "20 km",
+            duration: "1:00:00", paceOrSpeed: "20.0 km/h", date: long, title: long, usesPaceMetric: false, weekday: long)
+        let values = ShareImageComposer.OverlayMetric.allCases.map {
+            ShareImageComposer.OverlayValue(id: $0, label: long, value: long + "20.0 km/h")
+        }
+        for layout in ShareImageComposer.OverlayLayout.allCases {
+            let image = composer.composeOverlay(layout: layout, coordinates: [], stats: localized, metrics: values)
+            let extra = composer.composeOverlay(layout: layout, coordinates: [], stats: localized,
+                metrics: values + [.init(id: .duration, label: "EXTRA", value: "DO NOT DRAW")])
+            XCTAssertEqual(image.pngData(), extra.pngData(), layout.rawValue)
+            XCTAssertEqual(try visiblePixelCount(image, rect: CGRect(x: 0, y: 0, width: 60, height: 1920)), 0, layout.rawValue)
+            XCTAssertEqual(try visiblePixelCount(image, rect: CGRect(x: 1020, y: 0, width: 60, height: 1920)), 0, layout.rawValue)
+            XCTAssertEqual(try visiblePixelCount(image, rect: CGRect(x: 0, y: 1850, width: 1080, height: 70)), 0, layout.rawValue)
+            let changed = composer.composeOverlay(layout: layout, coordinates: [], stats: localized,
+                metrics: [.init(id: .duration, label: "TIME", value: "42:17")])
+            XCTAssertNotEqual(image.pngData(), changed.pngData(), layout.rawValue)
         }
     }
 

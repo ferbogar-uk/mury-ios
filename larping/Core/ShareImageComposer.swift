@@ -34,10 +34,12 @@ struct ShareImageComposer {
         let duration: String
         let paceOrSpeed: String
         let date: String
+        let weekday: String
         let usesPaceMetric: Bool
         var metricLabel: String { usesPaceMetric ? "PACE" : "SPEED" }
 
-        init(symbolName: String, sportLabel: String, distance: String, duration: String, paceOrSpeed: String, date: String, title: String = "", usesPaceMetric: Bool = true) {
+        init(symbolName: String, sportLabel: String, distance: String, duration: String, paceOrSpeed: String, date: String, title: String = "", usesPaceMetric: Bool = true, weekday: String = "") {
+            self.weekday = weekday
             self.symbolName = symbolName
             self.sportLabel = sportLabel
             self.title = title
@@ -51,7 +53,8 @@ struct ShareImageComposer {
 
 
     enum OverlayLayout: String, CaseIterable, Identifiable {
-        case column = "Statistics", compact = "Compact", route = "Route + stats"
+        case column = "Statistics", compact = "Chips", route = "Route + stats"
+        case ticket = "Ticket", edge = "Edge", receipt = "Receipt"
         var id: String { rawValue }
     }
 
@@ -96,35 +99,143 @@ struct ShareImageComposer {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         format.opaque = false
-        return UIGraphicsImageRenderer(size: Self.canvasSize, format: format).image { _ in
-            if let logo = UIImage(named: "LogoBlueWhite") {
-                let height: CGFloat = 92
-                let width = logo.size.width * height / logo.size.height
-                logo.draw(in: CGRect(x: (Self.canvasSize.width - width) / 2, y: 190, width: width, height: height))
+        return UIGraphicsImageRenderer(size: Self.canvasSize, format: format).image { context in
+            guard !metrics.isEmpty else {
+                drawOverlayLogo(in: CGRect(x: 80, y: 190, width: 920, height: 92))
+                return
             }
-            guard !metrics.isEmpty else { return }
-            drawOverlayText(displayTitle(stats), in: CGRect(x: 80, y: 340, width: 920, height: 80), size: 42, weight: .semibold)
-            drawOverlayText(stats.date, in: CGRect(x: 80, y: 420, width: 920, height: 60), size: 28, weight: .regular)
-            if layout == .route {
-                drawRoute(coordinates, canvasWidth: Self.canvasSize.width,
-                          availableRect: CGRect(x: 100, y: 540, width: 880, height: 500))
-            }
-            for (index, metric) in metrics.prefix(6).enumerated() {
-                let column = layout == .column
-                let x: CGFloat = column ? 80 : 80 + CGFloat(index % 2) * 470
-                let y: CGFloat = column ? 570 + CGFloat(index) * 172 : 1140 + CGFloat(index / 2) * 174
-                let width: CGFloat = column ? 920 : 450
-                drawOverlayText(metric.label, in: CGRect(x: x, y: y, width: width, height: 42), size: 25, weight: .semibold)
-                drawOverlayText(metric.value, in: CGRect(x: x, y: y + 44, width: width, height: 90), size: column ? 66 : 50, weight: .bold)
+            let values = Array(metrics.prefix(6))
+            switch layout {
+            case .compact: drawChips(stats, metrics: values)
+            case .ticket: drawTicket(stats, metrics: values)
+            case .edge: drawEdge(metrics: values, context: context.cgContext)
+            case .receipt: drawReceipt(metrics: values)
+            case .column, .route:
+                drawOverlayLogo(in: CGRect(x: 80, y: 190, width: 920, height: 92))
+                drawOverlayText(displayTitle(stats), in: CGRect(x: 80, y: 340, width: 920, height: 80), size: 42, weight: .semibold)
+                drawOverlayText(stats.date, in: CGRect(x: 80, y: 420, width: 920, height: 60), size: 28, weight: .regular)
+                if layout == .route {
+                    drawRoute(coordinates, canvasWidth: Self.canvasSize.width,
+                              availableRect: CGRect(x: 100, y: 540, width: 880, height: 500))
+                }
+                for (index, metric) in values.enumerated() {
+                    let column = layout == .column
+                    let x: CGFloat = column ? 80 : 80 + CGFloat(index % 2) * 470
+                    let y: CGFloat = column ? 570 + CGFloat(index) * 172 : 1140 + CGFloat(index / 2) * 174
+                    let width: CGFloat = column ? 920 : 450
+                    drawOverlayText(metric.label, in: CGRect(x: x, y: y, width: width, height: 42), size: 25, weight: .semibold)
+                    drawOverlayText(metric.value, in: CGRect(x: x, y: y + 44, width: width, height: 90), size: column ? 66 : 50, weight: .bold)
+                }
             }
         }
     }
 
-    private func drawOverlayText(_ text: String, in rect: CGRect, size: CGFloat, weight: MuryTypography.Weight) {
+    private func drawOverlayLogo(in box: CGRect) {
+        guard let logo = UIImage(named: "LogoBlueWhite") else { return }
+        let scale = min(box.width / logo.size.width, box.height / logo.size.height)
+        let size = CGSize(width: logo.size.width * scale, height: logo.size.height * scale)
+        logo.draw(in: CGRect(x: box.midX - size.width / 2, y: box.midY - size.height / 2, width: size.width, height: size.height))
+    }
+
+    private func drawSport(_ stats: Stats, in box: CGRect, color: UIColor, soft: Bool = false) {
+        guard let glyph = UIImage(systemName: stats.symbolName, withConfiguration: UIImage.SymbolConfiguration(pointSize: box.height, weight: .bold)) else { return }
+        let scale = min(box.width / glyph.size.width, box.height / glyph.size.height)
+        let size = CGSize(width: glyph.size.width * scale, height: glyph.size.height * scale)
+        let rect = CGRect(x: box.midX - size.width / 2, y: box.minY, width: size.width, height: size.height)
+        if soft { glyph.withTintColor(UIColor.black.withAlphaComponent(0.8)).draw(in: rect.offsetBy(dx: 0, dy: 8)) }
+        glyph.withTintColor(color).draw(in: rect)
+    }
+
+    private func drawChips(_ stats: Stats, metrics: [OverlayValue]) {
+        let texts = [stats.title.trimmingCharacters(in: .whitespacesAndNewlines), stats.date, stats.sportLabel].filter { !$0.isEmpty } + metrics.map { $0.label + " " + $0.value }
+        var rows: [[(String, CGFloat)]] = [[("", 230)]]
+        for text in texts {
+            let measured = (text as NSString).size(withAttributes: [.font: MuryTypography.uiFont(size: 30, weight: .semibold)]).width
+            let width = min(760, max(140, measured + 52))
+            let used = rows[rows.count - 1].reduce(CGFloat.zero) { $0 + $1.1 }
+            if used + width > 760 { rows.append([]) }
+            rows[rows.count - 1].append((text, width))
+        }
+        var y = CGFloat(960) - CGFloat(rows.count) * 52
+        for row in rows {
+            var x = (1080 - row.reduce(CGFloat.zero) { $0 + $1.1 }) / 2
+            for (text, width) in row {
+                let rect = CGRect(x: x, y: y, width: width, height: 104)
+                let outline = UIBezierPath(roundedRect: rect, cornerRadius: 52)
+                outline.lineWidth = 3
+                white.setStroke(); outline.stroke()
+                if text.isEmpty {
+                    drawOverlayLogo(in: rect.insetBy(dx: 22, dy: 28))
+                } else {
+                    drawOverlayText(text, in: CGRect(x: x + 22, y: y + 31, width: width - 44, height: 50), size: 30, weight: .semibold)
+                }
+                x += width
+            }
+            y += 104
+        }
+    }
+
+    private func drawTicket(_ stats: Stats, metrics: [OverlayValue]) {
+        let bottom = CGFloat(1260 + metrics.count * 56)
+        let outline = UIBezierPath()
+        outline.move(to: CGPoint(x: 250, y: bottom))
+        outline.addLine(to: CGPoint(x: 250, y: 600))
+        outline.addLine(to: CGPoint(x: 830, y: 600))
+        outline.addLine(to: CGPoint(x: 830, y: bottom))
+        for index in 1...30 {
+            outline.addLine(to: CGPoint(x: 830 - CGFloat(index) * 580 / 30, y: bottom + (index % 2 == 1 ? 24 : 0)))
+        }
+        outline.close(); outline.lineWidth = 3; white.setStroke(); outline.stroke()
+        drawOverlayLogo(in: CGRect(x: 330, y: 680, width: 420, height: 70))
+        drawSport(stats, in: CGRect(x: 470, y: 820, width: 140, height: 140), color: routeColor)
+        drawOverlayText(stats.weekday, in: CGRect(x: 280, y: 1030, width: 520, height: 76), size: 56, weight: .bold)
+        drawOverlayText(stats.date, in: CGRect(x: 280, y: 1120, width: 520, height: 60), size: 30, weight: .regular)
+        for (index, metric) in metrics.enumerated() {
+            drawOverlayText(metric.label + "  " + metric.value, in: CGRect(x: 280, y: 1210 + CGFloat(index) * 56, width: 520, height: 48), size: 28, weight: .semibold)
+        }
+    }
+
+    private func drawEdge(metrics: [OverlayValue], context: CGContext) {
+        drawOverlayLogo(in: CGRect(x: 115, y: 115, width: 270, height: 60))
+        let slot: CGFloat = 1500 / CGFloat(metrics.count)
+        for (index, metric) in metrics.enumerated() {
+            context.saveGState()
+            context.translateBy(x: 930, y: 190 + CGFloat(index + 1) * slot)
+            context.rotate(by: -.pi / 2)
+            drawOverlayText(metric.label + "  " + metric.value, in: CGRect(x: 0, y: 0, width: slot - 30, height: 50), size: 28, weight: .semibold)
+            context.restoreGState()
+        }
+    }
+
+    private func drawReceipt(metrics: [OverlayValue]) {
+        let start = CGFloat(1780 - metrics.count * 60)
+        drawOverlayLogo(in: CGRect(x: 115, y: start - 140, width: 270, height: 60))
+        for (index, metric) in metrics.enumerated() {
+            let y = start + CGFloat(index) * 60
+            let font = MuryTypography.uiFont(size: 28, weight: .semibold)
+            let labelWidth = min(330, (metric.label as NSString).size(withAttributes: [.font: font]).width)
+            let valueWidth = min(330, (metric.value as NSString).size(withAttributes: [.font: font]).width)
+            drawOverlayText(metric.label, in: CGRect(x: 115, y: y, width: labelWidth, height: 48), size: 28, weight: .semibold, alignment: .left)
+            drawOverlayText(metric.value, in: CGRect(x: 965 - valueWidth, y: y, width: valueWidth, height: 48), size: 28, weight: .semibold, alignment: .right)
+            let dots = UIBezierPath()
+            let leaderStart = 115 + labelWidth + 24
+            let leaderEnd = 965 - valueWidth - 24
+            if leaderStart <= leaderEnd {
+                for x in stride(from: leaderStart, through: leaderEnd, by: 18) {
+                    dots.append(UIBezierPath(ovalIn: CGRect(x: x, y: y + 20, width: 4, height: 4)))
+                }
+            }
+            white.setFill(); dots.fill()
+        }
+    }
+
+    private func drawOverlayText(_ text: String, in rect: CGRect, size: CGFloat, weight: MuryTypography.Weight, alignment: NSTextAlignment = .center) {
         let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = .center
+        paragraph.alignment = alignment
         paragraph.lineBreakMode = .byTruncatingTail
-        var attributes = textAttributes(white, size: size, weight: weight, soft: true)
+        let measured = (text as NSString).size(withAttributes: [.font: MuryTypography.uiFont(size: size, weight: weight)]).width
+        let fittedSize = max(18, min(size, size * rect.width / max(measured, 1)))
+        var attributes = textAttributes(white, size: fittedSize, weight: weight, soft: true)
         attributes[.paragraphStyle] = paragraph
         NSAttributedString(string: text, attributes: attributes).draw(in: rect)
     }
@@ -240,39 +351,13 @@ struct ShareImageComposer {
 
     // MARK: - Classic template drawing
 
-    /// Small sport icon at the top with the wordmark (now the more prominent
-    /// element, not the icon) beneath it — no event title/date here (moved to
-    /// the footer). Extra top padding leaves room for Instagram Story's own
-    /// UI (profile chip, close button) when shared there.
     private func drawHeader(_ stats: Stats, canvasWidth: CGFloat, soft: Bool) {
-        let iconBox: CGFloat = 130
-        var cursorY: CGFloat = 190
-
-        if let glyph = UIImage(systemName: stats.symbolName, withConfiguration: UIImage.SymbolConfiguration(pointSize: iconBox, weight: .bold)) {
-            let tinted = glyph.withTintColor(white)
-            let glyphSize = tinted.size
-            let scale = min(iconBox / glyphSize.width, iconBox / glyphSize.height)
-            let size = CGSize(width: glyphSize.width * scale, height: glyphSize.height * scale)
-            let rect = CGRect(
-                x: canvasWidth / 2 - size.width / 2,
-                y: cursorY,
-                width: size.width,
-                height: size.height
-            )
-            if soft {
-                let backing = glyph.withTintColor(UIColor.black.withAlphaComponent(0.8))
-                backing.draw(in: rect.offsetBy(dx: 0, dy: 8))
-            }
-            tinted.draw(in: rect)
-            cursorY = rect.maxY + 24
+        if let logo = UIImage(named: "LogoStackedBlueWhite") {
+            let height: CGFloat = 280
+            let width = logo.size.width * height / logo.size.height
+            logo.draw(in: CGRect(x: (canvasWidth - width) / 2, y: 190, width: width, height: height))
         }
-
-        if let logo = UIImage(named: "LogoBlueWhite") {
-            let height: CGFloat = 110
-            let size = CGSize(width: logo.size.width * (height / logo.size.height), height: height)
-            let rect = CGRect(x: (canvasWidth - size.width) / 2, y: cursorY, width: size.width, height: size.height)
-            logo.draw(in: rect)
-        }
+        drawSport(stats, in: CGRect(x: canvasWidth / 2 - 40, y: 990, width: 80, height: 80), color: white, soft: soft)
     }
 
     /// Draws the recorded route as a stroked accent-color line, scaled to fit a
@@ -343,7 +428,7 @@ struct ShareImageComposer {
     }
 
     /// Stats rendered as one centered column — three rows of label + value.
-    private func drawStats(_ stats: Stats, canvasWidth: CGFloat, startY: CGFloat = 1020, soft: Bool) {
+    private func drawStats(_ stats: Stats, canvasWidth: CGFloat, startY: CGFloat = 1120, soft: Bool) {
         let rows: [(String, String)] = [
             ("DISTANCE", stats.distance),
             ("DURATION", stats.duration),
