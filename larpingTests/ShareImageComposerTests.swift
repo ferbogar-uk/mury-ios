@@ -122,6 +122,89 @@ final class ShareImageComposerTests: XCTestCase {
         XCTAssertFalse(ShareImageComposer.overlayMetrics(for: activity).contains { $0.id == .averageHeartRate || $0.id == .maxHeartRate })
     }
 
+
+    func testClassicStacksCenteredBlueSymbolAboveWhiteWordmark() throws {
+        let image = ShareImageComposer(style: BrandTheme.mury.shareStyle(for: .dark))
+            .compose(photo: nil, coordinates: coordinates, stats: stats)
+        let header = CGRect(x: 80, y: 150, width: 920, height: 340)
+        let blue = try XCTUnwrap(coloredBounds(image, rect: header, color: [167, 216, 243]))
+        let wordmark = try XCTUnwrap(coloredBounds(image, rect: header, color: [255, 255, 255]))
+        XCTAssertLessThan(blue.maxY, wordmark.minY, "The blue symbol must sit above the white Mury wordmark")
+        XCTAssertEqual(blue.midX, 540, accuracy: 8)
+        XCTAssertEqual(wordmark.midX, 540, accuracy: 8)
+    }
+
+    func testClassicSportGlyphMovesBelowRouteBeforeStatistics() throws {
+        let composer = ShareImageComposer(style: BrandTheme.mury.shareStyle(for: .dark))
+        let withoutSport = ShareImageComposer.Stats(symbolName: "", sportLabel: stats.sportLabel,
+            distance: stats.distance, duration: stats.duration, paceOrSpeed: stats.paceOrSpeed, date: stats.date)
+        let image = composer.compose(photo: nil, coordinates: coordinates, stats: stats)
+        let noGlyph = composer.compose(photo: nil, coordinates: coordinates, stats: withoutSport)
+        // Route ends at 970 (+12 casing); old statistics start at 1020.
+        // Compare glyph-on/off pixels here so old statistic pixels cannot satisfy this check.
+        let sportBand = CGRect(x: 430, y: 984, width: 220, height: 36)
+        let white = try XCTUnwrap(coloredBounds(image, rect: sportBand, color: [255, 255, 255]),
+            "A white sport glyph must begin below the route and above the statistics")
+        XCTAssertGreaterThan(white.width, 4)
+        XCTAssertNotEqual(try croppedPNG(image, rect: sportBand),
+                          croppedPNG(noGlyph, rect: sportBand))
+        let header = CGRect(x: 80, y: 150, width: 920, height: 340)
+        XCTAssertEqual(try croppedPNG(image, rect: header),
+                       croppedPNG(noGlyph, rect: header),
+                       "The Classic header must contain only the stacked identity, independent of sport")
+    }
+
+    func testOverlayMenuKeepsExistingNamesAndAddsReferenceLayouts() {
+        XCTAssertEqual(ShareImageComposer.OverlayLayout.allCases.map(\.rawValue),
+                       ["Statistics", "Chips", "Route + stats", "Ticket", "Edge", "Receipt"])
+        XCTAssertNil(ShareImageComposer.OverlayLayout(rawValue: "Compact"))
+    }
+
+    func testEveryExpectedOverlayKeepsLogoOnlyWhenNoMetricsAreSelected() throws {
+        let composer = ShareImageComposer(style: BrandTheme.mury.shareStyle(for: .light))
+        for name in ["Statistics", "Chips", "Route + stats", "Ticket", "Edge", "Receipt"] {
+            guard let layout = ShareImageComposer.OverlayLayout(rawValue: name) else {
+                XCTFail("Missing overlay layout: \(name)")
+                continue
+            }
+            for route in [[], coordinates] {
+                let image = composer.composeOverlay(layout: layout, coordinates: route, stats: stats, metrics: [])
+                XCTAssertGreaterThan(try visiblePixelCount(image, rect: CGRect(x: 80, y: 190, width: 920, height: 92)), 1000, name)
+                XCTAssertEqual(try visiblePixelCount(image, rect: CGRect(x: 0, y: 300, width: 1080, height: 1620)), 0, name)
+                for corner in [(0, 0), (1079, 0), (0, 1919), (1079, 1919)] {
+                    XCTAssertEqual(try pixel(image, x: corner.0, y: corner.1)[3], 0, name)
+                }
+            }
+        }
+    }
+
+    private func croppedPNG(_ image: UIImage, rect: CGRect) throws -> Data {
+        let crop = try XCTUnwrap(image.cgImage?.cropping(to: rect))
+        return try XCTUnwrap(UIImage(cgImage: crop).pngData())
+    }
+
+    private func coloredBounds(_ image: UIImage, rect: CGRect, color: [Int]) throws -> CGRect? {
+        let source = try XCTUnwrap(image.cgImage?.cropping(to: rect))
+        let width = source.width
+        let height = source.height
+        var bytes = [UInt8](repeating: 0, count: width * height * 4)
+        let context = try XCTUnwrap(CGContext(data: &bytes, width: width, height: height,
+            bitsPerComponent: 8, bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
+        var bounds = CGRect.null
+        for y in 0..<height {
+            for x in 0..<width {
+                let offset = (y * width + x) * 4
+                guard bytes[offset + 3] > 230 else { continue }
+                let alpha = Double(bytes[offset + 3])
+                guard (0..<3).allSatisfy({ abs(Double(bytes[offset + $0]) * 255 / alpha - Double(color[$0])) <= 3 }) else { continue }
+                bounds = bounds.union(CGRect(x: rect.minX + CGFloat(x), y: rect.minY + CGFloat(y), width: 1, height: 1))
+            }
+        }
+        return bounds.isNull ? nil : bounds
+    }
+
     private func visiblePixelCount(_ image: UIImage, rect: CGRect) throws -> Int {
         let source = try XCTUnwrap(image.cgImage?.cropping(to: rect))
         let width = source.width
