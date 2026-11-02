@@ -282,7 +282,7 @@ struct ShareImageComposer {
     /// snapshot as the background, route overlaid on it, and one bottom card
     /// holding the activity info. If no snapshot is available (offline), falls
     /// back to a space-black background with the route drawn above the card.
-    func composeMapCard(snapshot: MKMapSnapshotter.Snapshot?, coordinates: [CLLocationCoordinate2D], stats: Stats, routeRevealFraction: Double = 1) -> UIImage {
+    func composeMapCard(snapshot: MKMapSnapshotter.Snapshot?, coordinates: [CLLocationCoordinate2D], stats: Stats, routeRevealFraction: Double = 1, revealedSegments: [[CLLocationCoordinate2D]]? = nil, routeCoordinates: [CLLocationCoordinate2D]? = nil) -> UIImage {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         let renderer = UIGraphicsImageRenderer(size: Self.canvasSize, format: format)
@@ -298,15 +298,16 @@ struct ShareImageComposer {
                 UIColor.black.withAlphaComponent(0.32).setFill()
                 cgContext.fill(bounds)
                 drawScrim(in: bounds, using: cgContext)
-                drawRoute(onto: snapshot, coordinates: coordinates, routeRevealFraction: routeRevealFraction)
+                drawRoute(onto: snapshot, coordinates: routeCoordinates ?? coordinates, routeRevealFraction: routeRevealFraction, revealedSegments: revealedSegments)
             } else {
                 spaceBlack.setFill()
                 cgContext.fill(bounds)
                 drawRoute(
-                    coordinates,
+                    routeCoordinates ?? coordinates,
                     canvasWidth: width,
                     availableRect: CGRect(x: 54, y: 200, width: width - 108, height: 880),
-                    revealFraction: routeRevealFraction
+                    revealFraction: routeRevealFraction,
+                    revealedSegments: revealedSegments
                 )
             }
 
@@ -367,7 +368,7 @@ struct ShareImageComposer {
     /// `revealFraction` (0...1) draws only the leading portion in recorded point
     /// order, for the animated video export… and the classic template's route
     /// (pass 1 at rest). No endpoint markers when fully revealed.
-    private func drawRoute(_ coordinates: [CLLocationCoordinate2D], canvasWidth: CGFloat, availableRect: CGRect = CGRect(x: 54, y: 504, width: 972, height: 466), revealFraction: Double = 1) {
+    private func drawRoute(_ coordinates: [CLLocationCoordinate2D], canvasWidth: CGFloat, availableRect: CGRect = CGRect(x: 54, y: 504, width: 972, height: 466), revealFraction: Double = 1, revealedSegments: [[CLLocationCoordinate2D]]? = nil) {
         guard coordinates.count > 1 else { return }
 
         let lats = coordinates.map(\.latitude)
@@ -392,19 +393,21 @@ struct ShareImageComposer {
         }
 
         let scale = region.width / lngSpan // == region.height / latSpan
-        let points = coordinates.map { coordinate -> CGPoint in
+        func project(_ coordinate: CLLocationCoordinate2D) -> CGPoint {
             CGPoint(
                 x: region.minX + (coordinate.longitude - minLng) * scale,
                 y: region.minY + (maxLat - coordinate.latitude) * scale
             )
         }
-
-        let revealCount = max(2, Int(Double(points.count) * revealFraction))
-        let visiblePoints = Array(points.prefix(revealCount))
-
+        let points = coordinates.map(project)
+        let visible = revealedSegments?.map { $0.map(project) }
+            ?? [Array(points.prefix(max(2, Int(Double(points.count) * revealFraction))))]
         let path = UIBezierPath()
-        path.move(to: visiblePoints[0])
-        visiblePoints.dropFirst().forEach { path.addLine(to: $0) }
+        for segment in visible {
+            guard let first = segment.first else { continue }
+            path.move(to: first)
+            segment.dropFirst().forEach { path.addLine(to: $0) }
+        }
         path.lineJoinStyle = .round
         path.lineCapStyle = .round
         path.lineWidth = 24
@@ -416,7 +419,7 @@ struct ShareImageComposer {
 
         // Leading dot marks the current tip while the route is still being
         // revealed (video export); the finished static image has none.
-        if revealFraction < 1, let tip = visiblePoints.last {
+        if revealFraction < 1, let tip = visible.last?.last {
             let dotRect = CGRect(x: tip.x - 14, y: tip.y - 14, width: 28, height: 28)
             routeColor.setFill()
             UIBezierPath(ovalIn: dotRect).fill()
@@ -448,8 +451,25 @@ struct ShareImageComposer {
     /// repo URL that used to live here (removed; the wordmark up top under
     /// the sport icon is branding enough).
     private func drawFooter(_ stats: Stats, canvasWidth: CGFloat, soft: Bool) {
+        let title = stats.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !title.isEmpty {
+            let rect = CGRect(x: 54, y: 1610, width: canvasWidth - 108, height: 60)
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.alignment = .center
+            paragraph.lineBreakMode = .byTruncatingTail
+            let measured = (title as NSString).size(withAttributes: [.font: MuryTypography.uiFont(size: 36, weight: .semibold)]).width
+            let size = max(18, min(36, 36 * rect.width / max(measured, 1)))
+            var attributes = textAttributes(white, size: size, weight: .semibold, soft: soft)
+            attributes[.paragraphStyle] = paragraph
+            if let context = UIGraphicsGetCurrentContext() {
+                context.saveGState()
+                context.clip(to: rect)
+                NSAttributedString(string: title, attributes: attributes).draw(in: rect)
+                context.restoreGState()
+            }
+        }
         let date = NSAttributedString(string: stats.date, attributes: textAttributes(white.withAlphaComponent(0.72), size: 30, weight: .semibold, soft: soft))
-        drawCentered(date, atY: 1610, canvasWidth: canvasWidth)
+        drawCentered(date, atY: title.isEmpty ? 1610 : 1700, canvasWidth: canvasWidth)
     }
 
     // MARK: - Map card drawing
@@ -492,15 +512,17 @@ struct ShareImageComposer {
     /// Draws the route over an already-rendered map snapshot. Works because the
     /// snapshot was requested at canvas size, so `point(for:)` already yields
     /// canvas coordinates.
-    private func drawRoute(onto snapshot: MKMapSnapshotter.Snapshot, coordinates: [CLLocationCoordinate2D], routeRevealFraction: Double = 1) {
+    private func drawRoute(onto snapshot: MKMapSnapshotter.Snapshot, coordinates: [CLLocationCoordinate2D], routeRevealFraction: Double = 1, revealedSegments: [[CLLocationCoordinate2D]]? = nil) {
         guard coordinates.count > 1 else { return }
         let points = coordinates.map { snapshot.point(for: $0) }
-        let count = max(2, Int(Double(points.count) * routeRevealFraction))
-        let visible = Array(points.prefix(count))
-
+        let visible = revealedSegments?.map { $0.map { snapshot.point(for: $0) } }
+            ?? [Array(points.prefix(max(2, Int(Double(points.count) * routeRevealFraction))))]
         let path = UIBezierPath()
-        path.move(to: visible[0])
-        visible.dropFirst().forEach { path.addLine(to: $0) }
+        for segment in visible {
+            guard let first = segment.first else { continue }
+            path.move(to: first)
+            segment.dropFirst().forEach { path.addLine(to: $0) }
+        }
         path.lineJoinStyle = .round
         path.lineCapStyle = .round
         path.lineWidth = 22
@@ -510,7 +532,7 @@ struct ShareImageComposer {
         routeColor.setStroke()
         path.stroke()
 
-        if routeRevealFraction < 1, let tip = visible.last {
+        if routeRevealFraction < 1, let tip = visible.last?.last {
             let dotRect = CGRect(x: tip.x - 16, y: tip.y - 16, width: 32, height: 32)
             routeColor.setFill()
             UIBezierPath(ovalIn: dotRect).fill()

@@ -8,6 +8,12 @@ import XCTest
 @MainActor
 final class ShareVideoComposerTests: XCTestCase {
     func testCompleteExportProducesReadablePortraitMP4() async throws {
+        for duration in ShareVideoComposer.ClipDuration.allCases {
+            try await verifyCompleteExport(duration: duration)
+        }
+    }
+
+    private func verifyCompleteExport(duration clipDuration: ShareVideoComposer.ClipDuration) async throws {
         let stats = ShareImageComposer.Stats(symbolName: "figure.run", sportLabel: "Run", distance: "1 km", duration: "5:00", paceOrSpeed: "5:00", date: "Jan 1, 2026")
         // Synthetic coordinates and a nil snapshot keep the full render independent of map tiles.
         let coordinates = [CLLocationCoordinate2D(latitude: 1, longitude: 1), CLLocationCoordinate2D(latitude: 1.001, longitude: 1.001)]
@@ -33,7 +39,13 @@ final class ShareVideoComposerTests: XCTestCase {
             add(observation)
         }
 
-        let url = try await ShareVideoComposer.composeVideo(snapshot: nil, coordinates: coordinates, stats: stats, style: BrandTheme.mury.shareStyle(for: .light))
+        var observedProgress: Double = -1
+        let url = try await ShareVideoComposer.composeVideo(snapshot: nil, coordinates: coordinates, stats: stats, style: BrandTheme.mury.shareStyle(for: .light), duration: clipDuration, onProgress: { progress in
+            XCTAssertGreaterThanOrEqual(progress, observedProgress)
+            XCTAssertTrue((0...1).contains(progress))
+            observedProgress = progress
+        })
+        XCTAssertEqual(observedProgress, 1)
         observer.cancel()
         heartbeat.recordTick()
         exportObservation = heartbeat.summary
@@ -59,9 +71,9 @@ final class ShareVideoComposerTests: XCTestCase {
         let transform = try await track.load(.preferredTransform)
         XCTAssertEqual(transform, .identity)
         let duration = try await asset.load(.duration)
-        XCTAssertEqual(CMTimeGetSeconds(duration), 6, accuracy: 1.0 / 60)
+        XCTAssertEqual(CMTimeGetSeconds(duration), Double(clipDuration.rawValue), accuracy: 0.001)
         let frameRate = try await track.load(.nominalFrameRate)
-        XCTAssertEqual(frameRate, 60, accuracy: 0.01)
+        XCTAssertEqual(frameRate, 30, accuracy: 0.01)
         let formats = try await track.load(.formatDescriptions)
         XCTAssertEqual(CMFormatDescriptionGetMediaSubType(try XCTUnwrap(formats.first)), kCMVideoCodecType_H264)
 
@@ -88,17 +100,62 @@ final class ShareVideoComposerTests: XCTestCase {
             if let image {
                 XCTAssertEqual(CVPixelBufferGetWidth(image), 1080)
                 XCTAssertEqual(CVPixelBufferGetHeight(image), 1920)
+                if frameCount == clipDuration.rawValue * 30 - 1 {
+                    // The final endpoint is at (980, 200) under the unchanged full-route projection.
+                    guard CVPixelBufferLockBaseAddress(image, .readOnly) == kCVReturnSuccess else {
+                        XCTFail("Could not lock decoded frame"); return false
+                    }
+                    defer { CVPixelBufferUnlockBaseAddress(image, .readOnly) }
+                    guard let base = CVPixelBufferGetBaseAddress(image) else { XCTFail("Missing decoded frame bytes"); return false }
+                    let bytes = base.assumingMemoryBound(to: UInt8.self)
+                    let offset = 204 * CVPixelBufferGetBytesPerRow(image) + 976 * 4
+                    XCTAssertGreaterThan(Int(bytes[offset + 2]), Int(bytes[offset]) + 50, "Final encoded frame must contain the route endpoint")
+                }
             }
             let time = CMSampleBufferGetPresentationTimeStamp(sample)
             XCTAssertTrue(time.isValid)
-            XCTAssertEqual(CMTimeGetSeconds(time), Double(frameCount) / 60, accuracy: 0.001)
+            XCTAssertEqual(CMTimeGetSeconds(time), Double(frameCount) / 30, accuracy: 0.001)
             if previousTime.isValid { XCTAssertGreaterThan(CMTimeCompare(time, previousTime), 0) }
             previousTime = time
             frameCount += 1
             return true
         }) {}
         XCTAssertEqual(reader.status, .completed, "Incomplete decode: \(String(describing: reader.error))")
-        XCTAssertEqual(frameCount, 360)
+        XCTAssertEqual(frameCount, clipDuration.rawValue * 30)
+    }
+
+
+    func testActiveCancellationFromRealProgressCleansTemporaryFile() async throws {
+        func exports() throws -> Set<String> {
+            Set(try FileManager.default.contentsOfDirectory(atPath: FileManager.default.temporaryDirectory.path)
+                .filter { $0.hasPrefix("mury-share-") && $0.hasSuffix(".mp4") })
+        }
+        let before = try exports()
+        let stats = ShareImageComposer.Stats(symbolName: "figure.run", sportLabel: "Run", distance: "1 km", duration: "5:00", paceOrSpeed: "5:00", date: "Jan 1, 2026")
+        var generation: Task<URL, Error>?
+        var cancellation: Task<Void, Never>?
+        var sawPositiveProgress = false
+        generation = Task { @MainActor in
+            try await ShareVideoComposer.composeVideo(snapshot: nil, coordinates: [
+                .init(latitude: 1, longitude: 1), .init(latitude: 1.001, longitude: 1.001)
+            ], stats: stats, style: BrandTheme.mury.shareStyle(for: .light), duration: .fifteen, onProgress: { progress in
+                guard progress > 0, progress < 1, cancellation == nil else { return }
+                sawPositiveProgress = true
+                cancellation = Task { @MainActor in
+                    if let generation { generation.cancel() }
+                }
+            })
+        }
+        do {
+            let url = try await XCTUnwrap(generation).value
+            try? FileManager.default.removeItem(at: url)
+            XCTFail("Active cancellation must throw")
+        } catch {
+            XCTAssertTrue(error is CancellationError)
+        }
+        await cancellation?.value
+        XCTAssertTrue(sawPositiveProgress)
+        XCTAssertEqual(try exports(), before)
     }
 
     private func peakResidentBytes() -> Int? {

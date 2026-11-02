@@ -4,7 +4,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 private enum ShareTemplate: Int, CaseIterable, Identifiable {
-    case classic, mapCard, video, column, compact, route
+    case classic, mapCard, video, column, compact, route, ticket, edge, receipt
 
     var title: String {
         switch self {
@@ -12,8 +12,11 @@ private enum ShareTemplate: Int, CaseIterable, Identifiable {
         case .mapCard: return "Map"
         case .video: return "Video"
         case .column: return "Statistics"
-        case .compact: return "Compact"
+        case .compact: return "Chips"
         case .route: return "Route + stats"
+        case .ticket: return "Ticket"
+        case .edge: return "Edge"
+        case .receipt: return "Receipt"
         }
     }
 
@@ -22,27 +25,22 @@ private enum ShareTemplate: Int, CaseIterable, Identifiable {
         case .column: return .column
         case .compact: return .compact
         case .route: return .route
+        case .ticket: return .ticket
+        case .edge: return .edge
+        case .receipt: return .receipt
         default: return nil
         }
     }
     var id: Int { rawValue }
 }
 
-/// Exports photo, map and video cards plus three transparent statistics overlays.
-/// The original plain card
-/// (path line over a custom photo, or a transparent PNG on its own), a map
-/// template (real MapKit imagery + route + info card), and an animated video
-/// over the same map — and share whichever is on screen via the system share
-/// sheet. The classic template renders immediately; the map card loads
-/// asynchronously; the video only renders on demand (a "Generate video" button
-/// styled like Share) because it's the expensive one. Generated video lives in
-/// a temp file and is cleaned up when this sheet closes unless the user saved
-/// it somewhere first.
+/// Exports the selected image template or an on-demand route video.
 struct ShareActivityView: View {
     let activity: CDActivity
     let coordinates: [CLLocationCoordinate2D]
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.brandTheme) private var theme
     @Environment(\.colorScheme) private var colorScheme
     @State private var overlayImages: [ShareImageComposer.OverlayLayout: UIImage] = [:]
@@ -65,6 +63,24 @@ struct ShareActivityView: View {
 
     private var renderKey: String { theme.rawValue + (colorScheme == .dark ? "-dark" : "-light") }
     private var imageComposer: ShareImageComposer { ShareImageComposer(style: theme.shareStyle(for: colorScheme)) }
+    @State private var videoDuration: ShareVideoComposer.ClipDuration = .thirty
+    @State private var videoProgress = 0.0
+    @State private var generationID = UUID()
+    @State private var sharedVideo: VideoShareFile?
+    private let replaySegments: [[CLLocationCoordinate2D]]
+
+    init(activity: CDActivity, coordinates: [CLLocationCoordinate2D]) {
+        self.activity = activity
+        self.coordinates = coordinates
+        let timeline = ReplayTimeline(points: activity.trackPoints.map {
+            ReplayPoint(timestamp: $0.timestamp, latitude: $0.latitude, longitude: $0.longitude,
+                        altitudeMeters: $0.altitudeMeters, speedMps: $0.speedMps)
+        }, startedAt: activity.startedAt, endedAt: activity.endedAt)
+        replaySegments = timeline.segments.map { segment in
+            segment.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+        }
+    }
+
     @State private var videoError: String?
     @State private var fullPreview: UIImage?
 
@@ -84,7 +100,8 @@ struct ShareActivityView: View {
             paceOrSpeed: pace,
             date: Formatters.displayDate(date: activity.startedAt),
             title: activity.eventName ?? "",
-            usesPaceMetric: activity.sportType.usesPaceMetric
+            usesPaceMetric: activity.sportType.usesPaceMetric,
+            weekday: activity.startedAt.formatted(.dateTime.weekday(.wide))
         )
     }
 
@@ -103,7 +120,7 @@ struct ShareActivityView: View {
                     classicPreview.tag(ShareTemplate.classic)
                     preview(mapCardImage).tag(ShareTemplate.mapCard)
                     videoPreview.tag(ShareTemplate.video)
-                    ForEach([ShareTemplate.column, .compact, .route]) { item in
+                    ForEach([ShareTemplate.column, .compact, .route, .ticket, .edge, .receipt]) { item in
                         if let layout = item.overlayLayout {
                             transparentPreview(overlayImages[layout]).tag(item)
                         }
@@ -132,6 +149,24 @@ struct ShareActivityView: View {
                     if template == .route && coordinates.count < 2 {
                         Text("No route recorded. Only available statistics are shown.")
                             .font(.footnote)
+                    }
+                }
+
+                if template == .video {
+                    Picker("Video duration", selection: $videoDuration) {
+                        ForEach(ShareVideoComposer.ClipDuration.allCases) { duration in
+                            Text("\(duration.rawValue) s").tag(duration)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("share-video-duration")
+                    if isGeneratingVideo {
+                        ProgressView(value: videoProgress) {
+                            Text("Creating video: \(Int(videoProgress * 100))%")
+                        }
+                        .accessibilityIdentifier("share-video-progress")
+                        Button("Cancel", action: invalidateVideo)
+                            .accessibilityIdentifier("share-video-cancel")
                     }
                 }
 
@@ -207,8 +242,7 @@ struct ShareActivityView: View {
             }
             .task(id: renderKey) {
                 clearExportFeedback()
-                videoTask?.cancel()
-                cleanupVideo()
+                invalidateVideo()
                 mapCardImage = nil
                 recomposeClassic()
                 recomposeOverlays()
@@ -218,7 +252,14 @@ struct ShareActivityView: View {
                 clearExportFeedback()
                 recomposeClassic()
             }
-            .onChange(of: template) { clearExportFeedback() }
+            .onChange(of: template) {
+                clearExportFeedback()
+                recomposeOverlays()
+            }
+            .onChange(of: videoDuration) { invalidateVideo() }
+            .onChange(of: scenePhase) { _, phase in
+                if phase != .active { invalidateVideo() }
+            }
             .onChange(of: selectedMetrics) {
                 clearExportFeedback()
                 recomposeOverlays()
@@ -227,8 +268,7 @@ struct ShareActivityView: View {
                 Task { await loadPickedPhoto() }
             }
             .onDisappear {
-                videoTask?.cancel()
-                cleanupVideo()
+                invalidateVideo()
             }
             .fullScreenCover(isPresented: $showCamera) {
                 CameraCaptureView { photo = $0 }
@@ -294,13 +334,17 @@ struct ShareActivityView: View {
             } message: {
                 Text(exportError ?? "")
             }
+            .sheet(item: $sharedVideo) { file in
+                VideoShareSheet(file: file)
+            }
             .alert("Couldn't create video", isPresented: Binding(
                 get: { videoError != nil },
                 set: { if !$0 { videoError = nil } }
             )) {
+                Button("Retry") { startVideo() }
                 Button("OK", role: .cancel) {}
             } message: {
-                Text(videoError ?? "")
+                Text(String(localized: "Try again. If the problem continues, choose a shorter video or share a PNG.") + "\n" + (videoError ?? ""))
             }
         }
     }
@@ -314,7 +358,7 @@ struct ShareActivityView: View {
         case .classic: return composedImage
         case .mapCard: return mapCardImage
         case .video: return nil
-        case .column, .compact, .route:
+        case .column, .compact, .route, .ticket, .edge, .receipt:
             return template.overlayLayout.flatMap { overlayImages[$0] }
         }
     }
@@ -380,11 +424,14 @@ struct ShareActivityView: View {
     @ViewBuilder
     private var shareSection: some View {
         switch template {
-        case .classic, .mapCard, .column, .compact, .route:
+        case .classic, .mapCard, .column, .compact, .route, .ticket, .edge, .receipt:
             imageShareLink(selectedImage)
         case .video:
             if let videoURL {
-                ShareLink(item: videoURL) {
+                Button {
+                    do { sharedVideo = try VideoShareFile(source: videoURL) }
+                    catch { exportError = error.localizedDescription }
+                } label: {
                     Label("Share video", systemImage: "square.and.arrow.up")
                         .frame(maxWidth: .infinity)
                         .foregroundStyle(theme.onAccent)
@@ -392,9 +439,10 @@ struct ShareActivityView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(theme.accent)
                 .controlSize(.large)
+                .accessibilityIdentifier("share-video-share")
             } else {
                 Button {
-                    videoTask = Task { await generateVideo() }
+                    startVideo()
                 } label: {
                     if isGeneratingVideo {
                         ProgressView()
@@ -409,6 +457,7 @@ struct ShareActivityView: View {
                 .tint(theme.accent)
                 .controlSize(.large)
                 .disabled(isGeneratingVideo)
+                .accessibilityIdentifier("share-video-generate")
             }
         }
     }
@@ -443,9 +492,9 @@ struct ShareActivityView: View {
 
     private func recomposeOverlays() {
         let metrics = availableMetrics.filter { selectedMetrics.contains($0.id) }
-        for layout in ShareImageComposer.OverlayLayout.allCases {
-            overlayImages[layout] = imageComposer.composeOverlay(layout: layout, coordinates: coordinates, stats: stats, metrics: metrics)
-        }
+        overlayImages.removeAll()
+        guard let layout = template.overlayLayout else { return }
+        overlayImages[layout] = imageComposer.composeOverlay(layout: layout, coordinates: coordinates, stats: stats, metrics: metrics)
     }
 
     private var isReadyToSave: Bool {
@@ -453,7 +502,7 @@ struct ShareActivityView: View {
         case .classic: return composedImage != nil
         case .mapCard: return mapCardImage != nil
         case .video: return videoURL != nil && !isGeneratingVideo
-        case .column, .compact, .route: return selectedImage != nil
+        case .column, .compact, .route, .ticket, .edge, .receipt: return selectedImage != nil
         }
     }
 
@@ -478,7 +527,7 @@ struct ShareActivityView: View {
                 guard let mapCardImage else { return }
                 exportDocument = try ShareExportDocument(image: mapCardImage)
                 name = "map"
-            case .column, .compact, .route:
+            case .column, .compact, .route, .ticket, .edge, .receipt:
                 guard let selectedImage else { return }
                 exportDocument = try ShareExportDocument(image: selectedImage)
                 name = "overlay-\(template.rawValue)"
@@ -506,26 +555,53 @@ struct ShareActivityView: View {
         let composer = imageComposer
         let snapshot = await composer.mapSnapshot(coordinates: coordinates)
         guard !Task.isCancelled else { return }
-        mapCardImage = composer.composeMapCard(snapshot: snapshot, coordinates: coordinates, stats: stats)
+        mapCardImage = composer.composeMapCard(snapshot: snapshot, coordinates: coordinates, stats: stats, revealedSegments: replaySegments)
     }
 
-    private func generateVideo() async {
+    private func startVideo() {
+        invalidateVideo()
+        let id = generationID
+        let duration = videoDuration
         isGeneratingVideo = true
-        defer { isGeneratingVideo = false }
+        videoTask = Task { await generateVideo(id: id, duration: duration) }
+    }
+
+    private func invalidateVideo() {
+        generationID = UUID()
+        videoTask?.cancel()
+        videoTask = nil
+        isGeneratingVideo = false
+        videoProgress = 0
+        videoError = nil
+        cleanupVideo()
+    }
+
+    private func generateVideo(id: UUID, duration: ShareVideoComposer.ClipDuration) async {
+        defer {
+            if generationID == id {
+                isGeneratingVideo = false
+                videoTask = nil
+            }
+        }
         do {
             let style = theme.shareStyle(for: colorScheme)
             let snapshot = await ShareImageComposer(style: style).mapSnapshot(coordinates: coordinates)
             try Task.checkCancellation()
-            let url = try await ShareVideoComposer.composeVideo(snapshot: snapshot, coordinates: coordinates, stats: stats, style: style)
-            if Task.isCancelled {
+            let url = try await ShareVideoComposer.composeVideo(
+                snapshot: snapshot, coordinates: coordinates, stats: stats, style: style,
+                duration: duration, segments: replaySegments, onProgress: { progress in
+                    guard generationID == id else { return }
+                    videoProgress = progress
+                })
+            if Task.isCancelled || generationID != id {
                 try? FileManager.default.removeItem(at: url)
             } else {
                 videoURL = url
             }
         } catch is CancellationError {
-            // Dismissal or a new appearance invalidates this export.
+            // Cancellation belongs to the generation that was invalidated.
         } catch {
-            videoError = error.localizedDescription
+            if generationID == id && !Task.isCancelled { videoError = error.localizedDescription }
         }
     }
 
@@ -555,4 +631,21 @@ private struct TransparencyCheckerboard: View {
             }
         }
     }
+}
+
+private struct VideoShareSheet: UIViewControllerRepresentable {
+    let file: VideoShareFile
+    @Environment(\.dismiss) private var dismiss
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let controller = UIActivityViewController(activityItems: [file.url], applicationActivities: nil)
+        controller.completionWithItemsHandler = { [file] _, _, _, _ in
+            // Retain the independent file through the consumer's completion callback.
+            _ = file
+            dismiss()
+        }
+        return controller
+    }
+
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }

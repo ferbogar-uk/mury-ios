@@ -13,15 +13,13 @@ final class ShareActivityTests: XCTestCase {
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
         app.tabBars.buttons["Activities"].tap()
         let activity = app.cells.containing(.staticText, identifier: "Run").firstMatch
-        guard activity.waitForExistence(timeout: 5) else {
-            throw XCTSkip("Requires an existing Run activity. This test never recreates or deletes data.")
-        }
+        XCTAssertTrue(activity.waitForExistence(timeout: 5), "Requires existing seeded Run activity; never recreates or deletes data.")
         activity.tap()
         app.buttons["activity-actions"].tap()
         app.buttons["activity-share"].tap()
         let picker = app.buttons["share-template"]
         XCTAssertTrue(picker.waitForExistence(timeout: 5))
-        for template in ["Statistics", "Compact", "Route + stats"] {
+        for template in ["Statistics", "Chips", "Route + stats", "Ticket", "Edge", "Receipt"] {
             picker.tap()
             app.buttons[template].firstMatch.tap()
             XCTAssertTrue(app.buttons["share-metrics"].exists)
@@ -46,5 +44,21 @@ final class ShareActivityTests: XCTestCase {
         app.buttons["Video"].firstMatch.tap()
         XCTAssertTrue(app.buttons["Generate video"].exists)
         XCTAssertFalse(app.buttons["share-copy-png"].exists)
+        let duration = app.segmentedControls["share-video-duration"]
+        XCTAssertTrue(duration.exists)
+        XCTAssertTrue(duration.buttons["30 s"].isSelected)
+        for seconds in ["60 s", "15 s"] { duration.buttons[seconds].tap() }
+        app.buttons["share-video-generate"].tap()
+        XCTAssertTrue(app.buttons["share-video-cancel"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.progressIndicators["share-video-progress"].exists)
+        app.buttons["share-video-cancel"].tap()
+        XCTAssertTrue(app.buttons["share-video-generate"].waitForExistence(timeout: 5))
+        app.buttons["share-video-generate"].tap()
+        XCTAssertTrue(app.buttons["share-video-share"].waitForExistence(timeout: 180))
+        duration.buttons["30 s"].tap()
+        XCTAssertTrue(app.buttons["share-video-generate"].waitForExistence(timeout: 5))
+        picker.tap()
+        app.buttons["Map"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["share-copy-png"].waitForExistence(timeout: 5))
     }
 }

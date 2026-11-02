@@ -9,23 +9,29 @@ import UIKit
 /// so the route reveals over the map without thousands of per-frame tile
 /// fetches. Output goes to a temporary file and is never persisted.
 enum ShareVideoComposer {
-    static let duration: TimeInterval = 6
-    static let frameRate: Int32 = 60
+    enum ClipDuration: Int, CaseIterable, Identifiable {
+        case fifteen = 15, thirty = 30, sixty = 60
+        var id: Int { rawValue }
+    }
+    static let frameRate: Int32 = 30
 
     enum ComposeError: LocalizedError {
-        case writerFailed(String)
+        case writerFailed(String, Error? = nil)
 
         var errorDescription: String? {
             switch self {
-            case .writerFailed(let operation):
-                return "Video export failed while \(operation). Please try again."
+            case .writerFailed(let operation, let underlying):
+                return "Video export failed while \(operation). Please try again." + (underlying.map { " " + $0.localizedDescription } ?? "")
             }
         }
     }
 
-    static func composeVideo(snapshot: MKMapSnapshotter.Snapshot?, coordinates: [CLLocationCoordinate2D], stats: ShareImageComposer.Stats, style: ShareStyle) async throws -> URL {
+    static func composeVideo(snapshot: MKMapSnapshotter.Snapshot?, coordinates: [CLLocationCoordinate2D], stats: ShareImageComposer.Stats, style: ShareStyle, duration: ClipDuration = .thirty, segments: [[CLLocationCoordinate2D]]? = nil, onProgress: (@MainActor (Double) -> Void)? = nil) async throws -> URL {
         try Task.checkCancellation()
         let composer = ShareImageComposer(style: style)
+        let route = ShareRoute(segments: segments ?? [coordinates])
+        let fullCoordinates = route.segments.flatMap { $0 }
+        onProgress?(0)
         let size = ShareImageComposer.canvasSize
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("mury-share-\(UUID().uuidString).mp4")
 
@@ -56,20 +62,20 @@ enum ShareVideoComposer {
         )
         guard writer.canAdd(input) else { throw ComposeError.writerFailed("configuring the video encoder") }
         writer.add(input)
-        guard writer.startWriting() else { throw ComposeError.writerFailed("starting the video encoder") }
+        guard writer.startWriting() else { throw ComposeError.writerFailed("starting the video encoder", writer.error) }
         writer.startSession(atSourceTime: .zero)
         guard let pool = adaptor.pixelBufferPool else { throw ComposeError.writerFailed("creating the video buffer pool") }
 
-        let totalFrames = Int(duration * Double(frameRate))
+        let totalFrames = duration.rawValue * Int(frameRate)
         for frame in 0..<totalFrames {
             try Task.checkCancellation()
             while !input.isReadyForMoreMediaData {
                 try Task.checkCancellation()
-                guard writer.status == .writing else { throw ComposeError.writerFailed("waiting for the video encoder") }
+                guard writer.status == .writing else { throw ComposeError.writerFailed("waiting for the video encoder", writer.error) }
                 try await Task.sleep(for: .milliseconds(2))
             }
             try Task.checkCancellation()
-            guard writer.status == .writing else { throw ComposeError.writerFailed("encoding a video frame") }
+            guard writer.status == .writing else { throw ComposeError.writerFailed("encoding a video frame", writer.error) }
             // Drain UIKit temporaries before yielding; do not retain a frame across suspension.
             try autoreleasepool {
                 let progress = Double(frame) / Double(totalFrames - 1)
@@ -77,22 +83,27 @@ enum ShareVideoComposer {
                     snapshot: snapshot,
                     coordinates: coordinates,
                     stats: stats,
-                    routeRevealFraction: progress
+                    routeRevealFraction: progress,
+                    revealedSegments: route.revealedSegments(at: progress),
+                    routeCoordinates: fullCoordinates
                 )
                 let buffer = try pixelBuffer(from: image, size: size, pool: pool)
                 guard adaptor.append(buffer, withPresentationTime: CMTime(value: CMTimeValue(frame), timescale: frameRate)) else {
-                    throw ComposeError.writerFailed("appending a video frame")
+                    throw ComposeError.writerFailed("appending a video frame", writer.error)
                 }
             }
+            onProgress?(Double(frame + 1) / Double(totalFrames + 1))
             await Task.yield()
         }
 
         try Task.checkCancellation()
+        writer.endSession(atSourceTime: CMTime(value: CMTimeValue(totalFrames), timescale: frameRate))
         input.markAsFinished()
         await writer.finishWriting()
-        guard writer.status == .completed else { throw ComposeError.writerFailed("finishing the video file") }
+        guard writer.status == .completed else { throw ComposeError.writerFailed("finishing the video file", writer.error) }
         try Task.checkCancellation()
         completed = true
+        onProgress?(1)
         return url
     }
 

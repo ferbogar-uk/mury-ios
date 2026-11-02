@@ -170,6 +170,37 @@ final class ShareImageComposerTests: XCTestCase {
                        "The Classic header must contain only the stacked identity, independent of sport")
     }
 
+    func testClassicCaptionPreservesTitleAndBoundsLongTitles() throws {
+        let composer = ShareImageComposer(style: BrandTheme.mury.shareStyle(for: .dark))
+        func image(_ title: String) -> UIImage {
+            let fixture = ShareImageComposer.Stats(symbolName: stats.symbolName, sportLabel: stats.sportLabel,
+                distance: stats.distance, duration: stats.duration, paceOrSpeed: stats.paceOrSpeed,
+                date: stats.date, title: title)
+            return composer.compose(photo: nil, coordinates: coordinates, stats: fixture)
+        }
+        let empty = image("")
+        let morning = image("Morning route")
+        let evening = image("Evening route")
+        let caption = CGRect(x: 54, y: 1610, width: 972, height: 60)
+        XCTAssertNotEqual(try croppedPNG(morning, rect: caption), try croppedPNG(evening, rect: caption))
+        XCTAssertGreaterThan(try visiblePixelCount(morning, rect: caption), 0)
+        XCTAssertEqual(empty.pngData(), image(" \n ").pngData())
+        XCTAssertEqual(morning.pngData(), image("  Morning route  ").pngData())
+        let long = image(String(repeating: "Caminhada de quarta-feira — ", count: 20))
+        XCTAssertGreaterThan(try visiblePixelCount(long, rect: caption), 0)
+        let legacyDate = CGRect(x: 0, y: 1610, width: 1080, height: 60)
+        XCTAssertGreaterThan(try visiblePixelCount(empty, rect: legacyDate), 0)
+        for candidate in [morning, evening, long] {
+            XCTAssertEqual(try croppedPNG(candidate, rect: CGRect(x: 0, y: 0, width: 1080, height: 1590)),
+                           try croppedPNG(empty, rect: CGRect(x: 0, y: 0, width: 1080, height: 1590)))
+            XCTAssertEqual(try croppedPNG(candidate, rect: CGRect(x: 0, y: 1700, width: 1080, height: 60)),
+                           try croppedPNG(empty, rect: legacyDate), "The date must retain its content")
+            XCTAssertEqual(try visiblePixelCount(candidate, rect: CGRect(x: 0, y: 1610, width: 54, height: 60)), 0)
+            XCTAssertEqual(try visiblePixelCount(candidate, rect: CGRect(x: 1026, y: 1610, width: 54, height: 60)), 0)
+            XCTAssertEqual(try visiblePixelCount(candidate, rect: CGRect(x: 0, y: 1760, width: 1080, height: 160)), 0)
+        }
+    }
+
     func testOverlayMenuKeepsExistingNamesAndAddsReferenceLayouts() {
         XCTAssertEqual(ShareImageComposer.OverlayLayout.allCases.map(\.rawValue),
                        ["Statistics", "Chips", "Route + stats", "Ticket", "Edge", "Receipt"])
@@ -288,6 +319,31 @@ final class ShareImageComposerTests: XCTestCase {
                 metrics: [.init(id: .duration, label: "TIME", value: "42:17")])
             XCTAssertNotEqual(image.pngData(), changed.pngData(), layout.rawValue)
         }
+    }
+
+    func testSegmentedMapKeepsFullProjectionAndDoesNotConnectGaps() throws {
+        let composer = ShareImageComposer(style: BrandTheme.mury.shareStyle(for: .light))
+        let segments: [[CLLocationCoordinate2D]] = [
+            [.init(latitude: 0, longitude: 0), .init(latitude: 0, longitude: 0.0002)],
+            [.init(latitude: 0.001, longitude: 0.0008), .init(latitude: 0.001, longitude: 0.001)]
+        ]
+        let full = segments.flatMap { $0 }
+        func render(_ visible: [[CLLocationCoordinate2D]]) -> UIImage {
+            composer.composeMapCard(snapshot: nil, coordinates: full, stats: stats,
+                revealedSegments: visible, routeCoordinates: full)
+        }
+        let finished = render(segments)
+        let partial = render([segments[0]])
+        let firstSegment = CGRect(x: 95, y: 1065, width: 195, height: 30)
+        XCTAssertEqual(try croppedPNG(partial, rect: firstSegment), try croppedPNG(finished, rect: firstSegment),
+                       "Revealing more of the route must not rescale earlier segments")
+        let center = CGRect(x: 510, y: 610, width: 60, height: 60)
+        let connected = composer.composeMapCard(snapshot: nil, coordinates: full, stats: stats)
+        XCTAssertNotEqual(try croppedPNG(finished, rect: center), try croppedPNG(connected, rect: center),
+                          "A pause gap must not become a route stroke")
+        let staticSingle = composer.composeMapCard(snapshot: nil, coordinates: full, stats: stats)
+        XCTAssertEqual(staticSingle.pngData(), render([full]).pngData(),
+                       "A complete single segment must preserve the existing static geometry")
     }
 
     private func croppedPNG(_ image: UIImage, rect: CGRect) throws -> Data {
