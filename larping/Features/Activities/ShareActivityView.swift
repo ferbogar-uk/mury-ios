@@ -153,21 +153,8 @@ struct ShareActivityView: View {
                 }
 
                 if template == .video {
-                    Picker("Video duration", selection: $videoDuration) {
-                        ForEach(ShareVideoComposer.ClipDuration.allCases) { duration in
-                            Text("\(duration.rawValue) s").tag(duration)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier("share-video-duration")
-                    if isGeneratingVideo {
-                        ProgressView(value: videoProgress) {
-                            Text("Creating video: \(Int(videoProgress * 100))%")
-                        }
-                        .accessibilityIdentifier("share-video-progress")
-                        Button("Cancel", action: invalidateVideo)
-                            .accessibilityIdentifier("share-video-cancel")
-                    }
+                    videoDurationPicker
+                    if isGeneratingVideo { videoGenerationControls }
                 }
 
                 HStack {
@@ -347,6 +334,26 @@ struct ShareActivityView: View {
                 Text(String(localized: "Try again. If the problem continues, choose a shorter video or share a PNG.") + "\n" + (videoError ?? ""))
             }
         }
+    }
+
+    private var videoDurationPicker: some View {
+        Picker("Video duration", selection: $videoDuration) {
+            ForEach(ShareVideoComposer.ClipDuration.allCases, id: \.rawValue) { (duration: ShareVideoComposer.ClipDuration) in
+                Text("\(duration.rawValue) s").tag(duration)
+            }
+        }
+        .pickerStyle(.segmented)
+        .accessibilityIdentifier("share-video-duration")
+    }
+
+    @ViewBuilder
+    private var videoGenerationControls: some View {
+        ProgressView(value: videoProgress) {
+            Text("Creating video: \(Int(videoProgress * 100))%")
+        }
+        .accessibilityIdentifier("share-video-progress")
+        Button("Cancel", action: invalidateVideo)
+            .accessibilityIdentifier("share-video-cancel")
     }
 
     private var availableMetrics: [ShareImageComposer.OverlayValue] {
