@@ -147,10 +147,10 @@ final class ShareImageComposerTests: XCTestCase {
             "A white sport glyph must begin below the route and above the statistics")
         XCTAssertGreaterThan(white.width, 4)
         XCTAssertNotEqual(try croppedPNG(image, rect: sportBand),
-                          croppedPNG(noGlyph, rect: sportBand))
+                          try croppedPNG(noGlyph, rect: sportBand))
         let header = CGRect(x: 80, y: 150, width: 920, height: 340)
         XCTAssertEqual(try croppedPNG(image, rect: header),
-                       croppedPNG(noGlyph, rect: header),
+                       try croppedPNG(noGlyph, rect: header),
                        "The Classic header must contain only the stacked identity, independent of sport")
     }
 
