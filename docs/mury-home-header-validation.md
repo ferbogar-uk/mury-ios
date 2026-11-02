@@ -1,8 +1,9 @@
 # Home header logo — validation
 
-Date: 2026-11-01
+Date: 2026-11-02
 Branch: feature/mury-branding
 Application source: 9e6bf8afe0725437bf1aab2f2ee962007049fc29
+Native CI tested commit: 3d0dc11f8fee9da4405655abf4ff2d29a70c0770 (documentation-only changes after application source)
 
 ## Changes
 
@@ -18,7 +19,7 @@ The same commit includes the proposed staged roadmap. That document does not app
 | Swift syntax for changed Home view and UI test | PASS | Swift frontend parse through hidden owner PowerShell, exit 0 |
 | Whitespace check | PASS | git diff --check, exit 0 |
 | Commit and push | PASS | 9e6bf8a pushed to origin feature/mury-branding |
-| New native iOS build / XCTest | BLOCKED / UNVERIFIED | GitHub API connection failures during CI dispatch; no run ID confirmed |
+| New native iOS build / XCTest | PASS | CI 41366450017: native Build and Test succeeded; 74 unit + 13 UI = 87 passed, zero failed or skipped |
 | Real iPhone rendering / accessibility layout | NOT RUN | Requires a future validated candidate on a device |
 | New TestFlight upload | NOT RUN | Not authorized or triggered by this work |
 
@@ -30,10 +31,14 @@ The initial sandbox compiler launch could not start the executable; the owner-co
 2. One hidden retry was bounded to 60 seconds. It returned CI_RETRY_TIMEOUT_60_SECONDS with no confirmed run ID. Do not assume either a successful dispatch or completed tests from this timeout.
 3. An independent public API HTTP probe eventually returned 200. This does not establish that authenticated CLI dispatch recovered or prove a global GitHub outage.
 
-The previous 87-test success at source 8b08004 remains evidence for the earlier sharing package, not the new Home-header assertion.
+4. On 2026-11-02, authenticated Actions listing succeeded and showed no run for the Home-header candidate. Dispatch then succeeded: [CI 41366450017](https://github.com/ferbogar-uk/mury-ios/actions/runs/41366450017), head 3d0dc11f8fee9da4405655abf4ff2d29a70c0770. Build, simulator preparation, Test and log upload all passed in 16m49s.
+
+The complete 1,964-line test.log was downloaded and inspected. It contains 87 individually passed test cases, no failed/skipped test cases, and **TEST SUCCEEDED**. Suite totals are 74 unit and 13 UI tests, both with zero failures. Both HomeDashboardTests passed and each checked the existence of the home-brand-logo image. Full log retained locally at .superpowers/sdd/mury-home-header/ci-41366450017/test.log.
+
+This run supplies native evidence for the Home-header assertion as well as the existing transparent-sharing tests. It does not verify real-device appearance or another app receiving a transparent image.
 
 ## Next action and boundaries
 
-When the GitHub API connection is responsive, first check the Actions run list for this exact source SHA to avoid a duplicate dispatch. If none exists, run ci.yml on feature/mury-branding and verify its actual build/XCTest logs.
+Native CI is complete. Next acceptance step is real-iPhone rendering, accessibility layout and receiving-app transparency checks on a future approved device candidate. No further CI rerun is needed for this documentation-only evidence update.
 
 Owner approved commit/push plus simulator CI only. Do not run ios-testflight.yml without separate explicit upload approval. No changes to main, Bundle ID, signing, secrets, workflows, activity storage, GPS or HealthKit were made here.
