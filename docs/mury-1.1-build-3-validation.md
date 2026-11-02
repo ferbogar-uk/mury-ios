@@ -1,7 +1,7 @@
 # MURY 1.1 build 3 — validation and delivery
 
 Date: 2026-11-02
-Status: native build, automated tests, signed archive/export and Apple upload verified. Apple processing VALID; export-compliance declaration pending. Real-device acceptance remains unchecked.
+Status: native build, automated tests, signed archive/export, Apple upload, processing and internal-beta availability VERIFIED. Real-device acceptance remains unchecked.
 
 ## Candidate and authorization
 
@@ -32,14 +32,14 @@ Status: native build, automated tests, signed archive/export and Apple upload ve
 | Signed archive/export | PASS | [TestFlight run 41375815490](https://github.com/ferbogar-uk/mury-ios/actions/runs/41375815490): ARCHIVE SUCCEEDED, EXPORT SUCCEEDED |
 | Apple upload | PASS | Same workflow, exact approved source, 4m49s; UPLOAD SUCCEEDED with no errors |
 | Apple processing | PASS | Read-only Apple API HTTP200: build df867ce3-432b-4706-a610-475f9e63e002, version 3, pre-release version 1.1, processingState VALID |
-| Export compliance / internal availability | PENDING | usesNonExemptEncryption null, MISSING_EXPORT_COMPLIANCE; approved API update returned HTTP403 without changing it |
+| Export compliance / internal availability | PASS | Fresh Apple API HTTP200 after owner completion: usesNonExemptEncryption false; internalBuildState IN_BETA_TESTING; externalBuildState READY_FOR_BETA_SUBMISSION |
 | Real iPhone rendering / receiving-app transparency | NOT RUN | Requires device acceptance |
 
 Apple build: [1.1 (3)](https://appstoreconnect.apple.com/teams/0541a5bc-ac85-486e-a70f-97b94c432520/apps/6828629415/testflight/ios/df867ce3-432b-4706-a610-475f9e63e002).
 
-## Remaining boundary
+## Compliance completion and remaining boundary
 
-The API key can read build metadata but its compliance PATCH returned FORBIDDEN_ERROR. Automatic UI approval review refused to bind an Edge window titled with unrelated work. Opening a dedicated browser tab failed because the browser access host is unavailable. Owner was asked to open the exact Apple build page and leave it active so its window can be identified before finishing the already-approved declaration.
+The API key can read build metadata but its compliance PATCH returned FORBIDDEN_ERROR. Automatic UI approval review refused to bind an Edge window titled with unrelated work. Opening a dedicated browser tab failed because the browser access host is unavailable. Owner then reported completion. A fresh Windows inventory identified App Store Connect; its build list showed build 3 in the existing Ricardo group. A fresh read-only Apple API check confirmed usesNonExemptEncryption=false, processingState=VALID and internalBuildState=IN_BETA_TESTING for the exact build ID. No additional compliance write was needed or performed after that confirmation. External state is READY_FOR_BETA_SUBMISSION; no external review was submitted.
 
 No external beta review, App Store publication, tester/group membership change, build expiration, main merge, new credential, permission change, signing change, GPS/data/HealthKit change or schema migration was performed. Existing builds remain intact.
 
