@@ -1,0 +1,26 @@
+name: Core logic tests (Linux)
+
+# Runs the Foundation-only logic tests on Linux, which costs a tenth of macOS
+# minutes. It does not build the iOS app: the full build and simulator tests
+# stay in ci.yml (macOS). Only these files are covered: Activity.swift,
+# Formatters.swift, VideoShareFile.swift and ReplayTimeline.swift.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  core-logic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.1"
+
+      - name: Test core logic
+        run: bash scripts/test-core-logic.sh
