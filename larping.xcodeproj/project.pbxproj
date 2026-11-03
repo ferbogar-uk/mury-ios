@@ -6,7 +6,18 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		779AAC400000000B00D39CDB /* larpingWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 779AAC400000000200D39CDB /* larpingWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
+		779AAC400000000D00D39CDB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 779AAC0B3053160A00D39CDB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 779AAC400000000100D39CDB;
+			remoteInfo = larpingWatch;
+		};
 		779AAC213053160B00D39CDB /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 779AAC0B3053160A00D39CDB /* Project object */;
@@ -23,7 +34,22 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		779AAC400000000A00D39CDB /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				779AAC400000000B00D39CDB /* larpingWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		779AAC400000000200D39CDB /* larpingWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = larpingWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		779AAC133053160A00D39CDB /* larping.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = larping.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		779AAC203053160B00D39CDB /* larpingTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = larpingTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		779AAC2A3053160B00D39CDB /* larpingUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = larpingUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -40,6 +66,11 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		779AAC400000000300D39CDB /* larpingWatch */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = larpingWatch;
+			sourceTree = "<group>";
+		};
 		779AAC153053160A00D39CDB /* larping */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -61,6 +92,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		779AAC400000000500D39CDB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		779AAC103053160A00D39CDB /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -88,6 +126,7 @@
 		779AAC0A3053160A00D39CDB = {
 			isa = PBXGroup;
 			children = (
+				779AAC400000000300D39CDB /* larpingWatch */,
 				779AAC153053160A00D39CDB /* larping */,
 				779AAC233053160B00D39CDB /* larpingTests */,
 				779AAC2D3053160B00D39CDB /* larpingUITests */,
@@ -99,6 +138,7 @@
 			isa = PBXGroup;
 			children = (
 				779AAC133053160A00D39CDB /* larping.app */,
+				779AAC400000000200D39CDB /* larpingWatch.app */,
 				779AAC203053160B00D39CDB /* larpingTests.xctest */,
 				779AAC2A3053160B00D39CDB /* larpingUITests.xctest */,
 			);
@@ -108,6 +148,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		779AAC400000000100D39CDB /* larpingWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 779AAC400000000700D39CDB /* Build configuration list for PBXNativeTarget "larpingWatch" */;
+			buildPhases = (
+				779AAC400000000400D39CDB /* Sources */,
+				779AAC400000000500D39CDB /* Frameworks */,
+				779AAC400000000600D39CDB /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				779AAC400000000300D39CDB /* larpingWatch */,
+			);
+			name = larpingWatch;
+			packageProductDependencies = (
+			);
+			productName = larpingWatch;
+			productReference = 779AAC400000000200D39CDB /* larpingWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
 		779AAC123053160A00D39CDB /* larping */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 779AAC343053160B00D39CDB /* Build configuration list for PBXNativeTarget "larping" */;
@@ -115,10 +177,12 @@
 				779AAC0F3053160A00D39CDB /* Sources */,
 				779AAC103053160A00D39CDB /* Frameworks */,
 				779AAC113053160A00D39CDB /* Resources */,
+				779AAC400000000A00D39CDB /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				779AAC400000000C00D39CDB /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				779AAC153053160A00D39CDB /* larping */,
@@ -186,6 +250,9 @@
 				LastSwiftUpdateCheck = 2660;
 				LastUpgradeCheck = 2660;
 				TargetAttributes = {
+					779AAC400000000100D39CDB = {
+						CreatedOnToolsVersion = 26.6;
+					};
 					779AAC123053160A00D39CDB = {
 						CreatedOnToolsVersion = 26.6;
 						SystemCapabilities = {
@@ -219,6 +286,7 @@
 			projectRoot = "";
 			targets = (
 				779AAC123053160A00D39CDB /* larping */,
+				779AAC400000000100D39CDB /* larpingWatch */,
 				779AAC1F3053160B00D39CDB /* larpingTests */,
 				779AAC293053160B00D39CDB /* larpingUITests */,
 			);
@@ -226,6 +294,13 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		779AAC400000000600D39CDB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		779AAC113053160A00D39CDB /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -250,6 +325,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		779AAC400000000400D39CDB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		779AAC0F3053160A00D39CDB /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -274,6 +356,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		779AAC400000000C00D39CDB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 779AAC400000000100D39CDB /* larpingWatch */;
+			targetProxy = 779AAC400000000D00D39CDB /* PBXContainerItemProxy */;
+		};
 		779AAC223053160B00D39CDB /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 779AAC123053160A00D39CDB /* larping */;
@@ -287,6 +374,63 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		779AAC400000000800D39CDB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 3;
+				DEVELOPMENT_TEAM = Z6HU7P866U;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = MURY;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = rdyy.larping;
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = rdyy.larping.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Debug;
+		};
+		779AAC400000000900D39CDB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 3;
+				DEVELOPMENT_TEAM = Z6HU7P866U;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = MURY;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = rdyy.larping;
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = rdyy.larping.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
 		779AAC323053160B00D39CDB /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -577,6 +721,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		779AAC400000000700D39CDB /* Build configuration list for PBXNativeTarget "larpingWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				779AAC400000000800D39CDB /* Debug */,
+				779AAC400000000900D39CDB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		779AAC0E3053160A00D39CDB /* Build configuration list for PBXProject "larping" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
