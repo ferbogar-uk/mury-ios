@@ -1,6 +1,13 @@
 # MURY
 
-MURY 1.1 development uses the approved Flow branding.
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/mury-horizontal-dark.png">
+    <img src="docs/brand/mury-horizontal-primary.png" alt="MURY" width="360">
+  </picture>
+</p>
+
+MURY 1.1 development uses the approved MURY brand identity, v1.3.
 
 **Your private fitness and GPS tracker.** MURY is a free,
 open-source iOS app that records GPS activities — runs, rides, hikes, walks,
@@ -15,14 +22,6 @@ dependencies. Optional extras that keep the privacy promise: GPX import,
 HealthKit sync/import (you opt in), and JSON backup/restore via iCloud Drive.
 Works fully offline; GPS + Apple Maps tiles aside, the app itself never
 touches the network.
-
-## Historical screenshots (LARPING 1.0)
-
-<p align="center">
-  <img src="screenshots/activities.png" alt="Activities" width="260">
-  <img src="screenshots/activity-detail.png" alt="Activity detail — hero route map" width="260">
-  <img src="screenshots/record.png" alt="Record — live GPS recording" width="260">
-</p>
 
 ## Features
 
