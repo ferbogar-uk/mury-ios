@@ -89,6 +89,9 @@ struct RecordView: View {
                 }
             }
             .task { tracker.requestPermission() }
+            .onChange(of: tracker.elapsedSeconds) { sendMirror() }
+            .onChange(of: tracker.state) { sendMirror() }
+            .onChange(of: tracker.distanceMeters) { sendMirror() }
             .onChange(of: selectedSport) {
                 eventName = suggestedEventName(for: selectedSport)
             }
@@ -313,6 +316,24 @@ struct RecordView: View {
         } catch {
             saveErrorMessage = error.localizedDescription
         }
+    }
+
+    /// Tells the watch what the recorder is doing. Never affects the recording.
+    private func sendMirror() {
+        let state: MirrorSnapshot.State
+        switch tracker.state {
+        case .idle: state = .idle
+        case .recording: state = .recording
+        case .paused: state = .paused
+        }
+        WatchMirror.shared.send(MirrorSnapshot(
+            state: state,
+            elapsedSeconds: tracker.elapsedSeconds,
+            distanceMeters: tracker.distanceMeters,
+            speedMetersPerSecond: tracker.currentSpeedMps,
+            sportLabel: selectedSport.label,
+            usesPace: selectedSport.usesPaceMetric
+        ))
     }
 
     private func suggestedEventName(for sport: SportType) -> String {
