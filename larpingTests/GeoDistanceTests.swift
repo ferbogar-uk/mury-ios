@@ -6,15 +6,15 @@ import CoreLocation
 
 final class GeoDistanceTests: XCTestCase {
     func testKnownDistances() {
-        // One degree of latitude is about 111.2 km.
+        // One degree of latitude at the equator is about 110.57 km on the WGS84 ellipsoid.
         XCTAssertEqual(
             GeoDistance.meters(fromLatitude: 0, longitude: 0, toLatitude: 1, longitude: 0),
-            111_195, accuracy: 50
+            110_574, accuracy: 5
         )
-        // London to Paris is about 343.5 km.
+        // London to Paris is about 343.9 km.
         XCTAssertEqual(
             GeoDistance.meters(fromLatitude: 51.5074, longitude: -0.1278, toLatitude: 48.8566, longitude: 2.3522),
-            343_500, accuracy: 500
+            343_923, accuracy: 20
         )
     }
 
@@ -32,8 +32,8 @@ final class GeoDistanceTests: XCTestCase {
 
     #if canImport(CoreLocation)
     /// The importer used CLLocation before. Over short GPS steps and over long
-    /// legs, the replacement must stay within 0.5% of what the iPhone computed.
-    func testMatchesCoreLocationWithinHalfAPercent() {
+    /// legs, the replacement must stay within 0.05% of what the iPhone computed.
+    func testMatchesCoreLocationWithinOneTwentiethOfAPercent() {
         let steps: [(Double, Double, Double, Double)] = [
             (51.5074, -0.1278, 51.5075, -0.1279),   // ~13 m, London
             (51.5074, -0.1278, 51.5174, -0.1178),   // ~1.3 km
@@ -49,7 +49,7 @@ final class GeoDistanceTests: XCTestCase {
                 .distance(from: CLLocation(latitude: lat1, longitude: lon1))
             let ours = GeoDistance.meters(fromLatitude: lat1, longitude: lon1, toLatitude: lat2, longitude: lon2)
             let relative = abs(ours - apple) / apple
-            XCTAssertLessThan(relative, 0.005, "(\(lat1),\(lon1))->(\(lat2),\(lon2)): apple=\(apple) ours=\(ours) diff=\(relative * 100)%")
+            XCTAssertLessThan(relative, 0.0005, "(\(lat1),\(lon1))->(\(lat2),\(lon2)): apple=\(apple) ours=\(ours) diff=\(relative * 100)%")
         }
     }
     #endif
