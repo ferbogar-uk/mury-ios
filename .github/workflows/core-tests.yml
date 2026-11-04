@@ -3,8 +3,8 @@ name: Core Logic Tests (Linux)
 # Runs the Foundation-only logic tests on Linux, which costs a tenth of macOS
 # minutes. It does not build the iOS app: the full build and simulator tests
 # stay in ci.yml (macOS). Only these files are covered: Activity.swift,
-# Formatters.swift, ReplayTimeline.swift and the watch mirror message
-# (MirrorShared/MirrorSnapshot.swift, MirrorDisplay.swift).
+# Formatters.swift, ReplayTimeline.swift, GeoDistance.swift, GPXParser.swift and the
+# watch mirror message (MirrorShared/MirrorSnapshot.swift, MirrorDisplay.swift).
 on:
   workflow_dispatch:
   push:
