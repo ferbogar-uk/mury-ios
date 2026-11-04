@@ -66,6 +66,11 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		779AAC400000000F00D39CDB /* MirrorShared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = MirrorShared;
+			sourceTree = "<group>";
+		};
 		779AAC400000000300D39CDB /* larpingWatch */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = larpingWatch;
@@ -126,6 +131,7 @@
 		779AAC0A3053160A00D39CDB = {
 			isa = PBXGroup;
 			children = (
+				779AAC400000000F00D39CDB /* MirrorShared */,
 				779AAC400000000300D39CDB /* larpingWatch */,
 				779AAC153053160A00D39CDB /* larping */,
 				779AAC233053160B00D39CDB /* larpingTests */,
@@ -162,6 +168,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				779AAC400000000300D39CDB /* larpingWatch */,
+				779AAC400000000F00D39CDB /* MirrorShared */,
 			);
 			name = larpingWatch;
 			packageProductDependencies = (
@@ -186,6 +193,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				779AAC153053160A00D39CDB /* larping */,
+				779AAC400000000F00D39CDB /* MirrorShared */,
 			);
 			name = larping;
 			packageProductDependencies = (

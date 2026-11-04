@@ -39,6 +39,7 @@ struct larpingApp: App {
             .foregroundStyle(theme.ink)
             .preferredColorScheme(appearanceMode.colorScheme)
             .task {
+                WatchMirror.shared.activate()
                 try? await Task.sleep(for: .seconds(1.4))
                 withAnimation(reduceMotion ? nil : .easeOut(duration: 0.4)) { showSplash = false }
             }
