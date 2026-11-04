@@ -1,0 +1,3 @@
+.build/
+Sources/CoreLogic/*.swift
+Tests/CoreLogicTests/*.swift

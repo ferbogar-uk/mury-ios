@@ -1,0 +1,4 @@
+# Shell scripts and workflows must keep LF line endings so they run on Linux runners.
+*.sh text eol=lf
+.github/workflows/*.yml text eol=lf
+CoreLogic/Package.swift text eol=lf

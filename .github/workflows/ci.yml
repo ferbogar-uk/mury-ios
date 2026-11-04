@@ -1,9 +1,9 @@
 name: CI
 
+# macOS runner minutes are expensive (10x Linux). The full iOS build and test runs
+# only on pull requests and by hand. Pure-logic tests run on Linux in core-tests.yml.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
 
