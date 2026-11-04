@@ -18,13 +18,15 @@ copied=0
 for f in \
   larping/Core/Models/Activity.swift \
   larping/Core/Formatters.swift \
+  larping/Core/GeoDistance.swift \
+  larping/Core/GPXParser.swift \
   MirrorShared/MirrorSnapshot.swift \
   MirrorShared/MirrorDisplay.swift \
   larping/Features/Activities/ReplayTimeline.swift; do
   if [ -f "$f" ]; then cp "$f" "$SRC/"; copied=$((copied + 1)); else echo "skip (not on this branch): $f"; fi
 done
 
-for t in ReplayTimelineTests FormattersTests EventNamerTests MirrorSnapshotTests; do
+for t in ReplayTimelineTests FormattersTests EventNamerTests MirrorSnapshotTests GeoDistanceTests GPXParserTests; do
   if [ -f "larpingTests/$t.swift" ]; then
     sed 's/@testable import larping/@testable import CoreLogic/' "larpingTests/$t.swift" > "$TST/$t.swift"
   else

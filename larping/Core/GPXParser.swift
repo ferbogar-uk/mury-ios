@@ -1,5 +1,7 @@
-import CoreLocation
 import Foundation
+#if canImport(FoundationXML)
+import FoundationXML
+#endif
 
 /// Parses GPX 1.1 `<trkpt>` points into the same shape the live recorder
 /// produces, so an imported file goes through the identical save path.
@@ -44,15 +46,17 @@ enum GPXParser {
         var trackPoints: [TrackPointPayload] = []
         var distanceMeters = 0.0
         var elevationGainMeters = 0.0
-        var lastLocation: CLLocation?
+        var lastPoint: Point?
         var lastAltitude: Double?
 
         for point in delegate.points {
-            let location = CLLocation(latitude: point.latitude, longitude: point.longitude)
-            if let lastLocation {
-                distanceMeters += location.distance(from: lastLocation)
+            if let lastPoint {
+                distanceMeters += GeoDistance.meters(
+                    fromLatitude: lastPoint.latitude, longitude: lastPoint.longitude,
+                    toLatitude: point.latitude, longitude: point.longitude
+                )
             }
-            lastLocation = location
+            lastPoint = point
             if let altitude = point.elevation {
                 if let lastAltitude, altitude > lastAltitude {
                     elevationGainMeters += altitude - lastAltitude
