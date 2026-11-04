@@ -2,7 +2,7 @@ import XCTest
 @testable import larping
 
 final class RecorderMathTests: XCTestCase {
-    /// A fix on a north-going line near the equator: each 0.001 deg of latitude is ~111.2 m.
+    /// A fix on a north-going line near the equator: each 0.001 deg of latitude is ~110.57 m on the WGS84 ellipsoid.
     private func fix(
         lat: Double = 0, lon: Double = 0, alt: Double = 10,
         hAcc: Double = 5, vAcc: Double = 5, speed: Double = 3
@@ -22,7 +22,7 @@ final class RecorderMathTests: XCTestCase {
         _ = m.add(fix(lat: 0.000), isRecording: true)
         _ = m.add(fix(lat: 0.001), isRecording: true)
         _ = m.add(fix(lat: 0.002), isRecording: true)
-        XCTAssertEqual(m.distanceMeters, 222.4, accuracy: 0.5)
+        XCTAssertEqual(m.distanceMeters, 221.15, accuracy: 0.1)
     }
 
     func testNotRecordingIgnoresFixes() {
@@ -67,7 +67,7 @@ final class RecorderMathTests: XCTestCase {
         _ = m.add(fix(lat: 0.000), isRecording: true)
         _ = m.add(fix(lat: 0.500, hAcc: 90), isRecording: true)   // far away, but ignored
         _ = m.add(fix(lat: 0.001), isRecording: true)
-        XCTAssertEqual(m.distanceMeters, 111.2, accuracy: 0.5)
+        XCTAssertEqual(m.distanceMeters, 110.57, accuracy: 0.1)
     }
 
     func testSpeedAndMaxSpeed() {
