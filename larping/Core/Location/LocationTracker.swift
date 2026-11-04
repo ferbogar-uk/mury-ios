@@ -13,18 +13,17 @@ final class LocationTracker: NSObject, CLLocationManagerDelegate {
 
     private(set) var state: RecordingState = .idle
     private(set) var routeCoordinates: [CLLocationCoordinate2D] = []
-    private(set) var distanceMeters: Double = 0
-    private(set) var currentSpeedMps: Double = 0
-    private(set) var maxSpeedMps: Double = 0
-    private(set) var elevationGainMeters: Double = 0
-    private(set) var isGPSDegraded = false
+    private var math = RecorderMath()
+    var distanceMeters: Double { math.distanceMeters }
+    var currentSpeedMps: Double { math.currentSpeedMps }
+    var maxSpeedMps: Double { math.maxSpeedMps }
+    var elevationGainMeters: Double { math.elevationGainMeters }
+    var isGPSDegraded: Bool { math.isGPSDegraded }
     private(set) var authorizationStatus: CLAuthorizationStatus
     private(set) var elapsedSeconds = 0
 
     private var trackPoints: [TrackPointPayload] = []
     private let manager = CLLocationManager()
-    private var lastLocation: CLLocation?
-    private var lastAltitude: Double?
     private var startedAt: Date?
     /// Active (moving) time, in whole seconds, not counting pauses — the
     /// single source of truth for the on-screen timer AND the stored
@@ -65,13 +64,7 @@ final class LocationTracker: NSObject, CLLocationManagerDelegate {
         startedAt = currentDate()
         trackPoints = []
         routeCoordinates = []
-        distanceMeters = 0
-        currentSpeedMps = 0
-        maxSpeedMps = 0
-        elevationGainMeters = 0
-        isGPSDegraded = false
-        lastLocation = nil
-        lastAltitude = nil
+        math = RecorderMath()
         activeTime = 0
         elapsedSeconds = 0
         segmentStart = currentDate()
@@ -167,22 +160,15 @@ final class LocationTracker: NSObject, CLLocationManagerDelegate {
     }
 
     private func record(_ location: CLLocation) {
-        isGPSDegraded = location.horizontalAccuracy < 0 || location.horizontalAccuracy >= 50
-        guard state == .recording, !isGPSDegraded else { return }
-
-        if let lastLocation {
-            distanceMeters += location.distance(from: lastLocation)
-        }
-        lastLocation = location
-        currentSpeedMps = max(location.speed, 0)
-        maxSpeedMps = max(maxSpeedMps, currentSpeedMps)
-
-        if location.verticalAccuracy >= 0 {
-            if let lastAltitude, location.altitude > lastAltitude {
-                elevationGainMeters += location.altitude - lastAltitude
-            }
-            lastAltitude = location.altitude
-        }
+        let fix = GPSFix(
+            latitude: location.coordinate.latitude,
+            longitude: location.coordinate.longitude,
+            altitude: location.altitude,
+            horizontalAccuracy: location.horizontalAccuracy,
+            verticalAccuracy: location.verticalAccuracy,
+            speed: location.speed
+        )
+        guard math.add(fix, isRecording: state == .recording) == .accepted else { return }
 
         routeCoordinates.append(location.coordinate)
         trackPoints.append(
