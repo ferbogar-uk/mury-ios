@@ -19,6 +19,18 @@ final class MirrorReceiver: NSObject, WCSessionDelegate {
         session.activate()
     }
 
+    /// Sends a command to the iPhone. It only works while the iPhone is reachable;
+    /// otherwise it is dropped and the screen keeps showing the last good state.
+    /// Returns whether it was handed to the iPhone, so the screen can tell the person.
+    @discardableResult
+    func send(_ command: WatchCommand) -> Bool {
+        guard WCSession.isSupported() else { return false }
+        let session = WCSession.default
+        guard session.activationState == .activated, session.isReachable else { return false }
+        session.sendMessage(command.dictionary, replyHandler: nil, errorHandler: nil)
+        return true
+    }
+
     private func apply(_ dictionary: [String: Any]) {
         // A malformed message is ignored: the screen keeps its last good state.
         guard let next = MirrorSnapshot(dictionary: dictionary) else { return }

@@ -16,6 +16,9 @@ final class WatchMirror: NSObject, WCSessionDelegate {
 
     private var lastSent: MirrorSnapshot?
 
+    /// Set by the app root. Called on the main actor with each valid command from the watch.
+    var onCommand: ((WatchCommand) -> Void)?
+
     /// Call once at launch.
     func activate() {
         guard let session else { return }
@@ -40,6 +43,12 @@ final class WatchMirror: NSObject, WCSessionDelegate {
         _ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState,
         error: Error?
     ) {}
+
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        // Anything that is not exactly a known command is dropped.
+        guard let command = WatchCommand(dictionary: message) else { return }
+        Task { @MainActor in self.onCommand?(command) }
+    }
 
     nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}
 
