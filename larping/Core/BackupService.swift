@@ -67,28 +67,17 @@ enum BackupService {
         into context: ModelContext,
         persist: (ModelContext) throws -> Void = { try $0.save() }
     ) throws -> (imported: Int, skipped: Int) {
-        let container: BackupContainer
-        do {
-            container = try JSONDecoder.backup.decode(BackupContainer.self, from: data)
-        } catch {
-            throw BackupError.invalidFile
-        }
-        guard container.app == "Larping" else { throw BackupError.notLarpingFile }
+        let container = try BackupImportPlan.container(from: data)
         // The idempotency pass MUST see every existing activity: if this fetch
         // failed we'd treat the store as empty and duplicate every record on re-import.
         let existingIDs = Set(try context.fetch(FetchDescriptor<CDActivity>()).map(\.id))
 
+        // Which activities enter (and which repeat) is decided by the format file, with
+        // no database in it; this function only writes the chosen ones.
+        let plan = BackupImportPlan.plan(for: container, existingIDs: existingIDs)
         var imported = 0
-        var skipped = 0
-        // Guards against malformed backups that list the same activity id twice:
-        // only the first occurrence imports, preserving the no-duplicates rule.
-        var importedIDs: Set<UUID> = []
-        for backup in container.activities {
-            guard !existingIDs.contains(backup.id), !importedIDs.contains(backup.id) else {
-                skipped += 1
-                continue
-            }
-            importedIDs.insert(backup.id)
+        let skipped = plan.skipped
+        for backup in plan.toImport {
             let activity = CDActivity()
             activity.id = backup.id
             activity.sportTypeRaw = backup.sportTypeRaw
@@ -130,52 +119,6 @@ enum BackupService {
     }
 }
 
-enum BackupError: LocalizedError {
-    case invalidFile
-    case notLarpingFile
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidFile: return "That file isn't a valid Larping backup."
-        case .notLarpingFile: return "That file isn't a Larping backup."
-        }
-    }
-}
-
-struct BackupContainer: Codable {
-    let app: String
-    let version: Int
-    let exportedAt: Date
-    let activities: [BackupActivity]
-}
-
-struct BackupActivity: Codable {
-    let id: UUID
-    let sportTypeRaw: String
-    let startedAt: Date
-    let endedAt: Date?
-    let durationSeconds: Int?
-    let distanceMeters: Int?
-    let elevationGainMeters: Int?
-    let averageSpeedMps: Double?
-    let maxSpeedMps: Double?
-    let source: String
-    let eventName: String?
-    let createdAt: Date
-    let trackPoints: [BackupTrackPoint]
-}
-
-struct BackupTrackPoint: Codable {
-    let id: UUID
-    let timestamp: Date
-    let latitude: Double
-    let longitude: Double
-    let altitudeMeters: Double?
-    let speedMps: Double?
-    let heartRateBpm: Int?
-    let cadenceRpm: Int?
-}
-
 /// Cross-app `FileDocument` for SwiftUI's `fileExporter` — the user can pick
 /// any Files destination, including iCloud Drive.
 struct BackupFile: FileDocument {
@@ -194,22 +137,4 @@ struct BackupFile: FileDocument {
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
         FileWrapper(regularFileWithContents: data)
     }
-}
-
-extension JSONEncoder {
-    static let pretty: JSONEncoder = {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
-        return encoder
-    }()
-}
-
-extension JSONDecoder {
-    /// Mirrors `JSONEncoder.pretty`'s date strategy, so exports round-trip.
-    static let backup: JSONDecoder = {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return decoder
-    }()
 }
