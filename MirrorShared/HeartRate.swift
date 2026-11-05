@@ -96,3 +96,48 @@ enum HeartRateSensorPlan {
         }
     }
 }
+
+/// Collects the readings of one recording and says where each belongs on the route.
+///
+/// Pure logic (Foundation only), tested on Linux. It lives in memory for the length of a
+/// recording and is emptied when the recording is saved or dropped. The iPhone keeps
+/// every reading so that, when the activity is saved, each one can be attached to the
+/// route point closest to it in time. Averages and maximums are then worked out from the
+/// stored points, the same way they already are for activities imported from Health.
+struct HeartRateLog: Equatable {
+    /// A reading further than this from any route point is not attached: the watch
+    /// measured it while the iPhone was not recording a position (for example during a
+    /// pause), so it does not describe that point.
+    static let maxGapToPoint: TimeInterval = 10
+
+    private(set) var readings: [HeartRateReading] = []
+
+    var isEmpty: Bool { readings.isEmpty }
+
+    mutating func add(_ reading: HeartRateReading) {
+        // Out-of-order or repeated readings are dropped: the average must not count one twice.
+        if let last = readings.last, reading.date <= last.date { return }
+        readings.append(reading)
+    }
+
+    mutating func clear() { readings.removeAll() }
+
+    /// Heart rate for each route point, in the same order as `pointDates`. Each reading
+    /// goes to the nearest point in time, and a point keeps the highest reading that
+    /// landed on it, so a peak is never lost.
+    func assign(toPointsAt pointDates: [Date]) -> [Int?] {
+        var result = [Int?](repeating: nil, count: pointDates.count)
+        guard !readings.isEmpty, !pointDates.isEmpty else { return result }
+        for reading in readings {
+            var best: Int?
+            var bestGap = TimeInterval.infinity
+            for (index, date) in pointDates.enumerated() {
+                let gap = abs(date.timeIntervalSince(reading.date))
+                if gap < bestGap { bestGap = gap; best = index }
+            }
+            guard let index = best, bestGap <= Self.maxGapToPoint else { continue }
+            result[index] = max(result[index] ?? 0, reading.beatsPerMinute)
+        }
+        return result
+    }
+}
