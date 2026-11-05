@@ -5,7 +5,7 @@ struct RecordView: View {
     @Environment(ActivitiesStore.self) private var activitiesStore
     @Environment(\.brandTheme) private var theme
     @Environment(\.colorScheme) private var colorScheme
-    @State private var tracker = LocationTracker()
+    @Environment(LocationTracker.self) private var tracker
     @State private var selectedSport: SportType = .run
     @State private var eventName = ""
     @FocusState private var isEditingEventName: Bool

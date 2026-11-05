@@ -5,8 +5,8 @@ name: Core Logic Tests (Linux)
 # stay in ci.yml (macOS). Only these files are covered: Activity.swift,
 # Formatters.swift, ReplayTimeline.swift, GeoDistance.swift, GPXParser.swift,
 # Location/RecorderMath.swift (the recorder's distance, speed and climb maths),
-# Stats/StatsSummary.swift (the statistics maths) and the watch mirror message
-# (MirrorShared/MirrorSnapshot.swift, MirrorDisplay.swift).
+# Stats/StatsSummary.swift (the statistics maths) and the watch mirror message and
+# controls (MirrorShared/MirrorSnapshot.swift, MirrorDisplay.swift, WatchControls.swift).
 on:
   workflow_dispatch:
   push:

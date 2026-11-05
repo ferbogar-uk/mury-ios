@@ -5,6 +5,7 @@ struct RootTabView: View {
     @Environment(\.brandTheme) private var theme
     @Environment(\.modelContext) private var modelContext
     @State private var activitiesStore: ActivitiesStore?
+    @State private var tracker = LocationTracker()
 
     private enum AppTab: Hashable { case home, activities, record, stats, profile }
     @State private var selectedTab = AppTab.home
@@ -36,6 +37,7 @@ struct RootTabView: View {
                     }
                 }
                 .environment(activitiesStore)
+                .environment(tracker)
                 .toolbarBackground(theme.navigation, for: .tabBar)
                 .toolbarBackground(.visible, for: .tabBar)
             } else {
