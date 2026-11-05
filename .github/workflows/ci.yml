@@ -4,11 +4,14 @@ name: CI
 # Linux in core-tests.yml.
 #
 # What runs where:
-# - Pull request: build the app and run the unit tests (larpingTests), about 4 minutes.
-# - Push to main and by hand: the same plus the UI tests (larpingUITests), which boot
-#   the whole app in the simulator and take about 7 minutes on their own. A UI
-#   regression is therefore caught right after the merge, not before it. Run this
-#   workflow by hand on the branch if a pull request touches screens.
+# - Pull request: build the app and run the unit tests (larpingTests), except the full
+#   video export test (ShareVideoComposerTests/testCompleteExportProducesReadablePortraitMP4,
+#   about 69 seconds on its own). About 3 minutes in total.
+# - Push to main and by hand: everything, including that video test and the UI tests
+#   (larpingUITests), which boot the whole app in the simulator and take about 7
+#   minutes on their own. A UI or video-export regression is therefore caught right
+#   after the merge, not before it. Run this workflow by hand on the branch if a pull
+#   request touches screens or the video composer.
 #
 # Rules:
 # 1. A pull request that only touches documentation, images or the Linux job
@@ -67,9 +70,9 @@ jobs:
 
       - name: Test
         env:
-          # Pull requests run the unit tests only. Pushes to main and manual runs
-          # also run the slow UI tests.
-          ONLY: ${{ github.event_name == 'pull_request' && '-only-testing:larpingTests' || '' }}
+          # Pull requests run the unit tests only, minus the slow full video export.
+          # Pushes to main and manual runs also run the video export and the UI tests.
+          ONLY: ${{ github.event_name == 'pull_request' && '-only-testing:larpingTests -skip-testing:larpingTests/ShareVideoComposerTests/testCompleteExportProducesReadablePortraitMP4' || '' }}
         run: |
           xcodebuild -project larping.xcodeproj -scheme larping \
             -destination 'platform=iOS Simulator,name=iPhone 17' -parallel-testing-enabled NO \
