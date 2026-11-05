@@ -87,7 +87,7 @@ extension JSONDecoder {
 /// twice, or an older file over newer data, never duplicates or destroys anything. The
 /// same rule holds inside one file: a malformed file that lists an id twice imports it once.
 enum BackupImportPlan {
-    struct Result: Equatable {
+    struct Result {
         /// The activities to add, in file order.
         let toImport: [BackupActivity]
         /// How many were left out because their id already existed or repeated in the file.
