@@ -304,6 +304,9 @@ struct RecordView: View {
     }
 
     private func finishRecording() {
+        // Taken before the recorder stops: stopping makes the mirror report "idle", which
+        // empties the log.
+        let heartRates = WatchMirror.shared.takeHeartRateLog()
         let recording = tracker.stop()
         savedDistance = recording.distanceMeters
         let title = eventName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -319,13 +322,29 @@ struct RecordView: View {
                 maxSpeedMps: recording.maxSpeedMps > 0 ? recording.maxSpeedMps : nil,
                 source: "mobile",
                 eventName: title.isEmpty ? suggestedEventName(for: selectedSport) : title,
-                trackPointsPayloads: recording.trackPoints
+                trackPointsPayloads: withHeartRates(heartRates, on: recording.trackPoints)
             )
             showSavedConfirmation = true
             eventName = suggestedEventName(for: selectedSport)
             Task { await HealthKitService.saveWorkout(from: activity) }
         } catch {
             saveErrorMessage = error.localizedDescription
+        }
+    }
+
+    /// Attaches the heart rate the watch measured to the route points. With no readings
+    /// (no watch, or none measured) the points are returned exactly as they were.
+    private func withHeartRates(_ log: HeartRateLog, on points: [TrackPointPayload]) -> [TrackPointPayload] {
+        guard !log.isEmpty else { return points }
+        let dates = points.map { ISO8601DateFormatter.parse($0.timestamp) ?? .distantPast }
+        let rates = log.assign(toPointsAt: dates)
+        return zip(points, rates).map { point, rate in
+            guard let rate else { return point }
+            return TrackPointPayload(
+                timestamp: point.timestamp, latitude: point.latitude, longitude: point.longitude,
+                altitudeMeters: point.altitudeMeters, speedMps: point.speedMps,
+                heartRateBpm: rate, cadenceRpm: point.cadenceRpm
+            )
         }
     }
 
