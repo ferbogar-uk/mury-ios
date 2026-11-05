@@ -1,8 +1,14 @@
 name: CI
 
-# macOS is the slow runner (about 25 minutes, and it queues). The full iOS build and
-# test runs on pull requests and by hand. Pure-logic tests run on Linux in
-# core-tests.yml.
+# macOS is the slow runner (about 25 minutes, and it queues). Pure-logic tests run on
+# Linux in core-tests.yml.
+#
+# What runs where:
+# - Pull request: build the app and run the unit tests (larpingTests), about 4 minutes.
+# - Push to main and by hand: the same plus the UI tests (larpingUITests), which boot
+#   the whole app in the simulator and take about 7 minutes on their own. A UI
+#   regression is therefore caught right after the merge, not before it. Run this
+#   workflow by hand on the branch if a pull request touches screens.
 #
 # Rules:
 # 1. A pull request that only touches documentation, images or the Linux job
@@ -15,6 +21,16 @@ name: CI
 # the "build-and-test" check before trusting a change to app code.
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "design/**"
+      - ".github/workflows/core-tests.yml"
+      - "scripts/test-core-logic.sh"
+      - "CoreLogic/**"
+      - "LICENSE"
   pull_request:
     branches: [main]
     paths-ignore:
@@ -50,9 +66,14 @@ jobs:
           xcrun simctl bootstatus "iPhone 17" -b
 
       - name: Test
+        env:
+          # Pull requests run the unit tests only. Pushes to main and manual runs
+          # also run the slow UI tests.
+          ONLY: ${{ github.event_name == 'pull_request' && '-only-testing:larpingTests' || '' }}
         run: |
           xcodebuild -project larping.xcodeproj -scheme larping \
-            -destination 'platform=iOS Simulator,name=iPhone 17' -parallel-testing-enabled NO test \
+            -destination 'platform=iOS Simulator,name=iPhone 17' -parallel-testing-enabled NO \
+            $ONLY test \
             2>&1 | tee test.log | grep -Ei "error:|failed|TEST SUCCEEDED"
           ! grep -q "TEST FAILED" test.log
 
