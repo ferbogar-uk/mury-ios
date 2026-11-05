@@ -5,69 +5,34 @@ struct StatsView: View {
     @Environment(\.brandTheme) private var theme
     @Environment(ActivitiesStore.self) private var store
 
-    private var lastWeek: [CDActivity] {
-        let cutoff = Calendar.current.date(byAdding: .day, value: -6, to: Calendar.current.startOfDay(for: Date()))!
-        return store.activities.filter { $0.startedAt >= cutoff }
-    }
-
-    private var dailyDistance: [DayTotal] {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        let days = (0..<7).map { calendar.date(byAdding: .day, value: -$0, to: today)! }.reversed()
-        return days.map { day in
-            let total = lastWeek
-                .filter { calendar.isDate($0.startedAt, inSameDayAs: day) }
-                .reduce(0.0) { $0 + Double($1.distanceMeters ?? 0) }
-            return DayTotal(day: day, distanceMeters: total)
-        }
-    }
-
-    private var bySport: [SportTotal] {
-        Dictionary(grouping: lastWeek, by: \.sportType)
-            .map { sport, activities in
-                SportTotal(
-                    sport: sport,
-                    distanceMeters: activities.reduce(0.0) { $0 + Double($1.distanceMeters ?? 0) },
-                    durationSeconds: activities.reduce(0) { $0 + ($1.durationSeconds ?? 0) },
-                    count: activities.count,
-                    maxHeartRateBpm: activities.compactMap(\.maxHeartRateBpm).max()
+    private var summary: StatsSummary {
+        StatsSummary(
+            entries: store.activities.map {
+                StatsEntry(
+                    startedAt: $0.startedAt, sport: $0.sportType,
+                    distanceMeters: $0.distanceMeters, durationSeconds: $0.durationSeconds,
+                    maxHeartRateBpm: $0.maxHeartRateBpm
                 )
-            }
-            .sorted { $0.distanceMeters > $1.distanceMeters }
-    }
-
-    private var totalDistance: Double { lastWeek.reduce(0.0) { $0 + Double($1.distanceMeters ?? 0) } }
-    private var totalDuration: Int { lastWeek.reduce(0) { $0 + ($1.durationSeconds ?? 0) } }
-
-    private var allTimeDistance: Double { store.activities.reduce(0.0) { $0 + Double($1.distanceMeters ?? 0) } }
-    private var allTimeDuration: Int { store.activities.reduce(0) { $0 + ($1.durationSeconds ?? 0) } }
-
-    private var longestDistanceActivity: CDActivity? {
-        store.activities.max { ($0.distanceMeters ?? 0) < ($1.distanceMeters ?? 0) }
-    }
-
-    private var longestDurationActivity: CDActivity? {
-        store.activities.max { ($0.durationSeconds ?? 0) < ($1.durationSeconds ?? 0) }
-    }
-
-    private var highestHeartRateActivity: CDActivity? {
-        store.activities.max { ($0.maxHeartRateBpm ?? 0) < ($1.maxHeartRateBpm ?? 0) }
+            },
+            now: Date(), calendar: Calendar.current
+        )
     }
 
     var body: some View {
-        NavigationStack {
+        let s = summary
+        return NavigationStack {
             List {
                 Section {
                     HStack {
-                        StatColumn(title: "Distance", value: Formatters.distance(meters: totalDistance))
-                        StatColumn(title: "Time", value: Formatters.duration(seconds: totalDuration))
-                        StatColumn(title: "Activities", value: "\(lastWeek.count)")
+                        StatColumn(title: "Distance", value: Formatters.distance(meters: s.weekDistance))
+                        StatColumn(title: "Time", value: Formatters.duration(seconds: s.weekDuration))
+                        StatColumn(title: "Activities", value: "\(s.lastWeek.count)")
                     }
                     .listRowBackground(Color.clear)
                 }
 
                 Section("Daily distance") {
-                    Chart(dailyDistance) { entry in
+                    Chart(s.dailyDistance) { entry in
                         BarMark(
                             x: .value("Day", entry.day, unit: .day),
                             y: .value("Distance", entry.distanceMeters / 1000)
@@ -81,9 +46,9 @@ struct StatsView: View {
                     .padding(.vertical, 8)
                 }
 
-                if !bySport.isEmpty {
+                if !s.bySport.isEmpty {
                     Section("By sport this week") {
-                        ForEach(bySport) { entry in
+                        ForEach(s.bySport) { entry in
                             HStack {
                                 Label(entry.sport.label, systemImage: entry.sport.symbolName)
                                 Spacer()
@@ -99,7 +64,7 @@ struct StatsView: View {
                     }
                 }
 
-                if lastWeek.isEmpty {
+                if s.lastWeek.isEmpty {
                     ContentUnavailableView(
                         "No activities this week",
                         systemImage: "chart.bar",
@@ -107,35 +72,35 @@ struct StatsView: View {
                     )
                 }
 
-                if !store.activities.isEmpty {
+                if s.allTimeCount > 0 {
                     Section("All time") {
                         HStack {
-                            StatColumn(title: "Distance", value: Formatters.distance(meters: allTimeDistance))
-                            StatColumn(title: "Time", value: Formatters.duration(seconds: allTimeDuration))
-                            StatColumn(title: "Activities", value: "\(store.activities.count)")
+                            StatColumn(title: "Distance", value: Formatters.distance(meters: s.allTimeDistance))
+                            StatColumn(title: "Time", value: Formatters.duration(seconds: s.allTimeDuration))
+                            StatColumn(title: "Activities", value: "\(s.allTimeCount)")
                         }
                         .listRowBackground(Color.clear)
                     }
 
                     Section("Personal bests") {
-                        if let longestDistanceActivity, let distance = longestDistanceActivity.distanceMeters {
+                        if let best = s.longestDistance, let distance = best.distanceMeters {
                             BestRow(
                                 title: "Longest distance",
-                                sport: longestDistanceActivity.sportType,
+                                sport: best.sport,
                                 value: Formatters.distance(meters: Double(distance))
                             )
                         }
-                        if let longestDurationActivity, let duration = longestDurationActivity.durationSeconds {
+                        if let best = s.longestDuration, let duration = best.durationSeconds {
                             BestRow(
                                 title: "Longest duration",
-                                sport: longestDurationActivity.sportType,
+                                sport: best.sport,
                                 value: Formatters.duration(seconds: duration)
                             )
                         }
-                        if let highestHeartRateActivity, let heartRate = highestHeartRateActivity.maxHeartRateBpm {
+                        if let best = s.highestHeartRate, let heartRate = best.maxHeartRateBpm {
                             BestRow(
                                 title: "Highest heart rate",
-                                sport: highestHeartRateActivity.sportType,
+                                sport: best.sport,
                                 value: "\(heartRate) bpm"
                             )
                         }
@@ -149,21 +114,6 @@ struct StatsView: View {
             .navigationTitle("Stats")
         }
     }
-}
-
-private struct DayTotal: Identifiable {
-    let day: Date
-    let distanceMeters: Double
-    var id: Date { day }
-}
-
-private struct SportTotal: Identifiable {
-    let sport: SportType
-    let distanceMeters: Double
-    let durationSeconds: Int
-    let count: Int
-    let maxHeartRateBpm: Int?
-    var id: SportType { sport }
 }
 
 private struct BestRow: View {
