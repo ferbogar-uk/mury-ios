@@ -6,6 +6,9 @@ struct RootTabView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var activitiesStore: ActivitiesStore?
     @State private var tracker = LocationTracker()
+    /// Set when the watch asks to finish. The Record tab shows the confirmation;
+    /// nothing is saved until it is confirmed on the iPhone.
+    @State private var finishRequestedFromWatch = false
 
     private enum AppTab: Hashable { case home, activities, record, stats, profile }
     @State private var selectedTab = AppTab.home
@@ -38,12 +41,14 @@ struct RootTabView: View {
                 }
                 .environment(activitiesStore)
                 .environment(tracker)
+                .environment(\.finishRequestedFromWatch, $finishRequestedFromWatch)
                 .toolbarBackground(theme.navigation, for: .tabBar)
                 .toolbarBackground(.visible, for: .tabBar)
             } else {
                 ProgressView()
             }
         }
+        .onAppear { WatchMirror.shared.onCommand = { handleWatchCommand($0) } }
         .task {
             if activitiesStore == nil {
                 SeedData.seedIfNeeded(context: modelContext)
@@ -51,6 +56,26 @@ struct RootTabView: View {
                 activitiesStore = store
                 store.refresh()
             }
+        }
+    }
+
+    /// Applies a command from the watch, with the same rules the tests cover: a command
+    /// that does not fit the current state is dropped.
+    private func handleWatchCommand(_ command: WatchCommand) {
+        let state: MirrorSnapshot.State
+        switch tracker.state {
+        case .idle: state = .idle
+        case .recording: state = .recording
+        case .paused: state = .paused
+        }
+        switch WatchControls.decide(command, in: state) {
+        case .pause: tracker.pause()
+        case .resume: tracker.resume()
+        case .finish:
+            // Never saves from here: show the Record tab and ask on the iPhone.
+            selectedTab = .record
+            finishRequestedFromWatch = true
+        case .ignore: break
         }
     }
 }

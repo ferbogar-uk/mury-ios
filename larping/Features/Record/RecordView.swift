@@ -6,6 +6,7 @@ struct RecordView: View {
     @Environment(\.brandTheme) private var theme
     @Environment(\.colorScheme) private var colorScheme
     @Environment(LocationTracker.self) private var tracker
+    @Environment(\.finishRequestedFromWatch) private var finishRequestedFromWatch
     @State private var selectedSport: SportType = .run
     @State private var eventName = ""
     @FocusState private var isEditingEventName: Bool
@@ -104,6 +105,12 @@ struct RecordView: View {
             }
             .onChange(of: initialSport) { consumeSportRequest() }
             .onChange(of: requestID) { consumeSportRequest() }
+            .alert("Finish and save?", isPresented: finishRequestedFromWatch) {
+                Button("Save") { finishRecording() }
+                Button("Keep recording", role: .cancel) {}
+            } message: {
+                Text("You asked to finish from your watch. Nothing is saved until you confirm.")
+            }
             .alert("Activity saved", isPresented: $showSavedConfirmation) {
                 Button("Done", role: .cancel) {}
             } message: {
