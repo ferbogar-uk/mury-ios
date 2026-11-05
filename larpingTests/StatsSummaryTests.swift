@@ -97,7 +97,8 @@ final class StatsSummaryTests: XCTestCase {
     }
 
     func testStatsEntriesFromDifferentTimesOfDayLandOnTheirOwnDay() {
-        let late = StatsEntry(startedAt: calendar.date(byAdding: .hour, value: 23, to: calendar.startOfDay(for: now))!,
+        // 11:00 is the latest hour of today that is not after `now` (12:00).
+        let late = StatsEntry(startedAt: calendar.date(byAdding: .hour, value: 11, to: calendar.startOfDay(for: now))!,
                               sport: .run, distanceMeters: 1000, durationSeconds: 60, maxHeartRateBpm: nil)
         let s = summary([late])
         XCTAssertEqual(s.dailyDistance.last?.distanceMeters, 1000)
