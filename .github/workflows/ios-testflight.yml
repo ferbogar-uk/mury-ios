@@ -22,6 +22,8 @@ jobs:
       TEAM_ID: Z6HU7P866U
       BUNDLE_ID: rdyy.larping
       PROFILE_NAME: Larping App Store Distribution
+      WATCH_BUNDLE_ID: rdyy.larping.watchkitapp
+      WATCH_PROFILE_NAME: Larping Watch App Store Distribution
 
     steps:
       - name: Checkout repository
@@ -32,22 +34,26 @@ jobs:
           P12: ${{ secrets.IOS_DISTRIBUTION_P12 }}
           PASSWORD: ${{ secrets.IOS_DISTRIBUTION_PASSWORD }}
           PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE }}
+          WATCH_PROFILE: ${{ secrets.IOS_WATCH_PROVISIONING_PROFILE }}
         run: |
           test -n "$P12"
           test -n "$PASSWORD"
           test -n "$PROFILE"
+          test -n "$WATCH_PROFILE"
 
       - name: Install signing certificate
         env:
           P12: ${{ secrets.IOS_DISTRIBUTION_P12 }}
           PASSWORD: ${{ secrets.IOS_DISTRIBUTION_PASSWORD }}
           PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE }}
+          WATCH_PROFILE: ${{ secrets.IOS_WATCH_PROVISIONING_PROFILE }}
         run: |
           set -euo pipefail
           umask 077
 
           printf '%s' "$P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
           printf '%s' "$PROFILE" | base64 --decode > "$RUNNER_TEMP/profile.mobileprovision"
+          printf '%s' "$WATCH_PROFILE" | base64 --decode > "$RUNNER_TEMP/watch-profile.mobileprovision"
 
           security create-keychain -p "" build.keychain
           security set-keychain-settings -lut 21600 build.keychain
@@ -90,6 +96,8 @@ jobs:
 
           cp "$RUNNER_TEMP/profile.mobileprovision" \
             "$HOME/Library/MobileDevice/Provisioning Profiles/larping.mobileprovision"
+          cp "$RUNNER_TEMP/watch-profile.mobileprovision" \
+            "$HOME/Library/MobileDevice/Provisioning Profiles/larping-watch.mobileprovision"
 
           security find-identity -v -p codesigning build.keychain
 
@@ -97,17 +105,24 @@ jobs:
         run: |
           set -o pipefail
 
+          # Each app is signed with its own profile, chosen by the kind of device it
+          # runs on: the iPhone app by the iPhone profile, the watch app (embedded in
+          # it) by the watch profile. The bundle identifiers come from the project.
+          {
+            echo "PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*] = $PROFILE_NAME"
+            echo "PROVISIONING_PROFILE_SPECIFIER[sdk=watchos*] = $WATCH_PROFILE_NAME"
+          } > "$RUNNER_TEMP/signing.xcconfig"
+
           xcodebuild archive \
             -project larping.xcodeproj \
             -scheme larping \
             -configuration Release \
             -destination "generic/platform=iOS" \
             -archivePath "$RUNNER_TEMP/Larping.xcarchive" \
+            -xcconfig "$RUNNER_TEMP/signing.xcconfig" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
-            DEVELOPMENT_TEAM="$TEAM_ID" \
-            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
-            PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID"
+            DEVELOPMENT_TEAM="$TEAM_ID"
 
       - name: Create export options
         run: |
@@ -127,6 +142,8 @@ jobs:
             <dict>
               <key>${BUNDLE_ID}</key>
               <string>${PROFILE_NAME}</string>
+              <key>${WATCH_BUNDLE_ID}</key>
+              <string>${WATCH_PROFILE_NAME}</string>
             </dict>
           </dict>
           </plist>
@@ -138,6 +155,12 @@ jobs:
             -archivePath "$RUNNER_TEMP/Larping.xcarchive" \
             -exportPath "$RUNNER_TEMP/export" \
             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+
+      - name: Check the watch app is inside the IPA
+        run: |
+          set -euo pipefail
+          IPA="$(ls "$RUNNER_TEMP"/export/*.ipa)"
+          unzip -l "$IPA" | grep -E '\.app/Watch/[^/]+\.app/Info\.plist'
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
@@ -190,4 +213,7 @@ jobs:
           rm -f "$RUNNER_TEMP/cert-legacy.p12"
           rm -f "$RUNNER_TEMP/signing.pem"
           rm -f "$RUNNER_TEMP/profile.mobileprovision"
+          rm -f "$RUNNER_TEMP/watch-profile.mobileprovision"
+          rm -f "$RUNNER_TEMP/signing.xcconfig"
           rm -f "$HOME/Library/MobileDevice/Provisioning Profiles/larping.mobileprovision"
+          rm -f "$HOME/Library/MobileDevice/Provisioning Profiles/larping-watch.mobileprovision"
