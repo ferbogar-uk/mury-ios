@@ -92,4 +92,19 @@ final class HeartRateTests: XCTestCase {
         XCTAssertEqual(display.text, "142")
         XCTAssertTrue(display.isLive)
     }
+
+    // MARK: - Sensor plan
+
+    func testSensorFollowsTheRecording() {
+        typealias Plan = HeartRateSensorPlan
+        XCTAssertEqual(Plan.action(mirrored: .recording, sensor: .stopped), .start)
+        XCTAssertEqual(Plan.action(mirrored: .recording, sensor: .running), .nothing)
+        XCTAssertEqual(Plan.action(mirrored: .recording, sensor: .paused), .resume)
+        XCTAssertEqual(Plan.action(mirrored: .paused, sensor: .stopped), .nothing)
+        XCTAssertEqual(Plan.action(mirrored: .paused, sensor: .running), .pause)
+        XCTAssertEqual(Plan.action(mirrored: .paused, sensor: .paused), .nothing)
+        XCTAssertEqual(Plan.action(mirrored: .idle, sensor: .stopped), .nothing)
+        XCTAssertEqual(Plan.action(mirrored: .idle, sensor: .running), .stop)
+        XCTAssertEqual(Plan.action(mirrored: .idle, sensor: .paused), .stop)
+    }
 }

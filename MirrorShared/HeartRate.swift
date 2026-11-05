@@ -69,3 +69,30 @@ struct HeartRateDisplay: Equatable {
         }
     }
 }
+
+/// What the watch's heart-rate sensor is doing.
+enum HeartRateSensorState: Equatable {
+    case stopped, running, paused
+}
+
+/// What the sensor should do next.
+enum HeartRateSensorAction: Equatable {
+    case start, pause, resume, stop, nothing
+}
+
+/// Decides what the sensor should do so that it follows what the iPhone is recording.
+/// The sensor never decides on its own: the iPhone is the one recording, the watch only
+/// measures while a recording is under way.
+enum HeartRateSensorPlan {
+    static func action(
+        mirrored: MirrorSnapshot.State, sensor: HeartRateSensorState
+    ) -> HeartRateSensorAction {
+        switch (mirrored, sensor) {
+        case (.recording, .stopped): return .start
+        case (.recording, .paused): return .resume
+        case (.paused, .running): return .pause
+        case (.idle, .running), (.idle, .paused): return .stop
+        default: return .nothing
+        }
+    }
+}

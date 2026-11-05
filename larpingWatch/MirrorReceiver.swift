@@ -31,6 +31,15 @@ final class MirrorReceiver: NSObject, WCSessionDelegate {
         return true
     }
 
+    /// Sends a heart-rate reading to the iPhone. It is dropped when the iPhone is not
+    /// reachable: the next reading comes within seconds, so nothing is worth queueing.
+    func send(_ reading: HeartRateReading) {
+        guard WCSession.isSupported() else { return }
+        let session = WCSession.default
+        guard session.activationState == .activated, session.isReachable else { return }
+        session.sendMessage(reading.dictionary, replyHandler: nil, errorHandler: nil)
+    }
+
     private func apply(_ dictionary: [String: Any]) {
         // A malformed message is ignored: the screen keeps its last good state.
         guard let next = MirrorSnapshot(dictionary: dictionary) else { return }
