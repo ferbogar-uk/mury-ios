@@ -4,15 +4,20 @@ struct WatchHomeView: View {
     private let receiver = MirrorReceiver.shared
     @State private var finish = FinishConfirmation()
     @State private var notReachable = false
+    private let monitor = HeartRateMonitor.shared
 
     var body: some View {
         let snapshot = receiver.snapshot
-        if snapshot.state == .idle {
-            idleView
-        } else {
-            recordingView(MirrorDisplay(snapshot), sport: snapshot.sportLabel)
-                .onChange(of: snapshot.state) { _, new in finish.stateChanged(to: new) }
+        Group {
+            if snapshot.state == .idle {
+                idleView
+            } else {
+                recordingView(MirrorDisplay(snapshot), sport: snapshot.sportLabel)
+                    .onChange(of: snapshot.state) { _, new in finish.stateChanged(to: new) }
+            }
         }
+        // The sensor only follows what the iPhone is recording; it never starts on its own.
+        .onChange(of: snapshot.state, initial: true) { _, new in monitor.follow(new) }
     }
 
     private var idleView: some View {
@@ -42,13 +47,28 @@ struct WatchHomeView: View {
             Text(display.distance)
                 .font(.title3.weight(.medium))
                 .monospacedDigit()
-            Text(display.rate)
-                .font(.footnote)
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
+            HStack(spacing: 10) {
+                Text(display.rate)
+                    .font(.footnote)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                heartRateLabel
+            }
             controls(for: receiver.snapshot.state)
         }
         .padding(.horizontal)
+    }
+
+    /// The heart rate, or a dash when there is no fresh reading. It is re-evaluated every
+    /// second so that an old number never stays on screen as if it were live.
+    private var heartRateLabel: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let display = HeartRateDisplay(monitor.latest, now: context.date)
+            Label(display.text, systemImage: "heart.fill")
+                .font(.footnote.weight(.medium))
+                .monospacedDigit()
+                .foregroundStyle(display.isLive ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+        }
     }
 
     /// The buttons the current state allows. Finish needs a second tap to confirm,

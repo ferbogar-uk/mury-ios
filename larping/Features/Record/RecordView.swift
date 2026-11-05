@@ -206,6 +206,10 @@ struct RecordView: View {
                 )
             }
 
+            if tracker.state != .idle {
+                HeartRateRow()
+            }
+
             if tracker.state == .recording, tracker.isGPSDegraded {
                 HStack(spacing: 6) {
                     Image(systemName: "exclamationmark.triangle.fill")
