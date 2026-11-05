@@ -11,7 +11,7 @@ struct StatsView: View {
                 StatsEntry(
                     startedAt: $0.startedAt, sport: $0.sportType,
                     distanceMeters: $0.distanceMeters, durationSeconds: $0.durationSeconds,
-                    maxHeartRateBpm: $0.maxHeartRateBpm
+                    maxHeartRateBpm: $0.maxHeartRateBpm, source: $0.source
                 )
             },
             now: Date(), calendar: Calendar.current

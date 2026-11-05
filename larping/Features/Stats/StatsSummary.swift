@@ -10,6 +10,11 @@ struct StatsEntry: Equatable {
     var distanceMeters: Int?
     var durationSeconds: Int?
     var maxHeartRateBpm: Int?
+    /// Where the activity came from ("mobile", "gpx_import", "healthkit_import",
+    /// "sample"). Sample activities are demo data and never count.
+    var source: String = "mobile"
+
+    static let sampleSource = "sample"
 }
 
 struct DayTotal: Equatable, Identifiable {
@@ -42,7 +47,11 @@ struct StatsSummary: Equatable {
     let longestDuration: StatsEntry?
     let highestHeartRate: StatsEntry?
 
-    init(entries: [StatsEntry], now: Date, calendar: Calendar) {
+    /// Every screen that shows a week or a total uses this one rule: sample
+    /// activities and activities that start after `now` are left out first, so
+    /// Home, the activity list and Stats can never disagree.
+    init(entries allEntries: [StatsEntry], now: Date, calendar: Calendar) {
+        let entries = allEntries.filter { $0.source != StatsEntry.sampleSource && $0.startedAt <= now }
         let today = calendar.startOfDay(for: now)
         // The last seven days including today.
         let cutoff = calendar.date(byAdding: .day, value: -6, to: today)!
