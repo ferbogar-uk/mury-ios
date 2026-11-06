@@ -88,3 +88,24 @@ struct StatsSummary: Equatable {
         highestHeartRate = entries.max { ($0.maxHeartRateBpm ?? 0) < ($1.maxHeartRateBpm ?? 0) }
     }
 }
+
+/// Groups items by calendar month, newest month first and newest item first
+/// inside each month, whatever order the items arrive in. Foundation only.
+enum MonthGrouping {
+    struct Section<Item> {
+        let month: Date          // first instant of the month, in the given calendar
+        let items: [Item]
+    }
+
+    static func sections<Item>(
+        _ items: [Item], date: (Item) -> Date, calendar: Calendar
+    ) -> [Section<Item>] {
+        let byMonth = Dictionary(grouping: items) { item -> Date in
+            let parts = calendar.dateComponents([.year, .month], from: date(item))
+            return calendar.date(from: parts)!
+        }
+        return byMonth
+            .sorted { $0.key > $1.key }
+            .map { month, group in Section(month: month, items: group.sorted { date($0) > date($1) }) }
+    }
+}

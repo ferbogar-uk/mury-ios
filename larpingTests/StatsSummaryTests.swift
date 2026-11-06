@@ -172,6 +172,43 @@ final class StatsSummaryTests: XCTestCase {
         XCTAssertEqual(s.allTimeCount, 3)   // everything not in the future
     }
 
+    // MARK: - Month grouping for the activity list
+
+    private func monthDates(_ values: [String]) -> [Date] {
+        let iso = ISO8601DateFormatter()
+        return values.map { iso.date(from: $0)! }
+    }
+
+    func testMonthsAreNewestFirstWhateverOrderTheActivitiesArriveIn() {
+        let dates = monthDates(["2026-09-10T10:00:00Z", "2026-11-02T10:00:00Z", "2026-10-15T10:00:00Z", "2026-11-04T10:00:00Z"])
+        let sections = MonthGrouping.sections(dates, date: { $0 }, calendar: calendar)
+        XCTAssertEqual(sections.count, 3)
+        XCTAssertEqual(sections.map { calendar.component(.month, from: $0.month) }, [11, 10, 9])
+        XCTAssertEqual(sections[0].items.count, 2)
+    }
+
+    func testNewestItemIsFirstInsideAMonth() {
+        let dates = monthDates(["2026-11-02T10:00:00Z", "2026-11-04T10:00:00Z", "2026-11-03T10:00:00Z"])
+        let items = MonthGrouping.sections(dates, date: { $0 }, calendar: calendar)[0].items
+        XCTAssertEqual(items, dates.sorted(by: >))
+    }
+
+    func testYearRolloverKeepsDecemberBeforeJanuaryBeforeEarlierYears() {
+        let dates = monthDates(["2026-01-05T10:00:00Z", "2025-12-20T10:00:00Z", "2025-01-10T10:00:00Z"])
+        let sections = MonthGrouping.sections(dates, date: { $0 }, calendar: calendar)
+        XCTAssertEqual(sections.map { calendar.component(.year, from: $0.month) }, [2026, 2025, 2025])
+        XCTAssertEqual(sections.map { calendar.component(.month, from: $0.month) }, [1, 12, 1])
+    }
+
+    func testSameMonthInDifferentYearsAreSeparateSections() {
+        let dates = monthDates(["2026-11-02T10:00:00Z", "2025-11-02T10:00:00Z"])
+        XCTAssertEqual(MonthGrouping.sections(dates, date: { $0 }, calendar: calendar).count, 2)
+    }
+
+    func testNoActivitiesGiveNoSections() {
+        XCTAssertTrue(MonthGrouping.sections([Date](), date: { $0 }, calendar: calendar).isEmpty)
+    }
+
     func testWeekRollsOverAtMidnightAndDropsTheOldestDay() {
         var london = Calendar(identifier: .gregorian)
         london.timeZone = TimeZone(identifier: "Europe/London")!

@@ -13,16 +13,14 @@ struct ActivitiesListView: View {
         return formatter
     }()
 
-    private var lastWeek: [CDActivity] {
-        let cutoff = Calendar.current.date(byAdding: .day, value: -6, to: Calendar.current.startOfDay(for: Date()))!
-        return activities.filter { $0.startedAt >= cutoff }
+    /// The same week rule as Home and Stats: sample and future activities are left out.
+    private var week: StatsSummary {
+        StatsSummary(entries: activities.map(\.statsEntry), now: Date(), calendar: Calendar.current)
     }
 
     private var monthSections: [(month: String, activities: [CDActivity])] {
-        let groups = Dictionary(grouping: activities) { Self.monthFormatter.string(from: $0.startedAt) }
-        return groups
-            .sorted { ($0.value.first?.startedAt ?? .distantPast) > ($1.value.first?.startedAt ?? .distantPast) }
-            .map { (month: $0.key, activities: $0.value) }
+        MonthGrouping.sections(activities, date: \.startedAt, calendar: Calendar.current)
+            .map { (month: Self.monthFormatter.string(from: $0.month), activities: $0.items) }
     }
 
     var body: some View {
@@ -80,12 +78,13 @@ struct ActivitiesListView: View {
                 description: Text("Record your first run, ride, or hike from the Record tab.")
             )
         } else {
+            let week = week
             List {
                 Section {
                     HStack {
-                        WeekStatColumn(title: "Distance", value: Formatters.distance(meters: lastWeek.reduce(0.0) { $0 + Double($1.distanceMeters ?? 0) }))
-                        WeekStatColumn(title: "Time", value: Formatters.duration(seconds: lastWeek.reduce(0) { $0 + ($1.durationSeconds ?? 0) }))
-                        WeekStatColumn(title: "Activities", value: "\(lastWeek.count)")
+                        WeekStatColumn(title: "Distance", value: Formatters.distance(meters: week.weekDistance))
+                        WeekStatColumn(title: "Time", value: Formatters.duration(seconds: week.weekDuration))
+                        WeekStatColumn(title: "Activities", value: "\(week.lastWeek.count)")
                     }
                     .padding(.vertical, 4)
                 } header: {

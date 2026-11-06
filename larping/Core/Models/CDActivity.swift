@@ -53,5 +53,16 @@ final class CDActivity {
         return rates.reduce(0, +) / rates.count
     }
 
+    /// The one shape every screen hands to StatsSummary, so Home, the activity
+    /// list and Stats all count a week the same way.
+    @Transient
+    var statsEntry: StatsEntry {
+        StatsEntry(
+            startedAt: startedAt, sport: sportType,
+            distanceMeters: distanceMeters, durationSeconds: durationSeconds,
+            maxHeartRateBpm: maxHeartRateBpm, source: source
+        )
+    }
+
     init() {}
 }
