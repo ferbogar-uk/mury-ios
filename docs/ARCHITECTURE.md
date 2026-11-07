@@ -394,6 +394,8 @@ state. Nothing is fabricated when route/HR are missing.
 
 ## Info.plist gotchas
 
+`ITSAppUsesNonExemptEncryption = NO` is set in both `larping/Info.plist` and `Config/larpingWatch-Info.plist`: the app is fully offline and uses no encryption of its own, and without the key TestFlight holds each new build at "Missing Compliance" until the question is answered by hand in App Store Connect.
+
 `GENERATE_INFOPLIST_FILE = YES` plus an explicit `larping/Info.plist` merged
 via `INFOPLIST_FILE` (contains `UIBackgroundModes: [location]`). Reason:
 array-typed keys like `UIBackgroundModes` are NOT synthesized by generic
