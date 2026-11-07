@@ -106,6 +106,8 @@ struct ActivityDetailView: View {
                         StatTile(title: "Max HR", value: "\(maxHR) bpm")
                     }
                 }
+
+                HeartRateSection(activity: activity)
             }
             .padding()
         }

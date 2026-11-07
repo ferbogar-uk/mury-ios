@@ -54,7 +54,9 @@ touches the network.
   title (falls back to the sport label). Detail opens with a hero map (route
   draws itself in sync with a bouncing sport-symbol rider, event
   title + sport icon overlaid bottom-left/bottom-right), bold stat tiles
-  (avg/max heart rate tiles appear when the activity has HR data), and
+  (avg/max heart rate tiles appear when the activity has HR data), a heart-rate
+  graph with the five zones behind it (drag across it to read any moment) and
+  a time-in-zones card — both only when the activity has enough HR readings — and
   an overflow (`•••`) menu for Share / **Rename event** / Delete.
 - **Share** — three swipeable 1080x1920 (Instagram Story ratio) templates:
   a classic card (sport icon + wordmark up top, a big route path line +
