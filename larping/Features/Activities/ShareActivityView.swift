@@ -67,6 +67,7 @@ struct ShareActivityView: View {
     @State private var videoProgress = 0.0
     @State private var generationID = UUID()
     @State private var sharedVideo: VideoShareFile?
+    @State private var showFlyover = false
     private let replaySegments: [[CLLocationCoordinate2D]]
 
     init(activity: CDActivity, coordinates: [CLLocationCoordinate2D]) {
@@ -336,6 +337,9 @@ struct ShareActivityView: View {
         .sheet(item: $sharedVideo) { file in
             VideoShareSheet(file: file)
         }
+        .fullScreenCover(isPresented: $showFlyover) {
+            FlyoverView(activity: activity)
+        }
         .alert("Couldn't create video", isPresented: videoErrorPresented) {
             Button("Retry") { startVideo() }
             Button("OK", role: .cancel) {}
@@ -455,6 +459,7 @@ struct ShareActivityView: View {
         case .classic, .mapCard, .column, .compact, .route, .ticket, .edge, .receipt:
             imageShareLink(selectedImage)
         case .video:
+            VStack(spacing: 12) {
             if let videoURL {
                 Button {
                     do { sharedVideo = try VideoShareFile(source: videoURL) }
@@ -486,6 +491,18 @@ struct ShareActivityView: View {
                 .controlSize(.large)
                 .disabled(isGeneratingVideo)
                 .accessibilityIdentifier("share-video-generate")
+            }
+            Button {
+                showFlyover = true
+            } label: {
+                Label("3D flyover video", systemImage: "view.3d")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .tint(theme.accent)
+            .controlSize(.large)
+            .disabled(isGeneratingVideo || coordinates.count < 2)
+            .accessibilityIdentifier("share-video-flyover")
             }
         }
     }

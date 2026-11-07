@@ -147,4 +147,39 @@ final class FlyoverPlanTests: XCTestCase {
         XCTAssertEqual(FlyoverPlan.smooth(1), 1)
         XCTAssertEqual(FlyoverPlan.smooth(0.5), 0.5, accuracy: 1e-9)
     }
+
+    /// 40 points heading east but zig-zagging up and down, so raw bearings alternate about 55 / 125 degrees.
+    private func zigzagTimeline() -> ReplayTimeline {
+        let points = (0..<40).map {
+            ReplayPoint(timestamp: origin.addingTimeInterval(Double($0) * 5), latitude: $0 % 2 == 0 ? 0 : 0.0007, longitude: Double($0) * 0.001)
+        }
+        return ReplayTimeline(points: points, startedAt: origin, endedAt: nil)
+    }
+
+    func testSmoothedHeadingIgnoresGpsZigzag() {
+        let timeline = zigzagTimeline()
+        for step in 0...20 {
+            let heading = FlyoverPlan.smoothedHeading(timeline: timeline, progress: Double(step) / 20)
+            XCTAssertEqual(heading, 90, accuracy: 30)
+        }
+    }
+
+    func testCameraHeadingChangesGraduallyThroughTheFollowPhase() {
+        let plan = FlyoverPlan(timeline: zigzagTimeline(), clipSeconds: 30)
+        let follow = plan.range(of: .follow)
+        var previous = plan.state(at: follow.lowerBound).headingDegrees
+        var time = follow.lowerBound
+        while time < follow.upperBound {
+            time += 0.1
+            let heading = plan.state(at: min(time, follow.upperBound - 1e-9)).headingDegrees
+            XCTAssertLessThan(abs(FlyoverPlan.shortestDelta(from: previous, to: heading)), 12)
+            previous = heading
+        }
+    }
+
+    func testSmoothedHeadingOnAStraightRouteMatchesItsBearing() {
+        XCTAssertEqual(FlyoverPlan.smoothedHeading(timeline: eastboundTimeline(), progress: 0.5), 90, accuracy: 0.01)
+        let empty = ReplayTimeline(points: [], startedAt: origin, endedAt: nil)
+        XCTAssertEqual(FlyoverPlan.smoothedHeading(timeline: empty, progress: 0.5), 0)
+    }
 }

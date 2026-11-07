@@ -582,3 +582,6 @@ Added `FlyoverPlan` (Foundation-only camera script: overview -> one turn tilting
 ## 2026-11-07 — Export compliance answered in the plist
 
 Build 4 uploaded with no errors (Delivery UUID 721e7c13) but never showed up as an update in TestFlight, almost a day later. The app has no networking and no custom encryption, yet neither `Info.plist` declared `ITSAppUsesNonExemptEncryption`, so App Store Connect can hold a build at "Missing Compliance" until someone answers the question by hand. Both plists (iPhone and Watch) now carry `ITSAppUsesNonExemptEncryption = NO`, so later builds skip the question. A build already held in Missing Compliance still needs the answer given once in App Store Connect.
+## 2026-11-07 — Steadier camera and 3D flyover inside Share
+
+A device recording of the Replay (build 4) showed the camera swinging left and right: the heading was the raw bearing of the current GPS segment. `FlyoverPlan.smoothedHeading` now averages the bearing over roughly +-9% of the route and both the flyover and the Replay use it (tests with a zig-zag GPS track). Share → Video also gets a *3D flyover video* button that opens the flyover with its record and share flow, so the 3D option lives where people look for video sharing. The recording itself is still the real-time screen recording, so Share keeps the 2D rendered video as a separate button.
