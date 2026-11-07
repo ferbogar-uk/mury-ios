@@ -23,6 +23,7 @@ for f in \
   larping/Core/GPXParser.swift \
   larping/Core/Location/RecorderMath.swift \
   larping/Features/Stats/StatsSummary.swift \
+  larping/Core/HeartRateZones.swift \
   MirrorShared/MirrorSnapshot.swift \
   MirrorShared/MirrorDisplay.swift \
   MirrorShared/WatchControls.swift \
@@ -32,7 +33,7 @@ for f in \
   if [ -f "$f" ]; then cp "$f" "$SRC/"; copied=$((copied + 1)); else echo "skip (not on this branch): $f"; fi
 done
 
-for t in ReplayTimelineTests FlyoverPlanTests FormattersTests EventNamerTests MirrorSnapshotTests GeoDistanceTests GPXParserTests RecorderMathTests StatsSummaryTests WatchControlsTests HeartRateTests HeartRateLogTests BackupFormatTests; do
+for t in ReplayTimelineTests FlyoverPlanTests FormattersTests EventNamerTests MirrorSnapshotTests GeoDistanceTests GPXParserTests RecorderMathTests StatsSummaryTests WatchControlsTests HeartRateTests HeartRateLogTests HeartRateZonesTests BackupFormatTests; do
   if [ -f "larpingTests/$t.swift" ]; then
     sed 's/@testable import larping/@testable import CoreLogic/' "larpingTests/$t.swift" > "$TST/$t.swift"
   else

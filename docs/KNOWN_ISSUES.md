@@ -135,6 +135,19 @@ exposes *step cadence*, not RPM, and we deliberately don't rename the field or
 map it. Display code hides heart-rate UI when nil — an invisible gap, not a
 bug.
 
+## Heart-rate zones use the highest recorded heart rate
+
+The zones in the activity detail are 60/70/80/90% of the highest heart rate
+found in any real activity (`HeartRateZones.measuredMaxBpm`; sample activities
+never count). There is no setting for it yet, so it is only as good as the
+hardest effort recorded so far: it sits low if you have never gone all-out, and
+every zone edge moves up when you set a new high. If no real activity has a
+reading, the zones fall back to the open activity's own highest value and the
+caption says so. A birth-year or manual max-heart-rate field is the natural
+next step if this feels wrong. The section appears only with at least 10
+readings, and opening the detail reads the heart rates of every activity once
+(like the Stats screen), so it is built once on appear, not on every touch.
+
 ## HealthKit write is best-effort and silent
 
 `HealthKitService.saveWorkout(from:)` guards on availability + authorization

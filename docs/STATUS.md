@@ -569,6 +569,11 @@ The first real TestFlight upload with the Watch app (build 4; build 3 was alread
 
 Fix: `larpingWatch/Assets.xcassets` with a single-size watchOS `AppIcon` (the MURY 1024 icon, same file as the iPhone marketing icon; watchOS masks it to a circle) and the same `AccentColor`; `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon` on both Watch build configurations. `larpingWatch` is a file-system synchronized group, so the catalog joins the target without extra project edits. Each TestFlight upload also needs a higher build number than the last one sent (`CURRENT_PROJECT_VERSION`, iPhone and Watch kept equal).
 
+## 2026-11-06 — Heart-rate graph and zones in the activity detail
+
+New `HeartRateSection` under the stat tiles: a Swift Charts line of the saved heart rate with the five zones as coloured bands behind it (drag to read a moment, the header switches to that time and bpm), and a card with time in each zone as a bar plus a row per zone. Only appears with at least 10 readings, so activities without heart rate look as before.
+
+The zone maths is Foundation-only in `larping/Core/HeartRateZones.swift` (edges at 60/70/80/90% of the max, rounded half up; a reading counts until the next one; gaps over 30 s count for nothing so a pause or a watch off never inflates a zone) with `HeartRateZonesTests`, both added to `scripts/test-core-logic.sh` so they run on Linux. The max is the highest real reading across all activities, no setting needed (see `KNOWN_ISSUES.md`). The graph and card were first drawn as mockups (options A graph only, B graph and zones) and B was chosen. Not yet seen on a device.
 ## 2026-11-07 — Route flyover (Strava-style 3D video)
 
 Added `FlyoverPlan` (Foundation-only camera script: overview -> one turn tilting onto the start -> follow the point with a growing trail -> pull back) with unit tests in `FlyoverPlanTests` (also in the Linux core-logic script), `FlyoverView` (preview and screen-recorded video, 15/30/60 s, default 30, share via the system sheet) and a *Route flyover* button on Activity detail. Chosen over frame-by-frame MKMapSnapshotter rendering (about 900 snapshots for 30 s, slow, geometry unverified per `mury-3d-video-export-feasibility.md`). Not run on a device yet: camera smoothness, recording permission flow and Apple Maps 3D coverage need a TestFlight build to check.

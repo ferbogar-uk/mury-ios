@@ -55,6 +55,8 @@ Core/
   BackupService.swift      JSON export + idempotent import (FileDocument)
   SeedData.swift           one-time sample activities (random-walk paths)
   Formatters.swift         distance/duration/pace/speed/elevation + ISO parse
+  HeartRateZones.swift     Foundation-only: five zones from a max heart rate, time in
+                           each zone, graph series, measured max (tested on Linux)
   AppearanceMode.swift     light/dark/system toggle
   BrandTheme.swift         persisted theme identity, shared SwiftUI/UIKit tokens
   Health/
@@ -69,6 +71,7 @@ Features/
   Home/          HomeDashboardView + HomeSummary — personal last-seven-days summary, recent real activities, recording shortcuts
   Record/        RecordView — live map, local save attempt on finish, event name + auto-fill
   Activities/    ActivitiesListView (@Query), ActivityDetailView (hero map),
+                  HeartRateSection (graph + zones card, Swift Charts),
                   ImportGPXView, ImportHealthKitView, ShareActivityView, ActivitiesStore
   Stats/         StatsView — Swift Charts last-7-days + all-time + per-sport + personal bests
   Profile/       ProfileView — cover card (fixed gradient, no photo upload) + name/bio, backup export/import; SettingsView — theme and appearance
