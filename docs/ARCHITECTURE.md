@@ -74,6 +74,12 @@ Features/
   Profile/       ProfileView — cover card (fixed gradient, no photo upload) + name/bio, backup export/import; SettingsView — theme and appearance
 ```
 
+## Route flyover (`Features/Activities/FlyoverPlan.swift`, `FlyoverView.swift`)
+
+`FlyoverPlan` is Foundation-only (also compiled and tested on Linux CI via `scripts/test-core-logic.sh`). Given a `ReplayTimeline` and a clip length it returns, for any second of the clip, a `State`: camera centre, distance, heading, pitch, and how far into the activity the trail is revealed. Phases and their share of the clip: overview 12% (top-down, route bounding box), orbit 20% (one full 360 turn, smoothstep, tilting 0 -> 55 degrees and zooming from overview distance to 700 m onto the start, ending on the heading the follow phase starts with), follow 58% (centre on the position at progress p, heading = bearing between the route 4% behind and 4% ahead so GPS noise does not twitch the camera, GPS gaps fall back to the last known position), finish 10% (pull back to the overview with the whole trail). Overview distance is 2.6x the longest side of the route, minimum 1500 m.
+
+`FlyoverView` (full-screen cover from `ActivityDetailView`) drives the plan with a 33 ms `ContinuousClock` loop, sets the `MapCameraPosition` directly (no SwiftUI animation: heading wraps 359 -> 0 and interpolation could spin the wrong way), and draws the same polylines/annotations as `ActivityReplayView` on `.hybrid(elevation: .realistic)`. Recording uses `RPScreenRecorder.shared()` (`startRecording()` / `stopRecording(withOutput:)`), which captures only this app's screen, so controls are hidden while recording and the clip keeps Apple's own map attribution. The result is copied into a `VideoShareFile` and offered with `ShareLink`. Backgrounding, tapping the screen or leaving the view aborts and discards the recording. Reduce Motion: flat, north-up follow with no spin or tilt.
+
 ## Data model
 
 `CDActivity`: `id`, `sportTypeRaw`, `startedAt`/`endedAt`, `durationSeconds`

@@ -100,6 +100,10 @@ into the app bundle (hit with Domine). A future custom font would need either
 a real `Copy Bundle Resources` entry plus an exception, or in-memory embed.
 Don't drop a font into `larping/` and assume it ships.
 
+## Route flyover video: recorded from the screen, permission question open
+
+The flyover video is a screen recording of the live MapKit view (`RPScreenRecorder`), not rendered offline: it takes the real clip length, only works on a physical iPhone (the simulator usually reports recording as unavailable), and the first use shows a system permission prompt. Hold the phone still and do not leave the app while it records. Apple's licence wording for retained, user-shared videos of MapKit imagery has not been confirmed (see `docs/mury-3d-video-export-feasibility.md`); the recording keeps Apple's attribution visible in every frame, but confirm before a public release. Camera smoothness at ~30 updates/s and Apple Maps 3D coverage along a route are unmeasured until tested on a device.
+
 ## Apple Maps attribution/logo cannot be hidden
 
 MapKit's terms of service require the Apple logo and legal attribution

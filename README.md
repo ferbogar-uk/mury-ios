@@ -69,6 +69,14 @@ touches the network.
   typed (casing preserved). Pace is shown without the ` /km` unit; speed
   sports keep `km/h`. Generated videos are temporary — share/save them before
   leaving, then they're cleaned up. Share through the system sheet or use **Save to Files** for the selected ready PNG/MP4. Save feedback distinguishes success, cancellation and retryable failures; the document owns its bytes before the picker opens. Native save behavior remains pending iOS validation.
+- **Route flyover** — Strava-style 3D flight over the route (Activity detail →
+  *Route flyover*): the whole route from above, one full turn tilting down onto
+  the start, then the camera chases the moving point on the satellite 3D map
+  with the trail growing and live time/speed on screen, and a pull-back to the
+  full route at the end. Length 15 / 30 / 60 s (default 30). *Preview* plays it;
+  *Record video* captures it with the system screen recorder (in-app only, asks
+  for permission the first time) and offers the clip to share. Needs a physical
+  iPhone to record; satellite/3D detail depends on Apple Maps coverage.
 - **GPX import** — `.gpx` file → activity (`source: gpx_import`); the sport
   is auto-detected from the file's `<type>` element (unknown/absent keeps
   the picker default).

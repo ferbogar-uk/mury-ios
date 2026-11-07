@@ -1,0 +1,150 @@
+import XCTest
+@testable import larping
+
+final class FlyoverPlanTests: XCTestCase {
+    private let origin = Date(timeIntervalSince1970: 1000)
+
+    /// Ten points heading due east, 10 s apart: 90 s long, about 1 km across.
+    private func eastboundTimeline() -> ReplayTimeline {
+        let points = (0..<10).map {
+            ReplayPoint(timestamp: origin.addingTimeInterval(Double($0) * 10), latitude: 0, longitude: Double($0) * 0.001)
+        }
+        return ReplayTimeline(points: points, startedAt: origin, endedAt: nil)
+    }
+
+    func testPhasesCoverTheWholeClipAndScaleWithLength() {
+        XCTAssertEqual(FlyoverPlan.phaseShares.map { $0.share }.reduce(0, +), 1, accuracy: 1e-9)
+        for seconds in [15.0, 30, 60] {
+            let plan = FlyoverPlan(timeline: eastboundTimeline(), clipSeconds: seconds)
+            XCTAssertEqual(plan.range(of: .overview).lowerBound, 0)
+            XCTAssertEqual(plan.range(of: .finish).upperBound, seconds, accuracy: 1e-9)
+            XCTAssertEqual(plan.range(of: .overview).upperBound, plan.range(of: .orbit).lowerBound, accuracy: 1e-9)
+            XCTAssertEqual(plan.range(of: .orbit).upperBound, plan.range(of: .follow).lowerBound, accuracy: 1e-9)
+            XCTAssertEqual(plan.range(of: .follow).upperBound, plan.range(of: .finish).lowerBound, accuracy: 1e-9)
+        }
+        let thirty = FlyoverPlan(timeline: eastboundTimeline(), clipSeconds: 30)
+        XCTAssertEqual(thirty.range(of: .overview).upperBound, 3.6, accuracy: 1e-9)
+        XCTAssertEqual(thirty.range(of: .follow).upperBound, 27, accuracy: 1e-9)
+    }
+
+    func testOpensTopDownOnTheWholeRoute() {
+        let plan = FlyoverPlan(timeline: eastboundTimeline(), clipSeconds: 30)
+        let state = plan.state(at: 0)
+        XCTAssertTrue(plan.isUsable)
+        XCTAssertEqual(state.phase, .overview)
+        XCTAssertEqual(state.pitchDegrees, 0)
+        XCTAssertEqual(state.centerLongitude, 0.0045, accuracy: 1e-9)
+        XCTAssertEqual(state.distanceMeters, plan.overviewDistanceMeters)
+        XCTAssertEqual(state.routeProgress, 0)
+        XCTAssertGreaterThan(plan.overviewDistanceMeters, 2_000)
+    }
+
+    func testOrbitTurnsOnceAndLandsCentredOnTheStartFacingTheRoute() {
+        let plan = FlyoverPlan(timeline: eastboundTimeline(), clipSeconds: 30)
+        let orbit = plan.range(of: .orbit)
+        let middle = plan.state(at: (orbit.lowerBound + orbit.upperBound) / 2)
+        XCTAssertEqual(middle.phase, .orbit)
+        XCTAssertEqual(middle.pitchDegrees, FlyoverPlan.followPitchDegrees / 2, accuracy: 1e-6)
+        XCTAssertGreaterThan(middle.distanceMeters, FlyoverPlan.followDistanceMeters)
+        XCTAssertLessThan(middle.distanceMeters, plan.overviewDistanceMeters)
+
+        let landed = plan.state(at: orbit.upperBound - 1e-9)
+        XCTAssertEqual(landed.pitchDegrees, FlyoverPlan.followPitchDegrees, accuracy: 1e-6)
+        XCTAssertEqual(landed.distanceMeters, FlyoverPlan.followDistanceMeters, accuracy: 1e-3)
+        XCTAssertEqual(landed.centerLongitude, 0, accuracy: 1e-7)
+        XCTAssertEqual(landed.headingDegrees, 90, accuracy: 0.01)
+        XCTAssertEqual(landed.routeProgress, 0)
+    }
+
+    func testHeadingAlwaysStaysInCompassRange() {
+        let plan = FlyoverPlan(timeline: eastboundTimeline(), clipSeconds: 30)
+        var time = 0.0
+        while time <= 30 {
+            let heading = plan.state(at: time).headingDegrees
+            XCTAssertGreaterThanOrEqual(heading, 0)
+            XCTAssertLessThan(heading, 360)
+            time += 0.25
+        }
+    }
+
+    func testFollowMovesAlongTheRouteAndRevealsTheTrail() {
+        let plan = FlyoverPlan(timeline: eastboundTimeline(), clipSeconds: 30)
+        let follow = plan.range(of: .follow)
+        let half = plan.state(at: (follow.lowerBound + follow.upperBound) / 2)
+        XCTAssertEqual(half.phase, .follow)
+        XCTAssertEqual(half.routeProgress, 0.5, accuracy: 1e-9)
+        XCTAssertEqual(half.routeElapsedSeconds, 45, accuracy: 1e-6)
+        XCTAssertEqual(half.centerLongitude, 0.0045, accuracy: 1e-6)
+        XCTAssertEqual(half.headingDegrees, 90, accuracy: 0.01)
+        XCTAssertEqual(half.pitchDegrees, FlyoverPlan.followPitchDegrees)
+        let early = plan.state(at: follow.lowerBound + 1)
+        let late = plan.state(at: follow.upperBound - 1)
+        XCTAssertLessThan(early.centerLongitude, half.centerLongitude)
+        XCTAssertLessThan(half.centerLongitude, late.centerLongitude)
+    }
+
+    func testFinishPullsBackToTheWholeRouteWithTheFullTrail() {
+        let plan = FlyoverPlan(timeline: eastboundTimeline(), clipSeconds: 30)
+        let end = plan.state(at: 30)
+        XCTAssertEqual(end.phase, .finish)
+        XCTAssertEqual(end.pitchDegrees, 0, accuracy: 1e-9)
+        XCTAssertEqual(end.distanceMeters, plan.overviewDistanceMeters, accuracy: 1e-6)
+        XCTAssertEqual(end.centerLongitude, 0.0045, accuracy: 1e-9)
+        XCTAssertEqual(end.routeProgress, 1)
+        XCTAssertEqual(end.routeElapsedSeconds, 90, accuracy: 1e-9)
+        XCTAssertEqual(end.headingDegrees, 0, accuracy: 1e-6)
+    }
+
+    func testTimeOutsideTheClipIsClamped() {
+        let plan = FlyoverPlan(timeline: eastboundTimeline(), clipSeconds: 30)
+        XCTAssertEqual(plan.state(at: -5), plan.state(at: 0))
+        XCTAssertEqual(plan.state(at: 99), plan.state(at: 30))
+        XCTAssertEqual(plan.state(at: .nan), plan.state(at: 0))
+    }
+
+    func testTinyRouteStillGetsAMinimumOverviewDistance() {
+        let points = [0.0, 10].map {
+            ReplayPoint(timestamp: origin.addingTimeInterval($0), latitude: 0, longitude: $0 * 0.000001)
+        }
+        let plan = FlyoverPlan(timeline: ReplayTimeline(points: points, startedAt: origin, endedAt: nil), clipSeconds: 30)
+        XCTAssertEqual(plan.overviewDistanceMeters, 1_500)
+    }
+
+    func testRouteWithoutMovementIsNotUsable() {
+        let single = ReplayTimeline(points: [ReplayPoint(timestamp: origin, latitude: 0, longitude: 0)], startedAt: origin, endedAt: nil)
+        XCTAssertFalse(FlyoverPlan(timeline: single, clipSeconds: 30).isUsable)
+        let empty = ReplayTimeline(points: [], startedAt: origin, endedAt: nil)
+        XCTAssertFalse(FlyoverPlan(timeline: empty, clipSeconds: 30).isUsable)
+    }
+
+    func testGpsGapKeepsTheCameraOnTheLastKnownPosition() {
+        let times: [Double] = [0, 10, 20, 100, 110, 120]
+        let points = times.enumerated().map {
+            ReplayPoint(timestamp: origin.addingTimeInterval($0.element), latitude: 0, longitude: Double($0.offset) * 0.001)
+        }
+        let timeline = ReplayTimeline(points: points, startedAt: origin, endedAt: nil)
+        XCTAssertNil(timeline.sample(at: 60).position)
+        let found = FlyoverPlan.position(timeline: timeline, progress: 0.5)
+        XCTAssertNotNil(found)
+        XCTAssertLessThanOrEqual(found!.longitude, 0.002 + 1e-9)
+    }
+
+    func testBearingAndAngleHelpers() {
+        let origin = ReplayCoordinate(latitude: 0, longitude: 0)
+        XCTAssertEqual(FlyoverPlan.bearing(from: origin, to: ReplayCoordinate(latitude: 1, longitude: 0)) ?? -1, 0, accuracy: 1e-6)
+        XCTAssertEqual(FlyoverPlan.bearing(from: origin, to: ReplayCoordinate(latitude: 0, longitude: 1)) ?? -1, 90, accuracy: 1e-6)
+        XCTAssertEqual(FlyoverPlan.bearing(from: origin, to: ReplayCoordinate(latitude: -1, longitude: 0)) ?? -1, 180, accuracy: 1e-6)
+        XCTAssertEqual(FlyoverPlan.bearing(from: origin, to: ReplayCoordinate(latitude: 0, longitude: -1)) ?? -1, 270, accuracy: 1e-6)
+        XCTAssertNil(FlyoverPlan.bearing(from: origin, to: origin))
+        // Across the antimeridian the short way is still east.
+        XCTAssertEqual(FlyoverPlan.bearing(from: ReplayCoordinate(latitude: 0, longitude: 179.9),
+                                           to: ReplayCoordinate(latitude: 0, longitude: -179.9)) ?? -1, 90, accuracy: 1e-6)
+        XCTAssertEqual(FlyoverPlan.normalized(-90), 270)
+        XCTAssertEqual(FlyoverPlan.normalized(450), 90)
+        XCTAssertEqual(FlyoverPlan.shortestDelta(from: 350, to: 10), 20, accuracy: 1e-9)
+        XCTAssertEqual(FlyoverPlan.shortestDelta(from: 10, to: 350), -20, accuracy: 1e-9)
+        XCTAssertEqual(FlyoverPlan.smooth(0), 0)
+        XCTAssertEqual(FlyoverPlan.smooth(1), 1)
+        XCTAssertEqual(FlyoverPlan.smooth(0.5), 0.5, accuracy: 1e-9)
+    }
+}

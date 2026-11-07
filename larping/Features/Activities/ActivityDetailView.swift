@@ -10,6 +10,7 @@ struct ActivityDetailView: View {
     @State private var showDeleteConfirmation = false
     @State private var showShareSheet = false
     @State private var showReplay = false
+    @State private var showFlyover = false
     @State private var showRename = false
     @State private var renameText = ""
     @State private var actionErrorMessage: String?
@@ -72,6 +73,16 @@ struct ActivityDetailView: View {
                     .buttonStyle(.bordered)
                     .tint(theme.accent)
                     .accessibilityIdentifier("activity-replay")
+
+                    Button {
+                        showFlyover = true
+                    } label: {
+                        Label("Route flyover", systemImage: "video")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(theme.accent)
+                    .accessibilityIdentifier("activity-flyover")
                 }
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
@@ -147,6 +158,9 @@ struct ActivityDetailView: View {
             NavigationStack {
                 ActivityReplayView(activity: activity)
             }
+        }
+        .fullScreenCover(isPresented: $showFlyover) {
+            FlyoverView(activity: activity)
         }
         .alert("Rename event", isPresented: $showRename) {
             TextField("Event name", text: $renameText)
