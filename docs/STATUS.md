@@ -578,3 +578,7 @@ The zone maths is Foundation-only in `larping/Core/HeartRateZones.swift` (edges 
 ## 2026-11-07 — Route flyover (Strava-style 3D video)
 
 Added `FlyoverPlan` (Foundation-only camera script: overview -> one turn tilting onto the start -> follow the point with a growing trail -> pull back) with unit tests in `FlyoverPlanTests` (also in the Linux core-logic script), `FlyoverView` (preview and screen-recorded video, 15/30/60 s, default 30, share via the system sheet) and a *Route flyover* button on Activity detail. Chosen over frame-by-frame MKMapSnapshotter rendering (about 900 snapshots for 30 s, slow, geometry unverified per `mury-3d-video-export-feasibility.md`). Not run on a device yet: camera smoothness, recording permission flow and Apple Maps 3D coverage need a TestFlight build to check.
+
+## 2026-11-07 — Export compliance answered in the plist
+
+Build 4 uploaded with no errors (Delivery UUID 721e7c13) but never showed up as an update in TestFlight, almost a day later. The app has no networking and no custom encryption, yet neither `Info.plist` declared `ITSAppUsesNonExemptEncryption`, so App Store Connect can hold a build at "Missing Compliance" until someone answers the question by hand. Both plists (iPhone and Watch) now carry `ITSAppUsesNonExemptEncryption = NO`, so later builds skip the question. A build already held in Missing Compliance still needs the answer given once in App Store Connect.
