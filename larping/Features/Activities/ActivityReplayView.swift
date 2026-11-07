@@ -198,7 +198,11 @@ struct ActivityReplayView: View {
 
     private func updateCamera(frame: ReplayFrame) {
         guard cameraMode == .aerial, let position = frame.position else { return }
+        // Smoothed over the route so the camera does not swing with every GPS wobble.
+        let heading = timeline.duration > 0
+            ? FlyoverPlan.smoothedHeading(timeline: timeline, progress: frame.elapsedSeconds / timeline.duration)
+            : (frame.headingDegrees ?? 0)
         camera = .camera(MapCamera(centerCoordinate: coordinate(position), distance: 700,
-                                   heading: frame.headingDegrees ?? 0, pitch: reduceMotion ? 0 : 55))
+                                   heading: heading, pitch: reduceMotion ? 0 : 55))
     }
 }

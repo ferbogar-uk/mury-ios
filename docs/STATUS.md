@@ -578,3 +578,7 @@ The zone maths is Foundation-only in `larping/Core/HeartRateZones.swift` (edges 
 ## 2026-11-07 — Route flyover (Strava-style 3D video)
 
 Added `FlyoverPlan` (Foundation-only camera script: overview -> one turn tilting onto the start -> follow the point with a growing trail -> pull back) with unit tests in `FlyoverPlanTests` (also in the Linux core-logic script), `FlyoverView` (preview and screen-recorded video, 15/30/60 s, default 30, share via the system sheet) and a *Route flyover* button on Activity detail. Chosen over frame-by-frame MKMapSnapshotter rendering (about 900 snapshots for 30 s, slow, geometry unverified per `mury-3d-video-export-feasibility.md`). Not run on a device yet: camera smoothness, recording permission flow and Apple Maps 3D coverage need a TestFlight build to check.
+
+## 2026-11-07 — Steadier camera and 3D flyover inside Share
+
+A device recording of the Replay (build 4) showed the camera swinging left and right: the heading was the raw bearing of the current GPS segment. `FlyoverPlan.smoothedHeading` now averages the bearing over roughly +-9% of the route and both the flyover and the Replay use it (tests with a zig-zag GPS track). Share → Video also gets a *3D flyover video* button that opens the flyover with its record and share flow, so the 3D option lives where people look for video sharing. The recording itself is still the real-time screen recording, so Share keeps the 2D rendered video as a separate button.

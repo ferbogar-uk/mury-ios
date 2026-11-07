@@ -38,6 +38,11 @@ struct FlyoverPlan {
     private let boxCenter: ReplayCoordinate
     private let start: ReplayCoordinate
     private let startHeading: Double
+    private let endHeading: Double
+    private let followStartCenter: ReplayCoordinate
+    private let followEndCenter: ReplayCoordinate
+    /// Pre-smoothed travel direction at 121 evenly spaced points along the activity.
+    private let headingTable: [Double]
 
     init(timeline: ReplayTimeline, clipSeconds: TimeInterval) {
         self.timeline = timeline
@@ -49,6 +54,10 @@ struct FlyoverPlan {
             boxCenter = ReplayCoordinate(latitude: 0, longitude: 0)
             start = boxCenter
             startHeading = 0
+            endHeading = 0
+            followStartCenter = boxCenter
+            followEndCenter = boxCenter
+            headingTable = []
             return
         }
         isUsable = true
@@ -64,7 +73,12 @@ struct FlyoverPlan {
         let width = (maxLon - minLon) * metersPerDegree * max(0.1, cos(centerLat * .pi / 180))
         // Top-down camera: distance is roughly 2.6 times the longest side so the route fits a portrait screen.
         overviewDistanceMeters = min(2_000_000, max(1_500, max(width, height) * 2.6))
-        startHeading = FlyoverPlan.followHeading(timeline: timeline, progress: 0)
+        let table = (0...120).map { FlyoverPlan.smoothedHeading(timeline: timeline, progress: Double($0) / 120) }
+        headingTable = table
+        startHeading = table[0]
+        endHeading = table[120]
+        followStartCenter = FlyoverPlan.position(timeline: timeline, progress: 0) ?? all[0]
+        followEndCenter = FlyoverPlan.position(timeline: timeline, progress: 1) ?? all[all.count - 1]
     }
 
     /// Start and end time (seconds into the clip) of a phase.
@@ -84,9 +98,8 @@ struct FlyoverPlan {
         let orbit = range(of: .orbit)
         let follow = range(of: .follow)
         let finish = range(of: .finish)
-        let followStart = followCenter(progress: 0)
-        let followEnd = followCenter(progress: 1)
-        let endHeading = FlyoverPlan.followHeading(timeline: timeline, progress: 1)
+        let followStart = followStartCenter
+        let followEnd = followEndCenter
 
         if t < overview.upperBound {
             return State(phase: .overview, centerLatitude: boxCenter.latitude, centerLongitude: boxCenter.longitude,
@@ -109,7 +122,7 @@ struct FlyoverPlan {
             let center = followCenter(progress: progress)
             return State(phase: .follow, centerLatitude: center.latitude, centerLongitude: center.longitude,
                          distanceMeters: FlyoverPlan.followDistanceMeters,
-                         headingDegrees: FlyoverPlan.followHeading(timeline: timeline, progress: progress),
+                         headingDegrees: heading(at: progress),
                          pitchDegrees: FlyoverPlan.followPitchDegrees,
                          routeElapsedSeconds: progress * timeline.duration, routeProgress: progress)
         }
@@ -147,14 +160,37 @@ struct FlyoverPlan {
         return nil
     }
 
-    /// Smoothed travel direction: bearing between the route a little behind and a little ahead, so the camera does not twitch with GPS noise.
-    static func followHeading(timeline: ReplayTimeline, progress: Double) -> Double {
-        let window = 0.04
-        let from = position(timeline: timeline, progress: max(0, progress - window))
-        let to = position(timeline: timeline, progress: min(1, progress + window))
-        if let from, let to, let bearing = bearing(from: from, to: to) { return bearing }
-        let single = timeline.sample(at: min(max(progress, 0), 1) * timeline.duration)
-        return single.headingDegrees ?? 0
+    /// Travel direction at a point of the table, interpolated the short way round.
+    private func heading(at progress: Double) -> Double {
+        guard headingTable.count > 1 else { return startHeading }
+        let x = min(max(progress, 0), 1) * Double(headingTable.count - 1)
+        let i = min(Int(x), headingTable.count - 2)
+        let f = x - Double(i)
+        let a = headingTable[i], b = headingTable[i + 1]
+        return FlyoverPlan.normalized(a + FlyoverPlan.shortestDelta(from: a, to: b) * f)
+    }
+
+    /// Stabilised travel direction for a camera that chases the route. GPS bearings jump around from
+    /// point to point, so this averages the local bearing over roughly +-9% of the route (triangular
+    /// weights, circular mean). Used by the flyover and by the live replay.
+    static func smoothedHeading(timeline: ReplayTimeline, progress: Double) -> Double {
+        guard timeline.duration > 0 else { return 0 }
+        let p = min(max(progress, 0), 1)
+        var sumX = 0.0, sumY = 0.0
+        for k in -4...4 {
+            let q = p + Double(k) * 0.02
+            let from = position(timeline: timeline, progress: min(max(q - 0.01, 0), 1))
+            let to = position(timeline: timeline, progress: min(max(q + 0.01, 0), 1))
+            guard let from, let to, let direction = bearing(from: from, to: to) else { continue }
+            let weight = Double(5 - abs(k))
+            let radians = direction * Double.pi / 180
+            sumX += weight * sin(radians)
+            sumY += weight * cos(radians)
+        }
+        if sumX * sumX + sumY * sumY > 1e-9 {
+            return normalized(atan2(sumX, sumY) * 180 / Double.pi)
+        }
+        return timeline.sample(at: p * timeline.duration).headingDegrees ?? 0
     }
 
     static func bearing(from a: ReplayCoordinate, to b: ReplayCoordinate) -> Double? {
