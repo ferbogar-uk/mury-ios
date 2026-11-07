@@ -182,4 +182,59 @@ final class FlyoverPlanTests: XCTestCase {
         let empty = ReplayTimeline(points: [], startedAt: origin, endedAt: nil)
         XCTAssertEqual(FlyoverPlan.smoothedHeading(timeline: empty, progress: 0.5), 0)
     }
+
+    /// Ten points heading due north, 10 s apart: about 1 km tall.
+    private func northboundTimeline() -> ReplayTimeline {
+        let points = (0..<10).map {
+            ReplayPoint(timestamp: origin.addingTimeInterval(Double($0) * 10), latitude: Double($0) * 0.001, longitude: 0)
+        }
+        return ReplayTimeline(points: points, startedAt: origin, endedAt: nil)
+    }
+
+    func testOrbitIsAQuarterTurnNotAFullCircle() {
+        let plan = FlyoverPlan(timeline: eastboundTimeline(), clipSeconds: 30)
+        let orbit = plan.range(of: .orbit)
+        let opening = plan.state(at: 0).headingDegrees
+        XCTAssertEqual(opening, 0, accuracy: 0.01)
+        let begin = plan.state(at: orbit.lowerBound + 1e-9).headingDegrees
+        let middle = plan.state(at: (orbit.lowerBound + orbit.upperBound) / 2).headingDegrees
+        let end = plan.state(at: orbit.upperBound - 1e-9).headingDegrees
+        XCTAssertEqual(begin, 0, accuracy: 0.01)
+        XCTAssertEqual(middle, 45, accuracy: 0.01)
+        XCTAssertEqual(end, 90, accuracy: 0.01)
+        var time = orbit.lowerBound
+        var previous = begin
+        while time < orbit.upperBound - 0.05 {
+            time += 0.05
+            let heading = plan.state(at: time).headingDegrees
+            XCTAssertGreaterThanOrEqual(heading, previous - 1e-9)
+            XCTAssertLessThanOrEqual(heading, 90 + 1e-6)
+            previous = heading
+        }
+    }
+
+    func testOpeningHeadingIsNinetyDegreesBeforeTheFirstStep() {
+        let plan = FlyoverPlan(timeline: northboundTimeline(), clipSeconds: 30)
+        XCTAssertEqual(plan.state(at: 0).headingDegrees, 270, accuracy: 0.01)
+        let orbit = plan.range(of: .orbit)
+        let landed = plan.state(at: orbit.upperBound - 1e-9).headingDegrees
+        XCTAssertEqual(FlyoverPlan.shortestDelta(from: landed, to: 0), 0, accuracy: 0.01)
+    }
+
+    func testOverviewFitsTheWholeRouteAcrossTheScreenWidth() {
+        // East-west route about 1002 m long, camera looking north: the route runs across the narrow screen width.
+        let east = FlyoverPlan(timeline: eastboundTimeline(), clipSeconds: 30)
+        XCTAssertGreaterThanOrEqual(east.overviewDistanceMeters, 1_000 * FlyoverPlan.metersOfDistancePerMeterOfWidth)
+        // North-south route: the opening turns the camera so it also runs across the width, never along the height.
+        let north = FlyoverPlan(timeline: northboundTimeline(), clipSeconds: 30)
+        XCTAssertGreaterThanOrEqual(north.overviewDistanceMeters, 1_000 * FlyoverPlan.metersOfDistancePerMeterOfWidth)
+    }
+
+    func testOverviewFitCentresARotatedRoute() {
+        let line = [ReplayCoordinate(latitude: 0, longitude: 0), ReplayCoordinate(latitude: 0.01, longitude: 0)]
+        let fit = FlyoverPlan.overviewFit(points: line, headingDegrees: 270)
+        XCTAssertEqual(fit.center.latitude, 0.005, accuracy: 1e-6)
+        XCTAssertEqual(fit.center.longitude, 0, accuracy: 1e-6)
+        XCTAssertEqual(fit.distance, 0.01 * 111_320 * FlyoverPlan.metersOfDistancePerMeterOfWidth, accuracy: 1)
+    }
 }
