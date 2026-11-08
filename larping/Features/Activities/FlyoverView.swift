@@ -13,7 +13,7 @@ struct FlyoverView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private enum Mode: Equatable {
-        case idle, preparing, playing, recording, finishing, done
+        case idle, preloading, preparing, playing, recording, finishing, done
     }
 
     private enum ClipLength: Int, CaseIterable, Identifiable {
@@ -33,12 +33,16 @@ struct FlyoverView: View {
     @State private var recorded: VideoShareFile?
     @State private var player: AVPlayer?
     @State private var message: String?
+    @State private var afterPreload: Mode = .playing
 
     init(activity: CDActivity) {
-        let snapshot = ReplayTimeline(points: activity.trackPoints.map {
+        // Smoothed over ~10 s each way so the drawn line and the camera follow the general path, not the GPS wobble.
+        let raw = activity.trackPoints.map {
             ReplayPoint(timestamp: $0.timestamp, latitude: $0.latitude, longitude: $0.longitude,
                         altitudeMeters: $0.altitudeMeters, speedMps: $0.speedMps)
-        }, startedAt: activity.startedAt, endedAt: activity.endedAt)
+        }
+        let snapshot = ReplayTimeline(points: RouteSmoothing.smoothed(raw, halfWindowSeconds: 10),
+                                      startedAt: activity.startedAt, endedAt: activity.endedAt)
         timeline = snapshot
         symbol = activity.sportType.symbolName
         savedDistance = Formatters.distance(meters: activity.distanceMeters.map(Double.init))
@@ -51,7 +55,7 @@ struct FlyoverView: View {
     }
 
     private var isRunning: Bool {
-        mode == .preparing || mode == .playing || mode == .recording || mode == .finishing
+        mode == .preloading || mode == .preparing || mode == .playing || mode == .recording || mode == .finishing
     }
 
     var body: some View {
@@ -64,7 +68,7 @@ struct FlyoverView: View {
                     .ignoresSafeArea()
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        if mode == .recording || mode == .playing { abortRun("Flyover stopped.") }
+                        if mode == .recording || mode == .playing || mode == .preloading { abortRun("Flyover stopped.") }
                     }
                 controlsOverlay(state: state, frame: frame)
             } else {
@@ -93,6 +97,10 @@ struct FlyoverView: View {
             if isRunning && mode != .finishing { abortRun(nil) }
         }
         .task(id: mode) {
+            if mode == .preloading {
+                await preloadMap()
+                return
+            }
             guard mode == .playing || mode == .recording else { return }
             let clock = ContinuousClock()
             let begin = clock.now
@@ -136,7 +144,7 @@ struct FlyoverView: View {
                         .overlay(Circle().strokeBorder(.white, lineWidth: 2.5))
                 }
             }
-            if state.phase == .follow || state.phase == .finish, let position = frame.position {
+            if state.phase != .overview, state.markerDrop < 1, let position = frame.position {
                 Annotation("Position", coordinate: coordinate(position)) {
                     Image(systemName: symbol)
                         .font(.headline)
@@ -144,6 +152,9 @@ struct FlyoverView: View {
                         .padding(8)
                         .background(theme.route, in: Circle())
                         .overlay(Circle().strokeBorder(theme.routeCasing, lineWidth: 2))
+                        // Drops in from above and lands on the start point.
+                        .offset(y: -state.markerDrop * 360)
+                        .opacity(min(1, (1 - state.markerDrop) * 6))
                 }
             }
         }
@@ -162,11 +173,11 @@ struct FlyoverView: View {
                 Spacer()
             }
             Spacer()
-            if isRunning && mode != .preparing {
+            if isRunning && mode != .preparing && mode != .preloading {
                 statsCard(state: state, frame: frame)
             }
-            if mode == .preparing {
-                Text("Starting recording…")
+            if mode == .preparing || mode == .preloading {
+                Text(mode == .preloading ? "Preparing map…" : "Starting recording…")
                     .font(MuryTypography.font(.subheadline, size: 15))
                     .padding(.horizontal, 14).padding(.vertical, 8)
                     .background(.black.opacity(0.6), in: Capsule())
@@ -266,22 +277,59 @@ struct FlyoverView: View {
 
     private func startPreview() {
         guard plan.isUsable else { return }
+        beginPreload(then: .playing)
+    }
+
+    private func beginPreload(then next: Mode) {
         message = nil
+        afterPreload = next
         flyTime = 0
         apply(plan.state(at: 0))
-        mode = .playing
+        mode = .preloading
+    }
+
+    /// Sweeps the camera along the route at flying height before anything is recorded, so MapKit has the tiles
+    /// cached when the real flyover passes over them. It cannot guarantee there are no gaps.
+    private func preloadMap() async {
+        let stops = 14
+        for index in 0...stops {
+            if Task.isCancelled { return }
+            let progress = Double(index) / Double(stops)
+            if let center = FlyoverPlan.position(timeline: timeline, progress: progress) {
+                camera = .camera(MapCamera(
+                    centerCoordinate: coordinate(center),
+                    distance: FlyoverPlan.followDistanceMeters,
+                    heading: reduceMotion ? 0 : FlyoverPlan.smoothedHeading(timeline: timeline, progress: progress),
+                    pitch: reduceMotion ? 0 : FlyoverPlan.followPitchDegrees))
+            }
+            try? await Task.sleep(for: .milliseconds(280))
+        }
+        if Task.isCancelled { return }
+        flyTime = 0
+        apply(plan.state(at: 0))
+        try? await Task.sleep(for: .milliseconds(500))
+        guard mode == .preloading, !Task.isCancelled else { return }
+        if afterPreload == .recording {
+            startRecordingNow()
+        } else {
+            mode = .playing
+        }
     }
 
     private func startRecording() {
         guard plan.isUsable else { return }
-        let recorder = RPScreenRecorder.shared()
-        guard recorder.isAvailable else {
+        guard RPScreenRecorder.shared().isAvailable else {
             message = "Screen recording is not available right now. You can still preview the flyover."
             return
         }
-        message = nil
         recorded = nil
         player = nil
+        beginPreload(then: .recording)
+    }
+
+    private func startRecordingNow() {
+        let recorder = RPScreenRecorder.shared()
+        message = nil
         flyTime = 0
         apply(plan.state(at: 0))
         mode = .preparing

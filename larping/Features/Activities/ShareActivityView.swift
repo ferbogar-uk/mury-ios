@@ -121,13 +121,12 @@ struct ShareActivityView: View {
             .accessibilityIdentifier("share-template")
 
             TabView(selection: $template) {
-                classicPreview.tag(ShareTemplate.classic)
-                preview(mapCardImage).tag(ShareTemplate.mapCard)
-                videoPreview.tag(ShareTemplate.video)
-                ForEach([ShareTemplate.column, .compact, .route, .ticket, .edge, .receipt]) { item in
-                    if let layout = item.overlayLayout {
-                        transparentPreview(overlayImages[layout]).tag(item)
-                    }
+                // One uniform ForEach, every page the same width: mixing fixed pages with a conditional ForEach
+                // left the later pages stopping half-way across the screen.
+                ForEach(ShareTemplate.allCases) { item in
+                    templatePage(item)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .tag(item)
                 }
             }
             .tabViewStyle(.page)
@@ -395,6 +394,21 @@ struct ShareActivityView: View {
         }
     }
 
+    @ViewBuilder
+    private func templatePage(_ item: ShareTemplate) -> some View {
+        switch item {
+        case .classic: classicPreview
+        case .mapCard: preview(mapCardImage)
+        case .video: videoPreview
+        default:
+            if let layout = item.overlayLayout {
+                transparentPreview(overlayImages[layout])
+            } else {
+                ProgressView()
+            }
+        }
+    }
+
     private var classicPreview: some View {
         transparentPreview(composedImage, transparent: photo == nil)
     }
@@ -495,7 +509,7 @@ struct ShareActivityView: View {
             Button {
                 showFlyover = true
             } label: {
-                Label("3D flyover video", systemImage: "view.3d")
+                Text("3D Flyover Video")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)

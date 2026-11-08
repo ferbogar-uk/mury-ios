@@ -237,4 +237,25 @@ final class FlyoverPlanTests: XCTestCase {
         XCTAssertEqual(fit.center.longitude, 0, accuracy: 1e-6)
         XCTAssertEqual(fit.distance, 0.01 * 111_320 * FlyoverPlan.metersOfDistancePerMeterOfWidth, accuracy: 1)
     }
+
+    func testMarkerDropsDuringTheOrbitAndStaysLanded() {
+        let plan = FlyoverPlan(timeline: eastboundTimeline(), clipSeconds: 30)
+        XCTAssertEqual(plan.state(at: 0).markerDrop, 1)
+        let orbit = plan.range(of: .orbit)
+        XCTAssertEqual(plan.state(at: orbit.lowerBound + 1e-6).markerDrop, 1, accuracy: 1e-3)
+        XCTAssertEqual(plan.state(at: orbit.upperBound - 1e-9).markerDrop, 0, accuracy: 1e-3)
+        XCTAssertEqual(plan.state(at: plan.range(of: .follow).lowerBound + 1).markerDrop, 0)
+        XCTAssertEqual(plan.state(at: plan.range(of: .finish).lowerBound + 0.5).markerDrop, 0)
+        for step in 0...100 {
+            let drop = plan.state(at: orbit.lowerBound + (orbit.upperBound - orbit.lowerBound) * Double(step) / 100).markerDrop
+            XCTAssertGreaterThanOrEqual(drop, -1e-9)
+            XCTAssertLessThanOrEqual(drop, 1 + 1e-9)
+        }
+    }
+
+    func testBounceOutEndpoints() {
+        XCTAssertEqual(FlyoverPlan.bounceOut(0), 0, accuracy: 1e-9)
+        XCTAssertEqual(FlyoverPlan.bounceOut(1), 1, accuracy: 1e-9)
+        XCTAssertGreaterThan(FlyoverPlan.bounceOut(0.5), 0.5)
+    }
 }

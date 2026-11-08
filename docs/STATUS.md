@@ -589,3 +589,7 @@ A device recording of the Replay (build 4) showed the camera swinging left and r
 ## 2026-11-07 — Flyover framing from the first device test of build 5
 
 Build 5 on a phone showed the overview not fitting the route (distance was 2.6x the longest side, but a portrait screen is narrow) and a full 360 degree spin that felt like too much. The overview is now fitted from the route projected on screen axes for the opening heading (5x width, 2.4x height), and the orbit is a 90 degree quarter turn ending on the follow heading. The fit factors are an estimate (assumed field of view) and need a visual check on the device.
+
+## 2026-11-08 — Flyover polish after the build 6 device test
+
+Build 6 looked good; requested tweaks done: marker drops in and lands on the start (`markerDrop`, bounce), closer and more tilted follow camera (450 m, 65 degrees), route smoothed over about 10 s (`RouteSmoothing`, Linux-tested), map pre-load sweep before Preview/Record, Share button renamed *3D Flyover Video* with no duplicate icon, and the template carousel rebuilt as one uniform `ForEach` (pages after Video stopped half-way). All unverified on a device. Not done yet: video rendered inside the app so the screen-recording prompt goes away.
