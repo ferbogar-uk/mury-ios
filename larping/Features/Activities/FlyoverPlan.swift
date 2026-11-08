@@ -21,10 +21,15 @@ struct FlyoverPlan {
         let routeElapsedSeconds: TimeInterval
         /// 0...1 share of the activity already played.
         let routeProgress: Double
+        /// Height of the position marker above its spot: 1 = high above (or not yet shown), 0 = landed. It drops in during the orbit.
+        let markerDrop: Double
     }
 
-    static let followDistanceMeters = 700.0
-    static let followPitchDegrees = 55.0
+    static let followDistanceMeters = 450.0
+    /// MapKit clamps pitch to what the map allows at that zoom, so asking for a high value is safe.
+    static let followPitchDegrees = 65.0
+    /// The marker starts falling at this share of the orbit and lands as the orbit ends.
+    static let dropStartShareOfOrbit = 0.45
     /// Share of the clip each phase takes. They add up to 1.
     static let phaseShares: [(phase: Phase, share: Double)] = [
         (.overview, 0.12), (.orbit, 0.20), (.follow, 0.58), (.finish, 0.10)
@@ -102,7 +107,7 @@ struct FlyoverPlan {
         if t < overview.upperBound {
             return State(phase: .overview, centerLatitude: boxCenter.latitude, centerLongitude: boxCenter.longitude,
                          distanceMeters: overviewDistanceMeters, headingDegrees: overviewHeading, pitchDegrees: 0,
-                         routeElapsedSeconds: 0, routeProgress: 0)
+                         routeElapsedSeconds: 0, routeProgress: 0, markerDrop: 1)
         }
         if t < orbit.upperBound {
             let e = FlyoverPlan.smooth(FlyoverPlan.fraction(t, in: orbit))
@@ -113,7 +118,8 @@ struct FlyoverPlan {
                          // A quarter turn, ending exactly on the heading the follow phase starts with.
                          headingDegrees: FlyoverPlan.normalized(overviewHeading + 90 * e),
                          pitchDegrees: FlyoverPlan.followPitchDegrees * e,
-                         routeElapsedSeconds: 0, routeProgress: 0)
+                         routeElapsedSeconds: 0, routeProgress: 0,
+                         markerDrop: 1 - FlyoverPlan.bounceOut(FlyoverPlan.fraction(FlyoverPlan.fraction(t, in: orbit), in: FlyoverPlan.dropStartShareOfOrbit...1)))
         }
         if t < follow.upperBound {
             let progress = FlyoverPlan.fraction(t, in: follow)
@@ -122,7 +128,7 @@ struct FlyoverPlan {
                          distanceMeters: FlyoverPlan.followDistanceMeters,
                          headingDegrees: heading(at: progress),
                          pitchDegrees: FlyoverPlan.followPitchDegrees,
-                         routeElapsedSeconds: progress * timeline.duration, routeProgress: progress)
+                         routeElapsedSeconds: progress * timeline.duration, routeProgress: progress, markerDrop: 0)
         }
         let e = FlyoverPlan.smooth(FlyoverPlan.fraction(t, in: finish))
         return State(phase: .finish,
@@ -131,7 +137,7 @@ struct FlyoverPlan {
                      distanceMeters: FlyoverPlan.mix(FlyoverPlan.followDistanceMeters, overviewDistanceMeters, e),
                      headingDegrees: FlyoverPlan.normalized(endHeading + FlyoverPlan.shortestDelta(from: endHeading, to: overviewHeading) * e),
                      pitchDegrees: FlyoverPlan.followPitchDegrees * (1 - e),
-                     routeElapsedSeconds: timeline.duration, routeProgress: 1)
+                     routeElapsedSeconds: timeline.duration, routeProgress: 1, markerDrop: 0)
     }
 
     // MARK: - Route helpers
@@ -245,6 +251,17 @@ struct FlyoverPlan {
     static func smooth(_ x: Double) -> Double {
         let c = min(max(x, 0), 1)
         return c * c * (3 - 2 * c)
+    }
+
+    /// Ease-out bounce: 0 -> 1 with a few diminishing bounces, so a falling marker settles on its spot.
+    static func bounceOut(_ x: Double) -> Double {
+        let t = min(max(x, 0), 1)
+        let n = 7.5625, d = 2.75
+        if t < 1 / d { return n * t * t }
+        if t < 2 / d { let u = t - 1.5 / d; return n * u * u + 0.75 }
+        if t < 2.5 / d { let u = t - 2.25 / d; return n * u * u + 0.9375 }
+        let u = t - 2.625 / d
+        return n * u * u + 0.984375
     }
 
     static func mix(_ a: Double, _ b: Double, _ t: Double) -> Double { a + (b - a) * t }

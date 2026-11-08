@@ -166,3 +166,7 @@ Finish stops the in-memory tracker before attempting the local database save. A 
 ## HealthKit import reproduction candidates
 
 Read-only QA identified two existing paths needing device verification: heart-rate reads gate on write authorization status, and route import handles completion before the final location batch. Missing heart rate or final route points are reproduction candidates, not demonstrated MURY regressions. The protected HealthKit service remains unchanged.
+
+### Flyover polish (build 7 candidate): unverified on a device
+
+Marker drop height (360 pt offset), the 450 m / 65 degree follow camera (MapKit may clamp the pitch, so it may look less tilted than asked), the 10 s route smoothing, the map pre-load sweep (reduces tile gaps, does not remove them) and the Share template carousel fix (one uniform `ForEach` over `ShareTemplate.allCases`; the half-way stop was only diagnosed from the layout, not reproduced) all need a check on a physical iPhone. The screen-recording permission prompt still appears every time; the planned fix is an in-app rendered video, which is unproven (see `docs/mury-3d-video-export-feasibility.md`).
