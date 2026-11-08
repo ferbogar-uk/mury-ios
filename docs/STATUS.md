@@ -585,3 +585,7 @@ Build 4 uploaded with no errors (Delivery UUID 721e7c13) but never showed up as 
 ## 2026-11-07 — Steadier camera and 3D flyover inside Share
 
 A device recording of the Replay (build 4) showed the camera swinging left and right: the heading was the raw bearing of the current GPS segment. `FlyoverPlan.smoothedHeading` now averages the bearing over roughly +-9% of the route and both the flyover and the Replay use it (tests with a zig-zag GPS track). Share → Video also gets a *3D flyover video* button that opens the flyover with its record and share flow, so the 3D option lives where people look for video sharing. The recording itself is still the real-time screen recording, so Share keeps the 2D rendered video as a separate button.
+
+## 2026-11-07 — Flyover framing from the first device test of build 5
+
+Build 5 on a phone showed the overview not fitting the route (distance was 2.6x the longest side, but a portrait screen is narrow) and a full 360 degree spin that felt like too much. The overview is now fitted from the route projected on screen axes for the opening heading (5x width, 2.4x height), and the orbit is a 90 degree quarter turn ending on the follow heading. The fit factors are an estimate (assumed field of view) and need a visual check on the device.

@@ -72,7 +72,7 @@ touches the network.
   sports keep `km/h`. Generated videos are temporary — share/save them before
   leaving, then they're cleaned up. Share through the system sheet or use **Save to Files** for the selected ready PNG/MP4. Save feedback distinguishes success, cancellation and retryable failures; the document owns its bytes before the picker opens. Native save behavior remains pending iOS validation.
 - **Route flyover** — Strava-style 3D flight over the route (Activity detail →
-  *Route flyover*): the whole route from above, one full turn tilting down onto
+  *Route flyover*): the whole route from above (fitted to the screen), a quarter turn tilting down onto
   the start, then the camera chases the moving point on the satellite 3D map
   with the trail growing and live time/speed on screen, and a pull-back to the
   full route at the end. Reachable from Activity detail and from Share → Video → *3D flyover video*. The camera heading is smoothed over the route so it stays on the route instead of swinging with GPS noise (the live Replay uses the same smoothing). Length 15 / 30 / 60 s (default 30). *Preview* plays it;

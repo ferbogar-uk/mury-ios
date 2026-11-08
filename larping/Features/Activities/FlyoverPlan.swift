@@ -3,7 +3,7 @@ import Foundation
 /// Foundation-only camera script for the route flyover (the Strava-style opening).
 ///
 /// The clip is split in four phases, scaled to the chosen length:
-/// overview (top-down, whole route) -> orbit (one full turn while tilting down onto the start)
+/// overview (top-down, whole route fitted to the screen) -> orbit (a quarter turn while tilting down onto the start)
 /// -> follow (camera chases the moving point, trail grows) -> finish (pull back to the whole route).
 struct FlyoverPlan {
     enum Phase: Equatable {
@@ -35,7 +35,9 @@ struct FlyoverPlan {
     let overviewDistanceMeters: Double
 
     private let timeline: ReplayTimeline
+    /// Centre of the route as it sits on screen when the camera looks along `overviewHeading`.
     private let boxCenter: ReplayCoordinate
+    private let overviewHeading: Double
     private let start: ReplayCoordinate
     private let startHeading: Double
     private let endHeading: Double
@@ -52,6 +54,7 @@ struct FlyoverPlan {
             isUsable = false
             overviewDistanceMeters = 2_000
             boxCenter = ReplayCoordinate(latitude: 0, longitude: 0)
+            overviewHeading = 0
             start = boxCenter
             startHeading = 0
             endHeading = 0
@@ -61,22 +64,17 @@ struct FlyoverPlan {
             return
         }
         isUsable = true
-        let latitudes = all.map(\.latitude)
-        let longitudes = all.map(\.longitude)
-        let minLat = latitudes.min()!, maxLat = latitudes.max()!
-        let minLon = longitudes.min()!, maxLon = longitudes.max()!
-        let centerLat = (minLat + maxLat) / 2
-        boxCenter = ReplayCoordinate(latitude: centerLat, longitude: (minLon + maxLon) / 2)
-        start = all[0]
-        let metersPerDegree = 111_320.0
-        let height = (maxLat - minLat) * metersPerDegree
-        let width = (maxLon - minLon) * metersPerDegree * max(0.1, cos(centerLat * .pi / 180))
-        // Top-down camera: distance is roughly 2.6 times the longest side so the route fits a portrait screen.
-        overviewDistanceMeters = min(2_000_000, max(1_500, max(width, height) * 2.6))
         let table = (0...120).map { FlyoverPlan.smoothedHeading(timeline: timeline, progress: Double($0) / 120) }
         headingTable = table
         startHeading = table[0]
         endHeading = table[120]
+        start = all[0]
+        // The opening looks 90 degrees off the first step (route heads across the screen), then swings a quarter turn onto it.
+        let opening = FlyoverPlan.normalized(table[0] - 90)
+        overviewHeading = opening
+        let fit = FlyoverPlan.overviewFit(points: all, headingDegrees: opening)
+        boxCenter = fit.center
+        overviewDistanceMeters = fit.distance
         followStartCenter = FlyoverPlan.position(timeline: timeline, progress: 0) ?? all[0]
         followEndCenter = FlyoverPlan.position(timeline: timeline, progress: 1) ?? all[all.count - 1]
     }
@@ -103,7 +101,7 @@ struct FlyoverPlan {
 
         if t < overview.upperBound {
             return State(phase: .overview, centerLatitude: boxCenter.latitude, centerLongitude: boxCenter.longitude,
-                         distanceMeters: overviewDistanceMeters, headingDegrees: 0, pitchDegrees: 0,
+                         distanceMeters: overviewDistanceMeters, headingDegrees: overviewHeading, pitchDegrees: 0,
                          routeElapsedSeconds: 0, routeProgress: 0)
         }
         if t < orbit.upperBound {
@@ -112,8 +110,8 @@ struct FlyoverPlan {
                          centerLatitude: FlyoverPlan.mix(boxCenter.latitude, followStart.latitude, e),
                          centerLongitude: FlyoverPlan.mix(boxCenter.longitude, followStart.longitude, e),
                          distanceMeters: FlyoverPlan.mix(overviewDistanceMeters, FlyoverPlan.followDistanceMeters, e),
-                         // One full turn, ending exactly on the heading the follow phase starts with.
-                         headingDegrees: FlyoverPlan.normalized((360 + startHeading) * e),
+                         // A quarter turn, ending exactly on the heading the follow phase starts with.
+                         headingDegrees: FlyoverPlan.normalized(overviewHeading + 90 * e),
                          pitchDegrees: FlyoverPlan.followPitchDegrees * e,
                          routeElapsedSeconds: 0, routeProgress: 0)
         }
@@ -131,12 +129,50 @@ struct FlyoverPlan {
                      centerLatitude: FlyoverPlan.mix(followEnd.latitude, boxCenter.latitude, e),
                      centerLongitude: FlyoverPlan.mix(followEnd.longitude, boxCenter.longitude, e),
                      distanceMeters: FlyoverPlan.mix(FlyoverPlan.followDistanceMeters, overviewDistanceMeters, e),
-                     headingDegrees: FlyoverPlan.normalized(endHeading + FlyoverPlan.shortestDelta(from: endHeading, to: 0) * e),
+                     headingDegrees: FlyoverPlan.normalized(endHeading + FlyoverPlan.shortestDelta(from: endHeading, to: overviewHeading) * e),
                      pitchDegrees: FlyoverPlan.followPitchDegrees * (1 - e),
                      routeElapsedSeconds: timeline.duration, routeProgress: 1)
     }
 
     // MARK: - Route helpers
+
+    /// Visible span of a top-down camera per metre of camera distance, portrait phone, with a margin.
+    /// Width is the tight side (about 0.25 of the distance), height about 0.5.
+    static let metersOfDistancePerMeterOfWidth = 5.0
+    static let metersOfDistancePerMeterOfHeight = 2.4
+
+    /// Where to point a top-down camera, and from how far, so every point of the route fits the screen
+    /// when the camera looks along `headingDegrees` (screen up = that compass heading).
+    static func overviewFit(points: [ReplayCoordinate], headingDegrees: Double) -> (center: ReplayCoordinate, distance: Double) {
+        guard let first = points.first else { return (ReplayCoordinate(latitude: 0, longitude: 0), 2_000) }
+        let metersPerDegree = 111_320.0
+        let latitudes = points.map { $0.latitude }
+        let reference = (latitudes.min()! + latitudes.max()!) / 2
+        let lonScale = metersPerDegree * max(0.1, cos(reference * Double.pi / 180))
+        let radians = headingDegrees * Double.pi / 180
+        let sine = sin(radians), cosine = cos(radians)
+        var minRight = Double.infinity, maxRight = -Double.infinity
+        var minUp = Double.infinity, maxUp = -Double.infinity
+        for point in points {
+            var deltaLon = point.longitude - first.longitude
+            if deltaLon > 180 { deltaLon -= 360 } else if deltaLon < -180 { deltaLon += 360 }
+            let east = deltaLon * lonScale
+            let north = (point.latitude - first.latitude) * metersPerDegree
+            let right = east * cosine - north * sine
+            let up = east * sine + north * cosine
+            minRight = min(minRight, right); maxRight = max(maxRight, right)
+            minUp = min(minUp, up); maxUp = max(maxUp, up)
+        }
+        let centerRight = (minRight + maxRight) / 2
+        let centerUp = (minUp + maxUp) / 2
+        let east = centerRight * cosine + centerUp * sine
+        let north = -centerRight * sine + centerUp * cosine
+        let center = ReplayCoordinate(latitude: first.latitude + north / metersPerDegree,
+                                      longitude: first.longitude + east / lonScale)
+        let distance = max(1_500, (maxRight - minRight) * metersOfDistancePerMeterOfWidth,
+                           (maxUp - minUp) * metersOfDistancePerMeterOfHeight)
+        return (center, min(2_000_000, distance))
+    }
 
     /// Where the camera centres at a share of the activity. Skips GPS gaps by looking back for the last known position.
     private func followCenter(progress: Double) -> ReplayCoordinate {
