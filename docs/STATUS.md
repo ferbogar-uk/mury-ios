@@ -593,3 +593,7 @@ Build 5 on a phone showed the overview not fitting the route (distance was 2.6x 
 ## 2026-11-08 — Flyover polish after the build 6 device test
 
 Build 6 looked good; requested tweaks done: marker drops in and lands on the start (`markerDrop`, bounce), closer and more tilted follow camera (450 m, 65 degrees), route smoothed over about 10 s (`RouteSmoothing`, Linux-tested), map pre-load sweep before Preview/Record, Share button renamed *3D Flyover Video* with no duplicate icon, and the template carousel rebuilt as one uniform `ForEach` (pages after Video stopped half-way). All unverified on a device. Not done yet: video rendered inside the app so the screen-recording prompt goes away.
+
+## 2026-11-08 — Flyover polish round 2 (build 7 device test)
+
+Marker drop and button liked. Changes: orbit now tilts early and closes in late (Strava-like lap from afar), route drawn as one uniform red line (white casing removed, it made the width look uneven), the visible pre-load sweep replaced by invisible `MKMapSnapshotter` warm-ups (best effort; no public MapKit offline or cache-clear API), and the Share template carousel rebuilt as a ScrollView paging carousel with own dots because the page-style `TabView` still stopped half-way (build 7 screenshot: page offset about half a page, next page spinner at the right edge). All unverified on a device.

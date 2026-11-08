@@ -126,15 +126,12 @@ struct FlyoverView: View {
         Map(position: $camera, interactionModes: []) {
             ForEach(Array(timeline.segments.enumerated()), id: \.offset) { _, segment in
                 MapPolyline(coordinates: segment.map(coordinate))
-                    .stroke(theme.routeCasing, lineWidth: 8)
-                MapPolyline(coordinates: segment.map(coordinate))
-                    .stroke(theme.route.opacity(0.25), lineWidth: 4)
+                    .stroke(theme.route.opacity(0.3), lineWidth: 4)
             }
             ForEach(Array(frame.revealedSegments.enumerated()), id: \.offset) { _, segment in
+                // One plain red line, same width everywhere (no white casing, which made it look uneven).
                 MapPolyline(coordinates: segment.map(coordinate))
-                    .stroke(theme.routeCasing, lineWidth: 9)
-                MapPolyline(coordinates: segment.map(coordinate))
-                    .stroke(theme.route, lineWidth: 5)
+                    .stroke(theme.route, lineWidth: 4)
             }
             if let first = timeline.segments.first?.first {
                 Annotation("Start", coordinate: coordinate(first)) {
@@ -288,26 +285,42 @@ struct FlyoverView: View {
         mode = .preloading
     }
 
-    /// Sweeps the camera along the route at flying height before anything is recorded, so MapKit has the tiles
-    /// cached when the real flyover passes over them. It cannot guarantee there are no gaps.
+    /// Asks MapKit for imagery along the route without moving the visible map, then waits (at most ~6 s) so tiles
+    /// are more likely to be cached when the flyover passes. MapKit has no public offline or cache-control API and
+    /// does not say when tiles are ready, so this is best effort and the cache cannot be cleared by the app.
     private func preloadMap() async {
-        let stops = 14
+        let counter = SnapshotCounter()
+        let stops = 8
+        var requested = 0
         for index in 0...stops {
-            if Task.isCancelled { return }
             let progress = Double(index) / Double(stops)
-            if let center = FlyoverPlan.position(timeline: timeline, progress: progress) {
-                camera = .camera(MapCamera(
-                    centerCoordinate: coordinate(center),
-                    distance: FlyoverPlan.followDistanceMeters,
-                    heading: reduceMotion ? 0 : FlyoverPlan.smoothedHeading(timeline: timeline, progress: progress),
-                    pitch: reduceMotion ? 0 : FlyoverPlan.followPitchDegrees))
+            guard let center = FlyoverPlan.position(timeline: timeline, progress: progress) else { continue }
+            let latitude = center.latitude
+            let longitude = center.longitude
+            let heading = FlyoverPlan.smoothedHeading(timeline: timeline, progress: progress)
+            let distance = FlyoverPlan.followDistanceMeters
+            requested += 1
+            Task.detached {
+                let options = MKMapSnapshotter.Options()
+                options.camera = MKMapCamera(lookingAtCenter: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
+                                             fromDistance: distance,
+                                             pitch: 60, heading: heading)
+                options.size = CGSize(width: 390, height: 844)
+                options.scale = 1
+                options.mapType = .hybridFlyover
+                _ = try? await MKMapSnapshotter(options: options).start()
+                counter.finishOne()
             }
-            try? await Task.sleep(for: .milliseconds(280))
+        }
+        var waited = 0.0
+        while counter.finished < requested, waited < 6, !Task.isCancelled {
+            try? await Task.sleep(for: .milliseconds(100))
+            waited += 0.1
         }
         if Task.isCancelled { return }
         flyTime = 0
         apply(plan.state(at: 0))
-        try? await Task.sleep(for: .milliseconds(500))
+        try? await Task.sleep(for: .milliseconds(400))
         guard mode == .preloading, !Task.isCancelled else { return }
         if afterPreload == .recording {
             startRecordingNow()
@@ -411,4 +424,12 @@ struct FlyoverView: View {
     private func coordinate(_ point: ReplayCoordinate) -> CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude)
     }
+}
+
+/// Counts finished background snapshot requests (read from the main actor, written from background tasks).
+nonisolated private final class SnapshotCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    var finished: Int { lock.lock(); defer { lock.unlock() }; return count }
+    func finishOne() { lock.lock(); count += 1; lock.unlock() }
 }

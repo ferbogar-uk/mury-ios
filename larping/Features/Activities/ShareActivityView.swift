@@ -52,6 +52,7 @@ struct ShareActivityView: View {
     @State private var composedImage: UIImage?
     @State private var mapCardImage: UIImage?
     @State private var template: ShareTemplate = .classic
+    @State private var scrolledTemplate: ShareTemplate?
     @State private var videoURL: URL?
     @State private var isGeneratingVideo = false
     @State private var videoTask: Task<Void, Never>?
@@ -120,17 +121,42 @@ struct ShareActivityView: View {
             .pickerStyle(.menu)
             .accessibilityIdentifier("share-template")
 
-            TabView(selection: $template) {
-                // One uniform ForEach, every page the same width: mixing fixed pages with a conditional ForEach
-                // left the later pages stopping half-way across the screen.
-                ForEach(ShareTemplate.allCases) { item in
-                    templatePage(item)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .tag(item)
+            // Own paging carousel (ScrollView + paging) instead of TabView(.page): the page-style TabView stopped
+            // half-way between pages from the Statistics template onward on a device.
+            ScrollView(.horizontal) {
+                HStack(spacing: 0) {
+                    ForEach(ShareTemplate.allCases) { item in
+                        templatePage(item)
+                            .padding(.horizontal, 16)
+                            .frame(maxHeight: .infinity)
+                            .containerRelativeFrame(.horizontal)
+                            .id(item)
+                    }
+                }
+                .scrollTargetLayout()
+            }
+            .scrollTargetBehavior(.paging)
+            .scrollPosition(id: $scrolledTemplate)
+            .scrollIndicators(.hidden)
+            .frame(maxHeight: 640)
+            .onAppear { scrolledTemplate = template }
+            .onChange(of: scrolledTemplate) { _, newValue in
+                if let newValue, newValue != template { template = newValue }
+            }
+            .onChange(of: template) { _, newValue in
+                if scrolledTemplate != newValue {
+                    withAnimation { scrolledTemplate = newValue }
                 }
             }
-            .tabViewStyle(.page)
-            .frame(maxHeight: 640)
+
+            HStack(spacing: 6) {
+                ForEach(ShareTemplate.allCases) { item in
+                    Circle()
+                        .fill(item == template ? Color.primary : Color.secondary.opacity(0.35))
+                        .frame(width: 7, height: 7)
+                }
+            }
+            .accessibilityHidden(true)
 
             if template.overlayLayout != nil {
                 Menu {
