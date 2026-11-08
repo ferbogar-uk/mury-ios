@@ -44,9 +44,13 @@ final class FlyoverPlanTests: XCTestCase {
         let orbit = plan.range(of: .orbit)
         let middle = plan.state(at: (orbit.lowerBound + orbit.upperBound) / 2)
         XCTAssertEqual(middle.phase, .orbit)
-        XCTAssertEqual(middle.pitchDegrees, FlyoverPlan.followPitchDegrees / 2, accuracy: 1e-6)
+        // Tilts up early (more than half-way by the middle) while still far from the start.
+        XCTAssertGreaterThan(middle.pitchDegrees, FlyoverPlan.followPitchDegrees / 2)
+        XCTAssertLessThanOrEqual(middle.pitchDegrees, FlyoverPlan.followPitchDegrees)
         XCTAssertGreaterThan(middle.distanceMeters, FlyoverPlan.followDistanceMeters)
         XCTAssertLessThan(middle.distanceMeters, plan.overviewDistanceMeters)
+        let linearMiddle = (plan.overviewDistanceMeters + FlyoverPlan.followDistanceMeters) / 2
+        XCTAssertGreaterThan(middle.distanceMeters, linearMiddle)
 
         let landed = plan.state(at: orbit.upperBound - 1e-9)
         XCTAssertEqual(landed.pitchDegrees, FlyoverPlan.followPitchDegrees, accuracy: 1e-6)

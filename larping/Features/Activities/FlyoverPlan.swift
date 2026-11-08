@@ -30,6 +30,10 @@ struct FlyoverPlan {
     static let followPitchDegrees = 65.0
     /// The marker starts falling at this share of the orbit and lands as the orbit ends.
     static let dropStartShareOfOrbit = 0.45
+    /// Share of the orbit in which the camera reaches full tilt (the rest is turning and closing in).
+    static let orbitTiltShare = 0.6
+    /// Exponent easing the approach: above 1 keeps the camera far away for longer, then closes in.
+    static let orbitApproachPower = 1.8
     /// Share of the clip each phase takes. They add up to 1.
     static let phaseShares: [(phase: Phase, share: Double)] = [
         (.overview, 0.12), (.orbit, 0.20), (.follow, 0.58), (.finish, 0.10)
@@ -111,13 +115,16 @@ struct FlyoverPlan {
         }
         if t < orbit.upperBound {
             let e = FlyoverPlan.smooth(FlyoverPlan.fraction(t, in: orbit))
+            // Strava-like: tilt up early and turn while still far away, then close in on the start late.
+            let tilt = FlyoverPlan.smooth(min(1, FlyoverPlan.fraction(t, in: orbit) / FlyoverPlan.orbitTiltShare))
+            let approach = pow(e, FlyoverPlan.orbitApproachPower)
             return State(phase: .orbit,
-                         centerLatitude: FlyoverPlan.mix(boxCenter.latitude, followStart.latitude, e),
-                         centerLongitude: FlyoverPlan.mix(boxCenter.longitude, followStart.longitude, e),
-                         distanceMeters: FlyoverPlan.mix(overviewDistanceMeters, FlyoverPlan.followDistanceMeters, e),
+                         centerLatitude: FlyoverPlan.mix(boxCenter.latitude, followStart.latitude, approach),
+                         centerLongitude: FlyoverPlan.mix(boxCenter.longitude, followStart.longitude, approach),
+                         distanceMeters: FlyoverPlan.mix(overviewDistanceMeters, FlyoverPlan.followDistanceMeters, approach),
                          // A quarter turn, ending exactly on the heading the follow phase starts with.
                          headingDegrees: FlyoverPlan.normalized(overviewHeading + 90 * e),
-                         pitchDegrees: FlyoverPlan.followPitchDegrees * e,
+                         pitchDegrees: FlyoverPlan.followPitchDegrees * tilt,
                          routeElapsedSeconds: 0, routeProgress: 0,
                          markerDrop: 1 - FlyoverPlan.bounceOut(FlyoverPlan.fraction(FlyoverPlan.fraction(t, in: orbit), in: FlyoverPlan.dropStartShareOfOrbit...1)))
         }
