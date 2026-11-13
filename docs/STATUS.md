@@ -597,3 +597,7 @@ Build 6 looked good; requested tweaks done: marker drops in and lands on the sta
 ## 2026-11-08 — Flyover polish round 2 (build 7 device test)
 
 Marker drop and button liked. Changes: orbit now tilts early and closes in late (Strava-like lap from afar), route drawn as one uniform red line (white casing removed, it made the width look uneven), the visible pre-load sweep replaced by invisible `MKMapSnapshotter` warm-ups (best effort; no public MapKit offline or cache-clear API), and the Share template carousel rebuilt as a ScrollView paging carousel with own dots because the page-style `TabView` still stopped half-way (build 7 screenshot: page offset about half a page, next page spinner at the right edge). All unverified on a device.
+
+## 2026-11-13 — Experimental in-app flyover render (build 9)
+
+Added `FlyoverRenderer` and a *Render in app (experimental)* button in the flyover screen: per-frame `MKMapSnapshotter` images from the same `FlyoverPlan`, overlay drawn on top, `AVAssetWriter` MP4, progress with seconds per frame, cancel, bounded waits. Goal: no screen-recording prompt. Unproven on a device (geometry, alignment, speed, licence); see KNOWN_ISSUES. `FlyoverPlan.frameTimes` added and tested.

@@ -262,4 +262,21 @@ final class FlyoverPlanTests: XCTestCase {
         XCTAssertEqual(FlyoverPlan.bounceOut(1), 1, accuracy: 1e-9)
         XCTAssertGreaterThan(FlyoverPlan.bounceOut(0.5), 0.5)
     }
+
+    func testFrameTimesCoverTheWholeClipEvenly() {
+        let times = FlyoverPlan.frameTimes(clipSeconds: 15, framesPerSecond: 20)
+        XCTAssertEqual(times.count, 300)
+        XCTAssertEqual(times.first, 0)
+        XCTAssertEqual(times.last ?? -1, 15, accuracy: 1e-9)
+        for pair in zip(times, times.dropFirst()) {
+            XCTAssertGreaterThan(pair.1, pair.0)
+        }
+        XCTAssertEqual(FlyoverPlan.frameTimes(clipSeconds: 0.01, framesPerSecond: 20).count, 2)
+    }
+
+    func testFrameTimesRejectUnusableInput() {
+        XCTAssertTrue(FlyoverPlan.frameTimes(clipSeconds: 0, framesPerSecond: 20).isEmpty)
+        XCTAssertTrue(FlyoverPlan.frameTimes(clipSeconds: .nan, framesPerSecond: 20).isEmpty)
+        XCTAssertTrue(FlyoverPlan.frameTimes(clipSeconds: 15, framesPerSecond: 0).isEmpty)
+    }
 }
