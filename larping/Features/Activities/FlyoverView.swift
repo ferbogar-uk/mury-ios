@@ -13,7 +13,7 @@ struct FlyoverView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private enum Mode: Equatable {
-        case idle, preloading, preparing, playing, recording, finishing, done
+        case idle, preloading, preparing, playing, recording, finishing, rendering, done
     }
 
     private enum ClipLength: Int, CaseIterable, Identifiable {
@@ -34,6 +34,9 @@ struct FlyoverView: View {
     @State private var player: AVPlayer?
     @State private var message: String?
     @State private var afterPreload: Mode = .playing
+    @State private var renderProgress: FlyoverRenderer.Progress?
+    @State private var renderTask: Task<Void, Never>?
+    @State private var renderSummary: String?
 
     init(activity: CDActivity) {
         // Smoothed over ~10 s each way so the drawn line and the camera follow the general path, not the GPS wobble.
@@ -92,9 +95,13 @@ struct FlyoverView: View {
             if phase != .active && isRunning && mode != .finishing {
                 abortRun("Flyover stopped because MURY left the screen.")
             }
+            if phase != .active && mode == .rendering {
+                cancelRender("Render stopped because MURY left the screen. Map images can only be fetched while the app is open.")
+            }
         }
         .onDisappear {
             if isRunning && mode != .finishing { abortRun(nil) }
+            if mode == .rendering { cancelRender(nil) }
         }
         .task(id: mode) {
             if mode == .preloading {
@@ -180,11 +187,48 @@ struct FlyoverView: View {
                     .background(.black.opacity(0.6), in: Capsule())
                     .foregroundStyle(.white)
             }
+            if mode == .rendering {
+                renderCard
+            }
             if mode == .idle || mode == .done {
                 panel
             }
         }
         .padding()
+    }
+
+    private var renderCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Rendering in the app (experimental)")
+                .font(MuryTypography.font(.headline, size: 17, weight: .semibold))
+            if let progress = renderProgress {
+                ProgressView(value: Double(progress.frame), total: Double(max(progress.total, 1)))
+                Text("Frame \(progress.frame) of \(progress.total) · \(String(format: "%.1f", progress.averageSecondsPerFrame)) s per frame · about \(Self.minutesText(progress.secondsRemaining)) left")
+                    .font(MuryTypography.font(.caption, size: 12))
+                    .monospacedDigit()
+            } else {
+                ProgressView()
+                Text("Fetching the first map image…")
+                    .font(MuryTypography.font(.caption, size: 12))
+            }
+            Text("Keep MURY open and the screen on. Nothing is recorded from the screen.")
+                .font(MuryTypography.font(.caption, size: 12))
+                .opacity(0.75)
+            Button("Cancel", role: .cancel) {
+                cancelRender("Render cancelled.")
+            }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier("flyover-render-cancel")
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.black.opacity(0.7), in: RoundedRectangle(cornerRadius: 16))
+        .foregroundStyle(.white)
+    }
+
+    private static func minutesText(_ seconds: Double) -> String {
+        let total = Int(seconds.isFinite ? max(0, seconds) : 0)
+        return total >= 60 ? "\(total / 60) min \(total % 60) s" : "\(total) s"
     }
 
     private var closeButton: some View {
@@ -257,12 +301,25 @@ struct FlyoverView: View {
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("flyover-record")
             }
+            Button {
+                startRender()
+            } label: {
+                Label("Render in app (experimental)", systemImage: "film").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier("flyover-render")
+            if let renderSummary, mode == .done {
+                Text(renderSummary)
+                    .font(MuryTypography.font(.caption, size: 12))
+                    .foregroundStyle(.secondary)
+            }
             if let message {
                 Text(message)
                     .font(MuryTypography.font(.caption, size: 12))
                     .foregroundStyle(.red)
             }
-            Text("Recording captures this screen while the flyover plays. Keep MURY open and tap the screen to stop. Satellite and 3D coverage depend on Apple Maps.")
+            Text("Render in app builds the video from map images, with no screen recording and no permission prompt. It is slow (minutes) and still being tested: the 3D look, the route alignment and the speed are not confirmed on a phone yet. "
+                 + "Recording captures this screen while the flyover plays. Keep MURY open and tap the screen to stop. Satellite and 3D coverage depend on Apple Maps.")
                 .font(MuryTypography.font(.caption, size: 12))
                 .foregroundStyle(.secondary)
         }
@@ -327,6 +384,48 @@ struct FlyoverView: View {
         } else {
             mode = .playing
         }
+    }
+
+    private func startRender() {
+        guard plan.isUsable else { return }
+        message = nil
+        recorded = nil
+        player = nil
+        renderSummary = nil
+        renderProgress = nil
+        mode = .rendering
+        UIApplication.shared.isIdleTimerDisabled = true
+        let renderPlan = plan
+        renderTask = Task {
+            defer { UIApplication.shared.isIdleTimerDisabled = false }
+            do {
+                let output = try await FlyoverRenderer.render(
+                    plan: renderPlan, timeline: timeline, routeColor: UIColor(theme.route), symbolName: symbol,
+                    savedDistance: savedDistance, reduceMotion: reduceMotion
+                ) { progress in
+                    renderProgress = progress
+                }
+                defer { try? FileManager.default.removeItem(at: output.url) }
+                let file = try VideoShareFile(source: output.url)
+                recorded = file
+                player = AVPlayer(url: file.url)
+                let each = output.totalSeconds / Double(max(output.frames, 1))
+                renderSummary = "Rendered in the app: \(output.frames) frames in \(Self.minutesText(output.totalSeconds)) (\(String(format: "%.1f", each)) s per frame)."
+                resetToStart(newMode: .done)
+            } catch is CancellationError {
+                if mode == .rendering { resetToStart() }
+            } catch {
+                message = error.localizedDescription
+                resetToStart()
+            }
+        }
+    }
+
+    private func cancelRender(_ note: String?) {
+        renderTask?.cancel()
+        renderTask = nil
+        if let note { message = note }
+        if mode == .rendering { resetToStart() }
     }
 
     private func startRecording() {

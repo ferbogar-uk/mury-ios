@@ -147,6 +147,14 @@ struct FlyoverPlan {
                      routeElapsedSeconds: timeline.duration, routeProgress: 1, markerDrop: 0)
     }
 
+    /// Output timestamps (seconds into the clip) for rendering a clip as `framesPerSecond` frames: evenly spaced,
+    /// first at 0 and last exactly at `clipSeconds`. Empty for an unusable clip or rate.
+    static func frameTimes(clipSeconds: Double, framesPerSecond: Int) -> [Double] {
+        guard clipSeconds.isFinite, clipSeconds > 0, framesPerSecond > 0 else { return [] }
+        let count = max(2, Int((clipSeconds * Double(framesPerSecond)).rounded()))
+        return (0..<count).map { clipSeconds * Double($0) / Double(count - 1) }
+    }
+
     // MARK: - Route helpers
 
     /// Visible span of a top-down camera per metre of camera distance, portrait phone, with a margin.

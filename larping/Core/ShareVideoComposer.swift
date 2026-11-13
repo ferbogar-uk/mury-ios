@@ -107,7 +107,7 @@ enum ShareVideoComposer {
         return url
     }
 
-    private static func pixelBuffer(from image: UIImage, size: CGSize, pool: CVPixelBufferPool) throws -> CVPixelBuffer {
+    static func pixelBuffer(from image: UIImage, size: CGSize, pool: CVPixelBufferPool) throws -> CVPixelBuffer {
         var buffer: CVPixelBuffer?
         let status = CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &buffer)
         guard status == kCVReturnSuccess, let buffer else {
