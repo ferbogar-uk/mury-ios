@@ -36,7 +36,7 @@ struct FlyoverPlan {
     static let orbitApproachPower = 1.8
     /// Share of the clip each phase takes. They add up to 1.
     static let phaseShares: [(phase: Phase, share: Double)] = [
-        (.overview, 0.12), (.orbit, 0.20), (.follow, 0.58), (.finish, 0.10)
+        (.overview, 0.05), (.orbit, 0.27), (.follow, 0.58), (.finish, 0.10)
     ]
 
     let clipSeconds: TimeInterval

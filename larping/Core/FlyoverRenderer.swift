@@ -18,11 +18,15 @@ enum FlyoverRenderer {
     static let scale: CGFloat = 2
     /// How long one frame may take before it is retried once and then reported as failed.
     static let frameTimeoutSeconds: TimeInterval = 15
+    /// How many map images are requested ahead of the one being encoded (they are still encoded in order).
+    static let prefetchWindow = 3
 
     struct Progress {
         let frame: Int
         let total: Int
         let averageSecondsPerFrame: Double
+        /// The frame that was just drawn, for a live preview while the video builds.
+        let preview: UIImage?
         var secondsRemaining: Double { Double(max(0, total - frame)) * averageSecondsPerFrame }
     }
 
@@ -90,11 +94,22 @@ enum FlyoverRenderer {
 
         let clock = ContinuousClock()
         let begin = clock.now
+        let states = times.map { plan.state(at: $0) }
+        var pending: [Int: Task<MKMapSnapshotter.Snapshot, Error>] = [:]
+        defer {
+            for task in pending.values { task.cancel() }
+        }
         for (index, time) in times.enumerated() {
             try Task.checkCancellation()
-            let state = plan.state(at: time)
+            _ = time
+            for ahead in index..<min(index + prefetchWindow, times.count) where pending[ahead] == nil {
+                let aheadState = states[ahead]
+                pending[ahead] = Task { try await fetchSnapshot(for: aheadState, reduceMotion: reduceMotion, frameIndex: ahead) }
+            }
+            let state = states[index]
             let frame = timeline.sample(at: state.routeElapsedSeconds)
-            let snapshot = try await fetchSnapshot(for: state, reduceMotion: reduceMotion, frameIndex: index)
+            guard let fetch = pending.removeValue(forKey: index) else { throw ShareVideoComposer.ComposeError.writerFailed("planning the frames") }
+            let snapshot = try await fetch.value
             try Task.checkCancellation()
 
             while !input.isReadyForMoreMediaData {
@@ -103,9 +118,12 @@ enum FlyoverRenderer {
                 try await Task.sleep(for: .milliseconds(2))
             }
             guard writer.status == .writing else { throw ShareVideoComposer.ComposeError.writerFailed("encoding a video frame", writer.error) }
+            var preview: UIImage?
             try autoreleasepool {
                 let image = draw(snapshot: snapshot, state: state, frame: frame, timeline: timeline,
-                                 routeColor: routeColor, symbolName: symbolName, savedDistance: savedDistance)
+                                 routeColor: routeColor, symbolName: symbolName, savedDistance: savedDistance,
+                                 reduceMotion: reduceMotion)
+                preview = image
                 let buffer = try ShareVideoComposer.pixelBuffer(from: image, size: size, pool: pool)
                 guard adaptor.append(buffer, withPresentationTime: CMTime(value: CMTimeValue(index), timescale: Int32(frameRate))) else {
                     throw ShareVideoComposer.ComposeError.writerFailed("appending a video frame", writer.error)
@@ -113,7 +131,7 @@ enum FlyoverRenderer {
             }
             let parts = begin.duration(to: clock.now).components
             let elapsed = Double(parts.seconds) + Double(parts.attoseconds) / 1e18
-            onProgress?(Progress(frame: index + 1, total: times.count, averageSecondsPerFrame: elapsed / Double(index + 1)))
+            onProgress?(Progress(frame: index + 1, total: times.count, averageSecondsPerFrame: elapsed / Double(index + 1), preview: preview))
         }
 
         try Task.checkCancellation()
@@ -192,7 +210,8 @@ enum FlyoverRenderer {
         timeline: ReplayTimeline,
         routeColor: UIColor,
         symbolName: String,
-        savedDistance: String
+        savedDistance: String,
+        reduceMotion: Bool
     ) -> UIImage {
         let format = UIGraphicsImageRendererFormat()
         format.scale = scale
@@ -201,6 +220,18 @@ enum FlyoverRenderer {
         return renderer.image { context in
             snapshot.image.draw(at: .zero)
             let cg = context.cgContext
+            // Own projection with the same camera the picture was requested with: Snapshot.point(for:) placed the
+            // route at random spots on tilted frames.
+            let camera = FlyoverProjection.Camera(
+                centerLatitude: state.centerLatitude, centerLongitude: state.centerLongitude,
+                distanceMeters: state.distanceMeters,
+                headingDegrees: reduceMotion ? 0 : state.headingDegrees,
+                pitchDegrees: reduceMotion ? 0 : state.pitchDegrees)
+            func project(_ latitude: Double, _ longitude: Double) -> CGPoint? {
+                guard let p = FlyoverProjection.project(latitude: latitude, longitude: longitude, camera: camera,
+                                                        width: Double(pointSize.width), height: Double(pointSize.height)) else { return nil }
+                return CGPoint(x: p.x, y: p.y)
+            }
 
             func strokeRoute(_ segments: [[ReplayCoordinate]], alpha: CGFloat) {
                 cg.setStrokeColor(routeColor.withAlphaComponent(alpha).cgColor)
@@ -208,18 +239,22 @@ enum FlyoverRenderer {
                 cg.setLineCap(.round)
                 cg.setLineJoin(.round)
                 for segment in segments where segment.count > 1 {
-                    for (index, point) in segment.enumerated() {
-                        let p = snapshot.point(for: CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude))
-                        if index == 0 { cg.move(to: p) } else { cg.addLine(to: p) }
+                    var drawing = false
+                    for point in segment {
+                        guard let p = project(point.latitude, point.longitude) else {
+                            if drawing { cg.strokePath() }
+                            drawing = false
+                            continue
+                        }
+                        if drawing { cg.addLine(to: p) } else { cg.move(to: p); drawing = true }
                     }
-                    cg.strokePath()
+                    if drawing { cg.strokePath() }
                 }
             }
             strokeRoute(timeline.segments, alpha: 0.3)
             strokeRoute(frame.revealedSegments, alpha: 1)
 
-            if let first = timeline.segments.first?.first {
-                let p = snapshot.point(for: CLLocationCoordinate2D(latitude: first.latitude, longitude: first.longitude))
+            if let first = timeline.segments.first?.first, let p = project(first.latitude, first.longitude) {
                 cg.setFillColor(UIColor.systemGreen.cgColor)
                 cg.fillEllipse(in: CGRect(x: p.x - 7, y: p.y - 7, width: 14, height: 14))
                 cg.setStrokeColor(UIColor.white.cgColor)
@@ -227,8 +262,8 @@ enum FlyoverRenderer {
                 cg.strokeEllipse(in: CGRect(x: p.x - 7, y: p.y - 7, width: 14, height: 14))
             }
 
-            if state.phase != .overview, state.markerDrop < 1, let position = frame.position {
-                var p = snapshot.point(for: CLLocationCoordinate2D(latitude: position.latitude, longitude: position.longitude))
+            if state.phase != .overview, state.markerDrop < 1, let position = frame.position,
+               var p = project(position.latitude, position.longitude) {
                 p.y -= CGFloat(state.markerDrop) * 360
                 let alpha = CGFloat(min(1, (1 - state.markerDrop) * 6))
                 let rect = CGRect(x: p.x - 16, y: p.y - 16, width: 32, height: 32)
