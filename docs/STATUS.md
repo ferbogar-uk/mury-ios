@@ -601,3 +601,7 @@ Marker drop and button liked. Changes: orbit now tilts early and closes in late 
 ## 2026-11-13 — Experimental in-app flyover render (build 9)
 
 Added `FlyoverRenderer` and a *Render in app (experimental)* button in the flyover screen: per-frame `MKMapSnapshotter` images from the same `FlyoverPlan`, overlay drawn on top, `AVAssetWriter` MP4, progress with seconds per frame, cancel, bounded waits. Goal: no screen-recording prompt. Unproven on a device (geometry, alignment, speed, licence); see KNOWN_ISSUES. `FlyoverPlan.frameTimes` added and tested.
+
+## 2026-11-13 — Render in app fixes after the build 9 device test
+
+Progress card now shows the last drawn frame and an elapsed clock; route drawn with own `FlyoverProjection` instead of `Snapshot.point(for:)`; 3 snapshot requests in flight; overview hold cut to 5 percent. Build 10. Unverified on a device.

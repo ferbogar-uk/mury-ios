@@ -37,6 +37,7 @@ struct FlyoverView: View {
     @State private var renderProgress: FlyoverRenderer.Progress?
     @State private var renderTask: Task<Void, Never>?
     @State private var renderSummary: String?
+    @State private var renderStartedAt = Date()
 
     init(activity: CDActivity) {
         // Smoothed over ~10 s each way so the drawn line and the camera follow the general path, not the GPS wobble.
@@ -202,14 +203,25 @@ struct FlyoverView: View {
             Text("Rendering in the app (experimental)")
                 .font(MuryTypography.font(.headline, size: 17, weight: .semibold))
             if let progress = renderProgress {
+                if let preview = progress.preview {
+                    Image(uiImage: preview)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(height: 160)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .frame(maxWidth: .infinity)
+                }
                 ProgressView(value: Double(progress.frame), total: Double(max(progress.total, 1)))
                 Text("Frame \(progress.frame) of \(progress.total) · \(String(format: "%.1f", progress.averageSecondsPerFrame)) s per frame · about \(Self.minutesText(progress.secondsRemaining)) left")
                     .font(MuryTypography.font(.caption, size: 12))
                     .monospacedDigit()
             } else {
                 ProgressView()
-                Text("Fetching the first map image…")
-                    .font(MuryTypography.font(.caption, size: 12))
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    Text("Asking Apple Maps for the first images… \(Int(context.date.timeIntervalSince(renderStartedAt))) s. The first ones take longest.")
+                        .font(MuryTypography.font(.caption, size: 12))
+                        .monospacedDigit()
+                }
             }
             Text("Keep MURY open and the screen on. Nothing is recorded from the screen.")
                 .font(MuryTypography.font(.caption, size: 12))
@@ -393,6 +405,7 @@ struct FlyoverView: View {
         player = nil
         renderSummary = nil
         renderProgress = nil
+        renderStartedAt = Date()
         mode = .rendering
         UIApplication.shared.isIdleTimerDisabled = true
         let renderPlan = plan

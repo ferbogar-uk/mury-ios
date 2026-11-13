@@ -23,7 +23,7 @@ final class FlyoverPlanTests: XCTestCase {
             XCTAssertEqual(plan.range(of: .follow).upperBound, plan.range(of: .finish).lowerBound, accuracy: 1e-9)
         }
         let thirty = FlyoverPlan(timeline: eastboundTimeline(), clipSeconds: 30)
-        XCTAssertEqual(thirty.range(of: .overview).upperBound, 3.6, accuracy: 1e-9)
+        XCTAssertEqual(thirty.range(of: .overview).upperBound, 1.5, accuracy: 1e-9)
         XCTAssertEqual(thirty.range(of: .follow).upperBound, 27, accuracy: 1e-9)
     }
 
