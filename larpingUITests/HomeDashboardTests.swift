@@ -46,7 +46,9 @@ final class HomeDashboardTests: XCTestCase {
             if allow.exists { allow.tap() }
         }
         let title = app.textFields["record-event-name"]
-        title.tap()
+        // Tap at the far right so the cursor is at the end of the text, however long the
+        // automatic title is, and the deletes below remove all of it.
+        title.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()
         title.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: (title.value as? String ?? "").count))
         title.typeText("Home title survives\n")
         XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
