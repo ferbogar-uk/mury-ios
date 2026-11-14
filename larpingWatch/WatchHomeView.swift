@@ -2,41 +2,80 @@ import SwiftUI
 
 struct WatchHomeView: View {
     private let receiver = MirrorReceiver.shared
+    private let recorder = WatchRecorder.shared
     @State private var finish = FinishConfirmation()
     @State private var notReachable = false
     private let monitor = HeartRateMonitor.shared
 
+    /// True while this watch is recording by itself. That takes priority over mirroring.
+    private var isOwn: Bool { recorder.state != .idle }
+    private var snapshot: MirrorSnapshot { isOwn ? recorder.snapshot : receiver.snapshot }
+
     var body: some View {
-        let snapshot = receiver.snapshot
+        let current = snapshot
         Group {
-            if snapshot.state == .idle {
-                idleView
+            if current.state == .idle {
+                startView
             } else {
-                recordingView(MirrorDisplay(snapshot), sport: snapshot.sportLabel)
-                    .onChange(of: snapshot.state) { _, new in finish.stateChanged(to: new) }
+                recordingView(MirrorDisplay(current), sport: statusLine(for: current))
+                    .onChange(of: current.state) { _, new in finish.stateChanged(to: new) }
             }
         }
-        // The sensor only follows what the iPhone is recording; it never starts on its own.
-        .onChange(of: snapshot.state, initial: true) { _, new in monitor.follow(new) }
+        // When the watch records by itself, the recorder drives the sensor. Otherwise the
+        // sensor only follows what the iPhone is recording.
+        .onChange(of: receiver.snapshot.state, initial: true) { _, new in
+            if !isOwn { monitor.follow(new) }
+        }
+        .onChange(of: isOwn) { _, own in
+            if !own { monitor.follow(receiver.snapshot.state) }
+        }
     }
 
-    private var idleView: some View {
-        VStack(spacing: 6) {
-            Image(systemName: "figure.run")
-                .font(.title2)
-            Text("MURY")
-                .font(.headline)
-            Text(receiver.hasReceivedAnything ? "Start a recording on your iPhone" : "Waiting for your iPhone")
-                .font(.footnote)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+    /// The watch's own start screen: pick a sport and go. It never waits for the iPhone.
+    private var startView: some View {
+        NavigationStack {
+            List {
+                ForEach(WatchSport.allCases, id: \.self) { sport in
+                    Button { recorder.start(sport) } label: {
+                        Label(sport.label, systemImage: sport.symbolName)
+                    }
+                }
+                if let message = outcomeMessage {
+                    Text(message.text)
+                        .font(.footnote)
+                        .foregroundStyle(message.isProblem ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
+                    if recorder.outcome == .saveFailed {
+                        Button("Retry") { recorder.retrySave() }
+                    }
+                }
+            }
+            .navigationTitle("MURY")
         }
-        .padding()
+    }
+
+    private var outcomeMessage: (text: String, isProblem: Bool)? {
+        switch recorder.outcome {
+        case .saved(let summary): ("Saved \u{00B7} \(summary)", false)
+        case .tooShort: ("Too short to save", false)
+        case .saveFailed: ("Could not save", true)
+        case nil: nil
+        }
+    }
+
+    /// The small line above the clock: the sport, a pause or a GPS hint.
+    private func statusLine(for snapshot: MirrorSnapshot) -> String {
+        guard isOwn else { return snapshot.sportLabel }
+        if recorder.locationDenied { return "\(snapshot.sportLabel) \u{00B7} Location off" }
+        if snapshot.state == .recording && !recorder.core.hasFix {
+            return "\(snapshot.sportLabel) \u{00B7} GPS\u{2026}"
+        }
+        return snapshot.sportLabel
     }
 
     private func recordingView(_ display: MirrorDisplay, sport: String) -> some View {
         VStack(spacing: 4) {
             Text(display.isPaused ? "\(sport) \u{00B7} Paused" : sport)
+                .lineLimit(1)
                 .font(.caption)
                 .foregroundStyle(display.isPaused ? .orange : .secondary)
             Text(display.time)
@@ -54,7 +93,7 @@ struct WatchHomeView: View {
                     .foregroundStyle(.secondary)
                 heartRateLabel
             }
-            controls(for: receiver.snapshot.state)
+            controls(for: snapshot.state)
         }
         .padding(.horizontal)
     }
@@ -97,7 +136,7 @@ struct WatchHomeView: View {
                 }
             }
             .font(.footnote)
-            if notReachable {
+            if notReachable && !isOwn {
                 Text("iPhone not reachable")
                     .font(.caption2)
                     .foregroundStyle(.orange)
@@ -118,14 +157,16 @@ struct WatchHomeView: View {
         switch command {
         case .finish:
             _ = finish.requestFinish(in: state)
-        case .pause, .resume:
-            notReachable = !receiver.send(command)
+        case .pause:
+            if isOwn { recorder.pause() } else { notReachable = !receiver.send(command) }
+        case .resume:
+            if isOwn { recorder.resume() } else { notReachable = !receiver.send(command) }
         }
     }
 
     private func confirmFinish(in state: MirrorSnapshot.State) {
         guard let command = finish.confirm(in: state) else { return }
-        notReachable = !receiver.send(command)
+        if isOwn { recorder.finish() } else { notReachable = !receiver.send(command) }
     }
 }
 
