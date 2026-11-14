@@ -3,7 +3,7 @@ import Foundation
 /// The sports the watch can record on its own. The raw values are the same strings
 /// the iPhone's `SportType` uses, so a watch recording can be turned into an iPhone
 /// activity later without a translation table (WatchRecordingTests checks they match).
-enum WatchSport: String, Codable, CaseIterable, Equatable {
+nonisolated enum WatchSport: String, Codable, CaseIterable, Equatable {
     case run, walk, ride, hike
 
     var label: String {
@@ -29,7 +29,7 @@ enum WatchSport: String, Codable, CaseIterable, Equatable {
 }
 
 /// One recorded point of a watch recording.
-struct WatchTrackPoint: Codable, Equatable {
+nonisolated struct WatchTrackPoint: Codable, Equatable {
     var timestamp: Date
     var latitude: Double
     var longitude: Double
@@ -43,7 +43,7 @@ struct WatchTrackPoint: Codable, Equatable {
 /// A finished recording made on the watch, ready to be stored and, later, sent to the
 /// iPhone. The `id` is created once on the watch and never changes, so the iPhone can
 /// recognise an activity it already imported and never duplicate it.
-struct WatchActivityRecord: Codable, Equatable, Identifiable {
+nonisolated struct WatchActivityRecord: Codable, Equatable, Identifiable {
     var id: UUID
     var sport: WatchSport
     var startedAt: Date
@@ -62,6 +62,19 @@ struct WatchActivityRecord: Codable, Equatable, Identifiable {
 
     var isTooShort: Bool {
         durationSeconds < Self.minimumSeconds && distanceMeters < Self.minimumMeters
+    }
+
+    /// The file format used on the watch, in transit and in the iPhone's inbox.
+    func encoded() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return try encoder.encode(self)
+    }
+
+    static func decode(_ data: Data) throws -> WatchActivityRecord {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(WatchActivityRecord.self, from: data)
     }
 }
 
@@ -172,24 +185,12 @@ struct WatchRecorderCore: Equatable {
 
 /// Keeps finished watch recordings on the watch, one JSON file each, until they have
 /// reached the iPhone. Nothing leaves the device from here.
-struct WatchActivityStore {
+nonisolated struct WatchActivityStore {
     let directory: URL
 
     init(directory: URL) { self.directory = directory }
 
-    private var encoder: JSONEncoder {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        return encoder
-    }
-
-    private var decoder: JSONDecoder {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return decoder
-    }
-
-    private func url(for id: UUID) -> URL {
+    func url(for id: UUID) -> URL {
         directory.appendingPathComponent("\(id.uuidString).json")
     }
 
@@ -197,7 +198,7 @@ struct WatchActivityStore {
     /// save never leaves a half-written file.
     func save(_ record: WatchActivityRecord) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        try encoder.encode(record).write(to: url(for: record.id), options: .atomic)
+        try record.encoded().write(to: url(for: record.id), options: .atomic)
     }
 
     /// Every readable recording, oldest first. A damaged file is skipped, not fatal.
@@ -206,7 +207,7 @@ struct WatchActivityStore {
             at: directory, includingPropertiesForKeys: nil)) ?? []
         return files
             .filter { $0.pathExtension == "json" }
-            .compactMap { try? decoder.decode(WatchActivityRecord.self, from: Data(contentsOf: $0)) }
+            .compactMap { try? WatchActivityRecord.decode(Data(contentsOf: $0)) }
             .sorted { $0.startedAt < $1.startedAt }
     }
 

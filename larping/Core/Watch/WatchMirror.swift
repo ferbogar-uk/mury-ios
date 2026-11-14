@@ -37,6 +37,16 @@ final class WatchMirror: NSObject, WCSessionDelegate {
     /// Set by the app root. Called on the main actor with each valid command from the watch.
     @ObservationIgnored var onCommand: ((WatchCommand) -> Void)?
 
+    /// Set by the app root. Called on the main actor when a recording from the watch has
+    /// arrived in the inbox.
+    @ObservationIgnored var onRecordingReceived: (() -> Void)?
+
+    /// Where recordings from the watch wait until they are imported. They live here, not in
+    /// memory, so one that arrives while the app is closed is still imported on the next launch.
+    nonisolated static var inbox: WatchActivityStore {
+        WatchActivityStore(directory: URL.applicationSupportDirectory.appendingPathComponent("WatchInbox", isDirectory: true))
+    }
+
     /// Call once at launch.
     func activate() {
         guard let session else { return }
@@ -78,6 +88,16 @@ final class WatchMirror: NSObject, WCSessionDelegate {
         // Anything that is not exactly a known command is dropped.
         guard let command = WatchCommand(dictionary: message) else { return }
         Task { @MainActor in self.onCommand?(command) }
+    }
+
+    nonisolated func session(_ session: WCSession, didReceive file: WCSessionFile) {
+        // The system deletes the file when this method returns, so it is copied at once.
+        // A file that is not a recording is dropped.
+        guard let data = try? Data(contentsOf: file.fileURL),
+              let record = try? WatchActivityRecord.decode(data),
+              (try? Self.inbox.save(record)) != nil
+        else { return }
+        Task { @MainActor in self.onRecordingReceived?() }
     }
 
     nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}

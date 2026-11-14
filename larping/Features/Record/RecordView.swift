@@ -9,6 +9,9 @@ struct RecordView: View {
     @Environment(\.finishRequestedFromWatch) private var finishRequestedFromWatch
     @State private var selectedSport: SportType = .run
     @State private var eventName = ""
+    /// The last title the app suggested itself. While the field still holds it, the person has
+    /// not written their own, so the place can be added after the run.
+    @State private var autoEventName = ""
     @FocusState private var isEditingEventName: Bool
     let initialSport: SportType
     let requestID: UUID?
@@ -95,10 +98,12 @@ struct RecordView: View {
             .onChange(of: tracker.distanceMeters) { sendMirror() }
             .onChange(of: selectedSport) {
                 eventName = suggestedEventName(for: selectedSport)
+                autoEventName = eventName
             }
             .onAppear {
                 if !didInitializeName {
                     eventName = suggestedEventName(for: selectedSport)
+                    autoEventName = eventName
                     didInitializeName = true
                 }
                 consumeSportRequest()
@@ -187,7 +192,7 @@ struct RecordView: View {
                             .background(.error, in: Capsule())
                     }
                     Spacer()
-                    Text(eventName.isEmpty ? "MURY \(selectedSport.label)" : eventName)
+                    Text(eventName.isEmpty ? suggestedEventName(for: selectedSport) : eventName)
                         .font(MuryTypography.font(.headline, size: 17, weight: .semibold))
                         .lineLimit(1)
                         .foregroundStyle(.primary)
@@ -310,6 +315,7 @@ struct RecordView: View {
         let recording = tracker.stop()
         savedDistance = recording.distanceMeters
         let title = eventName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isAutoTitle = title.isEmpty || title == autoEventName
         do {
             let activity = try activitiesStore.create(
                 sportType: selectedSport,
@@ -326,7 +332,9 @@ struct RecordView: View {
             )
             showSavedConfirmation = true
             eventName = suggestedEventName(for: selectedSport)
+            autoEventName = eventName
             Task { await HealthKitService.saveWorkout(from: activity) }
+            if isAutoTitle { addPlace(to: activity, sport: selectedSport) }
         } catch {
             saveErrorMessage = error.localizedDescription
         }
@@ -366,8 +374,26 @@ struct RecordView: View {
         ))
     }
 
-    private func suggestedEventName(for sport: SportType) -> String {
-        EventNamer.nextName(base: "MURY \(sport.label)", existing: activitiesStore.activities.compactMap(\.eventName))
+    private func suggestedEventName(for sport: SportType, place: String? = nil, excluding id: UUID? = nil) -> String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        let base = ActivityNamer.title(sport: sport, hour: hour, place: place)
+        let others = activitiesStore.activities.filter { $0.id != id }.compactMap(\.eventName)
+        return EventNamer.nextName(base: base, existing: others)
+    }
+
+    /// Adds the neighbourhood to an automatic title once the run is saved. With no answer
+    /// (no network, no route) the title stays as it is.
+    private func addPlace(to activity: CDActivity, sport: SportType) {
+        guard let first = activity.trackPoints.min(by: { $0.timestamp < $1.timestamp }) else { return }
+        let current = activity.eventName
+        let hour = Calendar.current.component(.hour, from: activity.startedAt)
+        Task {
+            guard let place = await PlaceNamer.name(latitude: first.latitude, longitude: first.longitude),
+                  activity.eventName == current else { return }
+            let base = ActivityNamer.title(sport: sport, hour: hour, place: place)
+            let others = activitiesStore.activities.filter { $0.id != activity.id }.compactMap(\.eventName)
+            try? activitiesStore.rename(activity, to: EventNamer.nextName(base: base, existing: others))
+        }
     }
 
     private func averageSpeedMps(_ recording: LocationTracker.Recording) -> Double? {
