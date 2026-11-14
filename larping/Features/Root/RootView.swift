@@ -48,7 +48,10 @@ struct RootTabView: View {
                 ProgressView()
             }
         }
-        .onAppear { WatchMirror.shared.onCommand = { handleWatchCommand($0) } }
+        .onAppear {
+            WatchMirror.shared.onCommand = { handleWatchCommand($0) }
+            WatchMirror.shared.onRecordingReceived = { importWatchRecordings() }
+        }
         .task {
             if activitiesStore == nil {
                 SeedData.seedIfNeeded(context: modelContext)
@@ -56,6 +59,56 @@ struct RootTabView: View {
                 activitiesStore = store
                 store.refresh()
             }
+            importWatchRecordings()
+        }
+    }
+
+    /// Imports the recordings the watch sent, once each. A file leaves the inbox only after
+    /// the activity is saved (or was already there), so nothing is lost and nothing doubles.
+    private func importWatchRecordings() {
+        guard let store = activitiesStore else { return }
+        let inbox = WatchMirror.inbox
+        for record in inbox.loadAll() {
+            let existing = store.activities.map { (source: $0.source, startedAt: $0.startedAt) }
+            if WatchImport.isDuplicate(record, existing: existing) {
+                inbox.delete(id: record.id)
+                continue
+            }
+            guard let values = WatchImport.values(from: record) else {
+                inbox.delete(id: record.id)
+                continue
+            }
+            let hour = Calendar.current.component(.hour, from: values.startedAt)
+            let base = ActivityNamer.title(sport: values.sportType, hour: hour, place: nil)
+            do {
+                let activity = try store.create(
+                    sportType: values.sportType, startedAt: values.startedAt, endedAt: values.endedAt,
+                    durationSeconds: values.durationSeconds, distanceMeters: values.distanceMeters,
+                    elevationGainMeters: values.elevationGainMeters, averageSpeedMps: values.averageSpeedMps,
+                    maxSpeedMps: values.maxSpeedMps, source: WatchImport.source,
+                    eventName: EventNamer.nextName(base: base, existing: store.activities.compactMap(\.eventName)),
+                    trackPointsPayloads: values.trackPoints
+                )
+                inbox.delete(id: record.id)
+                Task { await HealthKitService.saveWorkout(from: activity) }
+                nameWithPlace(activity, in: store, sport: values.sportType, hour: hour)
+            } catch {
+                // Kept in the inbox: the next launch tries again.
+            }
+        }
+    }
+
+    /// Adds the neighbourhood to an automatic title. The place is looked up from the first
+    /// route point; with no answer the title stays as it is.
+    private func nameWithPlace(_ activity: CDActivity, in store: ActivitiesStore, sport: SportType, hour: Int) {
+        guard let first = activity.trackPoints.min(by: { $0.timestamp < $1.timestamp }) else { return }
+        let current = activity.eventName
+        Task {
+            guard let place = await PlaceNamer.name(latitude: first.latitude, longitude: first.longitude),
+                  activity.eventName == current else { return }
+            let base = ActivityNamer.title(sport: sport, hour: hour, place: place)
+            let others = store.activities.filter { $0.id != activity.id }.compactMap(\.eventName)
+            try? store.rename(activity, to: EventNamer.nextName(base: base, existing: others))
         }
     }
 

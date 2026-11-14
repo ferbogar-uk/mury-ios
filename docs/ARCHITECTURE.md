@@ -92,7 +92,11 @@ The watch app now records on its own, like Strava, and no longer waits for the i
 - `WatchRecorder` (watch only): CoreLocation (`distanceFilter` 3 m), 1 s timer, writes the file. `HeartRateMonitor` still runs the `HKWorkoutSession` only for the sensor and discards its workout, now also driven by the own recording (`setSport` picks the activity type).
 - `RecorderMath.swift` and `GeoDistance.swift` moved into `MirrorShared/` so the watch target compiles them; `scripts/test-core-logic.sh` paths updated.
 - Info: `WKRunsIndependentlyOfCompanionApp = YES`, `NSLocationWhenInUseUsageDescription` for the watch target.
-- Not yet: sending to the iPhone and automatic naming (Stage 2), live mirror when near, auto-pause, crash recovery (Stage 3), app icon/colours on the watch.
+- Not yet: live mirror when near, auto-pause, crash recovery (Stage 3), app icon/colours on the watch.
+
+**Sync to the iPhone (Stage 2).** After saving, the watch queues each file with `WCSession.transferFile` (`MirrorReceiver.sendPendingRecordings`, also run at activation); the system retries until delivered and the watch deletes its copy only in `didFinish` without error. The iPhone (`WatchMirror.session(_:didReceive:)`) copies the file at once into `Application Support/WatchInbox` (the system removes it when the callback returns) and `RootTabView.importWatchRecordings()` imports from there on launch and on arrival: `WatchImport.values(from:)` -> `ActivitiesStore.create(source: "watch")` -> Health write as for iPhone recordings -> inbox file deleted. No id is stored on `CDActivity` (no schema change): a repeat is recognised by `source == "watch"` and the same start second (`WatchImport.isDuplicate`).
+
+**Automatic title** (`ActivityNamer`, Foundation only): sport noun + part of the day (+ " em <place>"), Portuguese: "Corrida da manhã em Wembley". Parts: 0-4 madrugada, 5-10 manhã, 11-13 almoço, 14-16 tarde, 17-19 fim de tarde, 20-23 noite. `EventNamer.nextName` still adds " 1", " 2" for repeats. The place comes from `PlaceNamer` (CLGeocoder, 6 s timeout, `subLocality ?? locality`), the only thing the app sends to Apple (one coordinate of the first route point, approved by the user). It runs after the activity is saved and renames it only if the title was still the automatic one. Used by `RecordView` (placeholder + save) and by the watch import.
 
 ## Data model
 

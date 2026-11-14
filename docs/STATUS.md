@@ -610,3 +610,8 @@ Progress card now shows the last drawn frame and an elapsed clock; route drawn w
 ## 2026-11-14 — Watch Stage 1: the watch records by itself
 
 New `WatchRecorderCore`, `WatchActivityRecord`, `WatchActivityStore` (MirrorShared, Linux-tested), `WatchRecorder` and a new start screen with sport choice on the watch; the "Waiting for your iPhone" screen is gone. Watch target now independent of the companion app and asks for location. `RecorderMath`/`GeoDistance` moved to MirrorShared. Sending to the iPhone is Stage 2. Unverified on a device.
+
+
+## 2026-11-14 — Watch Stage 2: sync to the iPhone and automatic titles
+
+Watch recordings go to the iPhone with `transferFile` (queued, deleted on the watch only after delivery), land in an inbox and are imported once (duplicate check by source and start second), then written to Health like any activity. New automatic titles "Corrida da manhã em Wembley" replace "MURY Run" on the iPhone recorder and for watch imports; the place uses Apple's geocoder (user approved). Unverified on devices.

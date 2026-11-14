@@ -185,3 +185,7 @@ Build 9 device test of Render in app: the scenery looked good, but (1) the progr
 ## Watch standalone recording: unverified on a device
 
 Written and unit-tested for the logic only; CI cannot run GPS, the heart sensor or the battery. Open points: background location relies on the workout session (no `allowsBackgroundLocationUpdates` set, to avoid a crash if the mode is missing); the watch recording is saved only on the watch until Stage 2; its workout is still discarded in Health, so it does not count for the Apple rings yet (decision pending).
+
+## Place in the automatic title needs the network and sends one coordinate to Apple
+
+`PlaceNamer` uses `CLGeocoder`. Offline, or after 6 s without an answer, the title stays without place ("Corrida da manhã"). It is not retried later. The default title is Portuguese on purpose (user's choice) while the rest of the app is English. Sync of watch recordings is unverified on a device (the CI cannot pair a watch).

@@ -97,6 +97,7 @@ final class WatchRecorder: NSObject, CLLocationManagerDelegate {
             try store.save(record)
             unsaved = nil
             outcome = .saved(Self.summary(of: record))
+            MirrorReceiver.shared.sendPendingRecordings()
         } catch {
             unsaved = record
             outcome = .saveFailed

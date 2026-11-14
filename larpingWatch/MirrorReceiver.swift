@@ -40,6 +40,21 @@ final class MirrorReceiver: NSObject, WCSessionDelegate {
         session.sendMessage(reading.dictionary, replyHandler: nil, errorHandler: nil)
     }
 
+    /// Hands every recording that has not reached the iPhone to the system, which keeps
+    /// trying until it arrives, even if the iPhone is far away or the app is closed. A
+    /// recording stays on the watch until the system says it was delivered. Calling this
+    /// again is safe: one already queued is not queued twice.
+    func sendPendingRecordings() {
+        guard WCSession.isSupported() else { return }
+        let session = WCSession.default
+        guard session.activationState == .activated else { return }
+        let queued = Set(session.outstandingFileTransfers.compactMap { $0.file.metadata?["id"] as? String })
+        let store = WatchRecorder.shared.store
+        for record in store.loadAll() where !queued.contains(record.id.uuidString) {
+            session.transferFile(store.url(for: record.id), metadata: ["id": record.id.uuidString])
+        }
+    }
+
     private func apply(_ dictionary: [String: Any]) {
         // A malformed message is ignored: the screen keeps its last good state.
         guard let next = MirrorSnapshot(dictionary: dictionary) else { return }
@@ -53,8 +68,20 @@ final class MirrorReceiver: NSObject, WCSessionDelegate {
     ) {
         // The iPhone may have sent a state before this app was open.
         let context = session.receivedApplicationContext
-        guard !context.isEmpty else { return }
-        Task { @MainActor in self.apply(context) }
+        Task { @MainActor in
+            if !context.isEmpty { self.apply(context) }
+            // Anything saved earlier that never reached the iPhone goes now.
+            self.sendPendingRecordings()
+        }
+    }
+
+    nonisolated func session(
+        _ session: WCSession, didFinish fileTransfer: WCSessionFileTransfer, error: Error?
+    ) {
+        guard error == nil, let text = fileTransfer.file.metadata?["id"] as? String,
+              let id = UUID(uuidString: text) else { return }
+        // Delivered: the iPhone has the file, so the watch's copy can go.
+        Task { @MainActor in WatchRecorder.shared.store.delete(id: id) }
     }
 
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
