@@ -19,15 +19,16 @@ for f in \
   larping/Core/Models/Activity.swift \
   larping/Core/Formatters.swift \
   larping/Core/BackupFormat.swift \
-  larping/Core/GeoDistance.swift \
+  MirrorShared/GeoDistance.swift \
   larping/Core/GPXParser.swift \
-  larping/Core/Location/RecorderMath.swift \
+  MirrorShared/RecorderMath.swift \
   larping/Features/Stats/StatsSummary.swift \
   larping/Core/HeartRateZones.swift \
   MirrorShared/MirrorSnapshot.swift \
   MirrorShared/MirrorDisplay.swift \
   MirrorShared/WatchControls.swift \
   MirrorShared/HeartRate.swift \
+  MirrorShared/WatchRecording.swift \
   larping/Features/Activities/ReplayTimeline.swift \
   larping/Core/RouteSmoothing.swift \
   larping/Core/FlyoverProjection.swift \
@@ -35,7 +36,7 @@ for f in \
   if [ -f "$f" ]; then cp "$f" "$SRC/"; copied=$((copied + 1)); else echo "skip (not on this branch): $f"; fi
 done
 
-for t in ReplayTimelineTests FlyoverPlanTests RouteSmoothingTests FlyoverProjectionTests FormattersTests EventNamerTests MirrorSnapshotTests GeoDistanceTests GPXParserTests RecorderMathTests StatsSummaryTests WatchControlsTests HeartRateTests HeartRateLogTests HeartRateZonesTests BackupFormatTests; do
+for t in WatchRecordingTests ReplayTimelineTests FlyoverPlanTests RouteSmoothingTests FlyoverProjectionTests FormattersTests EventNamerTests MirrorSnapshotTests GeoDistanceTests GPXParserTests RecorderMathTests StatsSummaryTests WatchControlsTests HeartRateTests HeartRateLogTests HeartRateZonesTests BackupFormatTests; do
   if [ -f "larpingTests/$t.swift" ]; then
     sed 's/@testable import larping/@testable import CoreLogic/' "larpingTests/$t.swift" > "$TST/$t.swift"
   else
