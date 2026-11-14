@@ -615,3 +615,8 @@ New `WatchRecorderCore`, `WatchActivityRecord`, `WatchActivityStore` (MirrorShar
 ## 2026-11-14 — Watch Stage 2: sync to the iPhone and automatic titles
 
 Watch recordings go to the iPhone with `transferFile` (queued, deleted on the watch only after delivery), land in an inbox and are imported once (duplicate check by source and start second), then written to Health like any activity. New automatic titles "Corrida da manhã em Wembley" replace "MURY Run" on the iPhone recorder and for watch imports; the place uses Apple's geocoder (user approved). Unverified on devices.
+
+
+## 2026-11-14 — Render screen full-screen, shorter intro
+
+Rendering now shows the frame being made on the whole screen with a translucent bottom bar instead of a boxed card with a small preview; the live map is hidden while rendering. Intro before the run shortened: phase shares overview 3% / orbit 17% / follow 70% / finish 10% (was 5/27/58/10) so the run starts sooner. Unverified on a device.
