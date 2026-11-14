@@ -154,7 +154,7 @@ Known non-code warnings that always appear (don't chase them): the
   (paid Apple Developer Program) — today it's manual export to iCloud Drive.
 - Live-record notification (Dynamic Island/Lock Screen) is NOT built — needs
   a Widget Extension target, see `docs/KNOWN_ISSUES.md`.
-- No Apple Watch app, no scheduled automatic backup, no HealthKit active
+- Apple Watch app records on its own (sport choice, GPS, heart rate, pause/finish, saved on the watch). Sending those recordings to the iPhone is not built yet (next stage). No scheduled automatic backup, no HealthKit active
   energy/calories — full rationale in `docs/STATUS.md` "Next / not built".
 
 ## Documentation

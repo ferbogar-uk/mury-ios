@@ -605,3 +605,8 @@ Added `FlyoverRenderer` and a *Render in app (experimental)* button in the flyov
 ## 2026-11-13 — Render in app fixes after the build 9 device test
 
 Progress card now shows the last drawn frame and an elapsed clock; route drawn with own `FlyoverProjection` instead of `Snapshot.point(for:)`; 3 snapshot requests in flight; overview hold cut to 5 percent. Build 10. Unverified on a device.
+
+
+## 2026-11-14 — Watch Stage 1: the watch records by itself
+
+New `WatchRecorderCore`, `WatchActivityRecord`, `WatchActivityStore` (MirrorShared, Linux-tested), `WatchRecorder` and a new start screen with sport choice on the watch; the "Waiting for your iPhone" screen is gone. Watch target now independent of the companion app and asks for location. `RecorderMath`/`GeoDistance` moved to MirrorShared. Sending to the iPhone is Stage 2. Unverified on a device.

@@ -180,3 +180,8 @@ Nothing about `FlyoverRenderer` has run on a device yet. Unknown until tested: w
 Linux core-logic CI is pinned to `ubuntu-24.04`: `ubuntu-latest` became Ubuntu 26.04 (Nov 2026) and `swift-actions/setup-swift@v2` does not support it ("Version 26.04 of Ubuntu is not supported"). Move back to `ubuntu-latest` only when the action supports it.
 
 Build 9 device test of Render in app: the scenery looked good, but (1) the progress card looked frozen until the first frame, (2) the route line jumped around the frame (`Snapshot.point(for:)` is not usable at high pitch), (3) the start of the video sat still. Build 10 candidate: live preview and elapsed clock, own projection (`FlyoverProjection`, field of view 30 degrees is an assumption: if the line is consistently off, that constant is the fix), 3 requests in flight, and the still overview shortened from 12 to 5 percent of the clip (orbit 20 to 27). Not yet checked on a device.
+
+
+## Watch standalone recording: unverified on a device
+
+Written and unit-tested for the logic only; CI cannot run GPS, the heart sensor or the battery. Open points: background location relies on the workout session (no `allowsBackgroundLocationUpdates` set, to avoid a crash if the mode is missing); the watch recording is saved only on the watch until Stage 2; its workout is still discarded in Health, so it does not count for the Apple rings yet (decision pending).

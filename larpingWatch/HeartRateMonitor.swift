@@ -26,7 +26,20 @@ final class HeartRateMonitor: NSObject {
     @ObservationIgnored private var session: HKWorkoutSession?
     @ObservationIgnored private var builder: HKLiveWorkoutBuilder?
 
-    /// Follows what the iPhone is recording. Safe to call on every change.
+    /// The kind of workout the sensor session reports itself as. Set before it starts.
+    @ObservationIgnored private var activityType: HKWorkoutActivityType = .running
+
+    func setSport(_ sport: WatchSport) {
+        switch sport {
+        case .run: activityType = .running
+        case .walk: activityType = .walking
+        case .ride: activityType = .cycling
+        case .hike: activityType = .hiking
+        }
+    }
+
+    /// Follows what is being recorded (the iPhone's mirror, or the watch's own recording).
+    /// Safe to call on every change.
     func follow(_ mirrored: MirrorSnapshot.State) {
         switch HeartRateSensorPlan.action(mirrored: mirrored, sensor: sensor) {
         case .start:
@@ -63,7 +76,7 @@ final class HeartRateMonitor: NSObject {
         }
 
         let configuration = HKWorkoutConfiguration()
-        configuration.activityType = .running
+        configuration.activityType = activityType
         configuration.locationType = .outdoor
         do {
             let session = try HKWorkoutSession(healthStore: store, configuration: configuration)
