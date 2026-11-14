@@ -68,12 +68,15 @@ struct FlyoverView: View {
         ZStack {
             theme.canvas.ignoresSafeArea()
             if plan.isUsable {
-                flyMap(state: state, frame: frame)
-                    .ignoresSafeArea()
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        if mode == .recording || mode == .playing || mode == .preloading { abortRun("Flyover stopped.") }
-                    }
+                if mode != .rendering {
+                    flyMap(state: state, frame: frame)
+                        .ignoresSafeArea()
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if mode == .recording || mode == .playing || mode == .preloading { abortRun("Flyover stopped.") }
+                        }
+                }
+                if mode == .rendering { renderScreen }
                 controlsOverlay(state: state, frame: frame)
             } else {
                 ContentUnavailableView("Flyover unavailable", systemImage: "map",
@@ -188,9 +191,6 @@ struct FlyoverView: View {
                     .background(.black.opacity(0.6), in: Capsule())
                     .foregroundStyle(.white)
             }
-            if mode == .rendering {
-                renderCard
-            }
             if mode == .idle || mode == .done {
                 panel
             }
@@ -198,20 +198,31 @@ struct FlyoverView: View {
         .padding()
     }
 
-    private var renderCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Rendering in the app (experimental)")
-                .font(MuryTypography.font(.headline, size: 17, weight: .semibold))
+    /// While rendering, the frame being made fills the screen, so the person watches the flyover
+    /// come together. The progress sits in a translucent bar along the bottom edge.
+    private var renderScreen: some View {
+        ZStack(alignment: .bottom) {
+            Color.black.ignoresSafeArea()
+            if let preview = renderProgress?.preview {
+                Image(uiImage: preview)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .ignoresSafeArea()
+                    .accessibilityHidden(true)
+            }
+            renderBar
+        }
+    }
+
+    private var renderBar: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Rendering your flyover (experimental)")
+                .font(MuryTypography.font(.headline, size: 16, weight: .semibold))
             if let progress = renderProgress {
-                if let preview = progress.preview {
-                    Image(uiImage: preview)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(height: 160)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                        .frame(maxWidth: .infinity)
-                }
                 ProgressView(value: Double(progress.frame), total: Double(max(progress.total, 1)))
+                Text(renderStageText(progress))
+                    .font(MuryTypography.font(.subheadline, size: 14))
                 Text("Frame \(progress.frame) of \(progress.total) · \(String(format: "%.1f", progress.averageSecondsPerFrame)) s per frame · about \(Self.minutesText(progress.secondsRemaining)) left")
                     .font(MuryTypography.font(.caption, size: 12))
                     .monospacedDigit()
@@ -223,19 +234,41 @@ struct FlyoverView: View {
                         .monospacedDigit()
                 }
             }
-            Text("Keep MURY open and the screen on. Nothing is recorded from the screen.")
-                .font(MuryTypography.font(.caption, size: 12))
-                .opacity(0.75)
-            Button("Cancel", role: .cancel) {
-                cancelRender("Render cancelled.")
+            HStack {
+                Text("Keep MURY open and the screen on. Nothing is recorded from the screen.")
+                    .font(MuryTypography.font(.caption, size: 12))
+                    .opacity(0.75)
+                Spacer(minLength: 8)
+                Button("Cancel", role: .cancel) {
+                    cancelRender("Render cancelled.")
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("flyover-render-cancel")
             }
-            .buttonStyle(.bordered)
-            .accessibilityIdentifier("flyover-render-cancel")
         }
-        .padding()
+        .padding(.horizontal)
+        .padding(.top, 14)
+        .padding(.bottom, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.black.opacity(0.7), in: RoundedRectangle(cornerRadius: 16))
+        .background {
+            UnevenRoundedRectangle(topLeadingRadius: 20, topTrailingRadius: 20)
+                .fill(.ultraThinMaterial)
+                .overlay { Color.black.opacity(0.25).clipShape(UnevenRoundedRectangle(topLeadingRadius: 20, topTrailingRadius: 20)) }
+                .ignoresSafeArea(edges: .bottom)
+        }
+        .environment(\.colorScheme, .dark)
         .foregroundStyle(.white)
+    }
+
+    /// What the flyover is showing at the frame being made, in plain words.
+    private func renderStageText(_ progress: FlyoverRenderer.Progress) -> String {
+        let share = Double(progress.frame) / Double(max(progress.total, 1))
+        switch plan.state(at: plan.clipSeconds * share).phase {
+        case .overview: return "Drawing the wide view of your route"
+        case .orbit: return "Flying in to the start"
+        case .follow: return "Following your run"
+        case .finish: return "Pulling back out"
+        }
     }
 
     private static func minutesText(_ seconds: Double) -> String {
