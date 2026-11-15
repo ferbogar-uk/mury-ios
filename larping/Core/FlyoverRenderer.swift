@@ -19,7 +19,7 @@ enum FlyoverRenderer {
     /// How long one frame may take before it is retried once and then reported as failed.
     static let frameTimeoutSeconds: TimeInterval = 15
     /// How many map images are requested ahead of the one being encoded (they are still encoded in order).
-    static let prefetchWindow = 3
+    static let prefetchWindow = 2
 
     struct Progress {
         let frame: Int
@@ -182,11 +182,15 @@ enum FlyoverRenderer {
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 let waiter = SnapshotWaiter(continuation)
-                let timeout = DispatchWorkItem {
+                // The timeout must not keep the snapshotter alive: a cancelled DispatchWorkItem stays queued until
+                // its deadline, so with a strong reference every snapshotter (and the 3D data it loaded) lived 15 s
+                // after its frame was done. At ten frames a second that ran the app out of memory near frame 230.
+                let timeout = Task { [weak snapshotter] in
+                    try? await Task.sleep(for: .seconds(frameTimeoutSeconds))
+                    guard !Task.isCancelled else { return }
                     waiter.finish(.failure(URLError(.timedOut)))
-                    snapshotter.cancel()
+                    snapshotter?.cancel()
                 }
-                DispatchQueue.global().asyncAfter(deadline: .now() + frameTimeoutSeconds, execute: timeout)
                 snapshotter.start { snapshot, error in
                     timeout.cancel()
                     if let snapshot {
