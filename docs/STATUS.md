@@ -625,3 +625,8 @@ Rendering now shows the frame being made on the whole screen with a translucent 
 ## 2026-11-15 — Marker falls once; route line from MapKit
 
 The marker no longer bounces: a single gravity-like fall (`fallIn`) over the last 30% of the orbit, so the run starts as it lands. The rendered route line is now positioned by MapKit itself through a hidden `MKMapView` (`MapProjector`) with the old assumed projection as fallback, because the line still drifted on the build 13 device test. Unverified on a device.
+
+
+## 2026-11-15 — Removed the MapKit projector after a crash
+
+Build 14 crashed while rendering the flyover in the app. The only new thing in the render path was the hidden `MKMapView` used to place the route line, so `MapProjector` was removed and the renderer is back to `FlyoverProjection`. The no-bounce marker fall stays. Crash cause unconfirmed.
