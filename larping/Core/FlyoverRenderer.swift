@@ -234,7 +234,8 @@ enum FlyoverRenderer {
             let mapKitCamera = MKMapCamera(
                 lookingAtCenter: CLLocationCoordinate2D(latitude: state.centerLatitude, longitude: state.centerLongitude),
                 fromDistance: state.distanceMeters, pitch: camera.pitchDegrees, heading: camera.headingDegrees)
-            let useMapKit = projector.prepare(camera: mapKitCamera)
+            // This closure runs synchronously on the main thread (render is main-actor), so MapKit's view may be used.
+            let useMapKit = MainActor.assumeIsolated { projector.prepare(camera: mapKitCamera) }
             func project(_ latitude: Double, _ longitude: Double) -> CGPoint? {
                 // The assumed projection decides what is in front of the camera and roughly on screen, which also
                 // spares MapKit the points that are far outside the picture.
@@ -242,7 +243,7 @@ enum FlyoverRenderer {
                                                         width: Double(pointSize.width), height: Double(pointSize.height)) else { return nil }
                 guard useMapKit else { return CGPoint(x: p.x, y: p.y) }
                 guard p.x > -500, p.x < Double(pointSize.width) + 500, p.y > -500, p.y < Double(pointSize.height) + 500 else { return nil }
-                return projector.point(latitude: latitude, longitude: longitude)
+                return MainActor.assumeIsolated { projector.point(latitude: latitude, longitude: longitude) }
             }
 
             func strokeRoute(_ segments: [[ReplayCoordinate]], alpha: CGFloat) {
