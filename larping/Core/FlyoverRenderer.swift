@@ -19,7 +19,7 @@ enum FlyoverRenderer {
     /// How long one frame may take before it is retried once and then reported as failed.
     static let frameTimeoutSeconds: TimeInterval = 15
     /// How many map images are requested ahead of the one being encoded (they are still encoded in order).
-    static let prefetchWindow = 2
+    static let prefetchWindow = 1
 
     struct Progress {
         let frame: Int
@@ -27,6 +27,8 @@ enum FlyoverRenderer {
         let averageSecondsPerFrame: Double
         /// The frame that was just drawn, for a live preview while the video builds.
         let preview: UIImage?
+        /// Memory the app is using right now, in MB (0 if unknown). Shown while rendering to find what grows.
+        var memoryMegabytes: Int = 0
         var secondsRemaining: Double { Double(max(0, total - frame)) * averageSecondsPerFrame }
     }
 
@@ -131,7 +133,8 @@ enum FlyoverRenderer {
             }
             let parts = begin.duration(to: clock.now).components
             let elapsed = Double(parts.seconds) + Double(parts.attoseconds) / 1e18
-            onProgress?(Progress(frame: index + 1, total: times.count, averageSecondsPerFrame: elapsed / Double(index + 1), preview: preview))
+            onProgress?(Progress(frame: index + 1, total: times.count, averageSecondsPerFrame: elapsed / Double(index + 1), preview: preview,
+                                       memoryMegabytes: currentMemoryMegabytes()))
         }
 
         try Task.checkCancellation()
@@ -143,6 +146,18 @@ enum FlyoverRenderer {
         completed = true
         let parts = begin.duration(to: clock.now).components
         return Output(url: url, frames: times.count, totalSeconds: Double(parts.seconds) + Double(parts.attoseconds) / 1e18)
+    }
+
+    /// The app's physical memory footprint (the number the system kills by), in MB.
+    static func currentMemoryMegabytes() -> Int {
+        var info = task_vm_info_data_t()
+        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
+        let result = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+            }
+        }
+        return result == KERN_SUCCESS ? Int(info.phys_footprint / 1_048_576) : 0
     }
 
     // MARK: - Snapshots

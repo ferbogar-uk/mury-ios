@@ -635,3 +635,8 @@ Build 14 crashed while rendering the flyover in the app. The only new thing in t
 ## 2026-11-15 — Render crash root cause: snapshotters kept alive (build 16)
 
 Build 15 still closed the app silently at about frame 230 of 600 (phase "following"), the signature of the system killing it for memory. Cause: the per-frame timeout was a `DispatchWorkItem` capturing the `MKMapSnapshotter` strongly; cancelling a work item does not release it until its 15 s deadline, so about 150 flyover snapshotters (with their 3D data) stayed alive at ten frames a second. The timeout is now a `Task` holding the snapshotter weakly, cancelled when the frame returns, and `prefetchWindow` is 2. Inferred from the video and code, not from a crash log: unverified on a device.
+
+
+## 2026-11-15 — Build 17: memory shown while rendering
+
+Build 16 (timeout no longer keeps snapshotters alive) still closed the app mid-render on the device, so the memory theory is not proven. The render bar now ends its frame line with the app's memory footprint in MB (`FlyoverRenderer.currentMemoryMegabytes`, `phys_footprint`), and `prefetchWindow` is 1. A screen recording of the next render shows whether memory climbs until the app closes. If it stays flat, memory is not the cause.
