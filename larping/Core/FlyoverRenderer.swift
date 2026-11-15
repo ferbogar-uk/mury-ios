@@ -92,9 +92,6 @@ enum FlyoverRenderer {
         writer.startSession(atSourceTime: .zero)
         guard let pool = adaptor.pixelBufferPool else { throw ShareVideoComposer.ComposeError.writerFailed("creating the video buffer pool") }
 
-        // MapKit's own conversion for the route (falls back to the assumed projection per frame if it misbehaves).
-        let projector = MapProjector(size: pointSize)
-        defer { projector.detach() }
         let clock = ContinuousClock()
         let begin = clock.now
         let states = times.map { plan.state(at: $0) }
@@ -125,7 +122,7 @@ enum FlyoverRenderer {
             try autoreleasepool {
                 let image = draw(snapshot: snapshot, state: state, frame: frame, timeline: timeline,
                                  routeColor: routeColor, symbolName: symbolName, savedDistance: savedDistance,
-                                 reduceMotion: reduceMotion, projector: projector)
+                                 reduceMotion: reduceMotion)
                 preview = image
                 let buffer = try ShareVideoComposer.pixelBuffer(from: image, size: size, pool: pool)
                 guard adaptor.append(buffer, withPresentationTime: CMTime(value: CMTimeValue(index), timescale: Int32(frameRate))) else {
@@ -214,8 +211,7 @@ enum FlyoverRenderer {
         routeColor: UIColor,
         symbolName: String,
         savedDistance: String,
-        reduceMotion: Bool,
-        projector: MapProjector
+        reduceMotion: Bool
     ) -> UIImage {
         let format = UIGraphicsImageRendererFormat()
         format.scale = scale
@@ -231,19 +227,10 @@ enum FlyoverRenderer {
                 distanceMeters: state.distanceMeters,
                 headingDegrees: reduceMotion ? 0 : state.headingDegrees,
                 pitchDegrees: reduceMotion ? 0 : state.pitchDegrees)
-            let mapKitCamera = MKMapCamera(
-                lookingAtCenter: CLLocationCoordinate2D(latitude: state.centerLatitude, longitude: state.centerLongitude),
-                fromDistance: state.distanceMeters, pitch: camera.pitchDegrees, heading: camera.headingDegrees)
-            // This closure runs synchronously on the main thread (render is main-actor), so MapKit's view may be used.
-            let useMapKit = MainActor.assumeIsolated { projector.prepare(camera: mapKitCamera) }
             func project(_ latitude: Double, _ longitude: Double) -> CGPoint? {
-                // The assumed projection decides what is in front of the camera and roughly on screen, which also
-                // spares MapKit the points that are far outside the picture.
                 guard let p = FlyoverProjection.project(latitude: latitude, longitude: longitude, camera: camera,
                                                         width: Double(pointSize.width), height: Double(pointSize.height)) else { return nil }
-                guard useMapKit else { return CGPoint(x: p.x, y: p.y) }
-                guard p.x > -500, p.x < Double(pointSize.width) + 500, p.y > -500, p.y < Double(pointSize.height) + 500 else { return nil }
-                return MainActor.assumeIsolated { projector.point(latitude: latitude, longitude: longitude) }
+                return CGPoint(x: p.x, y: p.y)
             }
 
             func strokeRoute(_ segments: [[ReplayCoordinate]], alpha: CGFloat) {

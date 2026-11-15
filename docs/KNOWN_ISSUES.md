@@ -190,6 +190,6 @@ Written and unit-tested for the logic only; CI cannot run GPS, the heart sensor 
 
 `PlaceNamer` uses `CLGeocoder`. Offline, or after 6 s without an answer, the title stays without place ("Corrida da manhã"). It is not retried later. The default title is Portuguese on purpose (user's choice) while the rest of the app is English. Sync of watch recordings is unverified on a device (the CI cannot pair a watch).
 
-## Rendered route line: MapKit conversion unverified
+## Rendered route line may drift; MapKit-based projector crashed
 
-`MapProjector` relies on `MKMapView.convert` answering synchronously after `setCamera(animated: false)` for an off-screen-looking map, and on the snapshotter and the live map clamping the camera the same way. If the line still drifts on a device, the per-frame sanity check may be passing while the two disagree; then the fallback is `FlyoverProjection` (assumed field of view) or the screen-recording flyover, which is exact.
+Build 14 positioned the line through a hidden `MKMapView` and the app crashed during rendering; it was removed (the cause is not confirmed). The line again uses the assumed-FOV `FlyoverProjection` and may slide against the map. Do not retry the hidden-map-view idea without a crash log.
