@@ -28,8 +28,8 @@ struct FlyoverPlan {
     static let followDistanceMeters = 450.0
     /// MapKit clamps pitch to what the map allows at that zoom, so asking for a high value is safe.
     static let followPitchDegrees = 65.0
-    /// The marker starts falling at this share of the orbit and lands as the orbit ends.
-    static let dropStartShareOfOrbit = 0.45
+    /// The marker starts falling at this share of the orbit and lands as the orbit ends, so the run starts right after.
+    static let dropStartShareOfOrbit = 0.7
     /// Share of the orbit in which the camera reaches full tilt (the rest is turning and closing in).
     static let orbitTiltShare = 0.6
     /// Exponent easing the approach: above 1 keeps the camera far away for longer, then closes in.
@@ -126,7 +126,7 @@ struct FlyoverPlan {
                          headingDegrees: FlyoverPlan.normalized(overviewHeading + 90 * e),
                          pitchDegrees: FlyoverPlan.followPitchDegrees * tilt,
                          routeElapsedSeconds: 0, routeProgress: 0,
-                         markerDrop: 1 - FlyoverPlan.bounceOut(FlyoverPlan.fraction(FlyoverPlan.fraction(t, in: orbit), in: FlyoverPlan.dropStartShareOfOrbit...1)))
+                         markerDrop: 1 - FlyoverPlan.fallIn(FlyoverPlan.fraction(FlyoverPlan.fraction(t, in: orbit), in: FlyoverPlan.dropStartShareOfOrbit...1)))
         }
         if t < follow.upperBound {
             let progress = FlyoverPlan.fraction(t, in: follow)
@@ -268,15 +268,11 @@ struct FlyoverPlan {
         return c * c * (3 - 2 * c)
     }
 
-    /// Ease-out bounce: 0 -> 1 with a few diminishing bounces, so a falling marker settles on its spot.
-    static func bounceOut(_ x: Double) -> Double {
+    /// Gravity-like fall: 0 -> 1, slow at first and fastest at the end, with no bounce. The marker lands once
+    /// and the run starts.
+    static func fallIn(_ x: Double) -> Double {
         let t = min(max(x, 0), 1)
-        let n = 7.5625, d = 2.75
-        if t < 1 / d { return n * t * t }
-        if t < 2 / d { let u = t - 1.5 / d; return n * u * u + 0.75 }
-        if t < 2.5 / d { let u = t - 2.25 / d; return n * u * u + 0.9375 }
-        let u = t - 2.625 / d
-        return n * u * u + 0.984375
+        return t * t
     }
 
     static func mix(_ a: Double, _ b: Double, _ t: Double) -> Double { a + (b - a) * t }

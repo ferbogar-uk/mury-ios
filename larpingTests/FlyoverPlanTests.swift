@@ -257,10 +257,27 @@ final class FlyoverPlanTests: XCTestCase {
         }
     }
 
-    func testBounceOutEndpoints() {
-        XCTAssertEqual(FlyoverPlan.bounceOut(0), 0, accuracy: 1e-9)
-        XCTAssertEqual(FlyoverPlan.bounceOut(1), 1, accuracy: 1e-9)
-        XCTAssertGreaterThan(FlyoverPlan.bounceOut(0.5), 0.5)
+    func testFallInEndpointsAndNeverBounces() {
+        XCTAssertEqual(FlyoverPlan.fallIn(0), 0, accuracy: 1e-9)
+        XCTAssertEqual(FlyoverPlan.fallIn(1), 1, accuracy: 1e-9)
+        XCTAssertLessThan(FlyoverPlan.fallIn(0.5), 0.5)
+        var previous = -1.0
+        for step in 0...100 {
+            let value = FlyoverPlan.fallIn(Double(step) / 100)
+            XCTAssertGreaterThanOrEqual(value, previous)
+            previous = value
+        }
+    }
+
+    func testMarkerLandsOnceAndNeverRisesAgain() {
+        let plan = FlyoverPlan(timeline: eastboundTimeline(), clipSeconds: 30)
+        let orbit = plan.range(of: .orbit)
+        var previous = 2.0
+        for step in 0...200 {
+            let drop = plan.state(at: orbit.lowerBound + (orbit.upperBound - orbit.lowerBound) * Double(step) / 200 * 0.999999).markerDrop
+            XCTAssertLessThanOrEqual(drop, previous + 1e-9, "the marker went back up at step \(step)")
+            previous = drop
+        }
     }
 
     func testFrameTimesCoverTheWholeClipEvenly() {
