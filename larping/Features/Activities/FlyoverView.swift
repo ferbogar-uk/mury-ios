@@ -223,7 +223,7 @@ struct FlyoverView: View {
                 ProgressView(value: Double(progress.frame), total: Double(max(progress.total, 1)))
                 Text(renderStageText(progress))
                     .font(MuryTypography.font(.subheadline, size: 14))
-                Text("Frame \(progress.frame) of \(progress.total) · \(String(format: "%.1f", progress.averageSecondsPerFrame)) s per frame · about \(Self.minutesText(progress.secondsRemaining)) left")
+                Text("Frame \(progress.frame) of \(progress.total) · \(String(format: "%.1f", progress.averageSecondsPerFrame)) s per frame · about \(Self.minutesText(progress.secondsRemaining)) left · \(progress.memoryMegabytes) MB")
                     .font(MuryTypography.font(.caption, size: 12))
                     .monospacedDigit()
             } else {
