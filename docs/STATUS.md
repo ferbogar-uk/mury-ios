@@ -620,3 +620,8 @@ Watch recordings go to the iPhone with `transferFile` (queued, deleted on the wa
 ## 2026-11-14 — Render screen full-screen, shorter intro
 
 Rendering now shows the frame being made on the whole screen with a translucent bottom bar instead of a boxed card with a small preview; the live map is hidden while rendering. Intro before the run shortened: phase shares overview 3% / orbit 17% / follow 70% / finish 10% (was 5/27/58/10) so the run starts sooner. Unverified on a device.
+
+
+## 2026-11-15 — Marker falls once; route line from MapKit
+
+The marker no longer bounces: a single gravity-like fall (`fallIn`) over the last 30% of the orbit, so the run starts as it lands. The rendered route line is now positioned by MapKit itself through a hidden `MKMapView` (`MapProjector`) with the old assumed projection as fallback, because the line still drifted on the build 13 device test. Unverified on a device.

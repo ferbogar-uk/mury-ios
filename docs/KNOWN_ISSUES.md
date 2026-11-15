@@ -189,3 +189,7 @@ Written and unit-tested for the logic only; CI cannot run GPS, the heart sensor 
 ## Place in the automatic title needs the network and sends one coordinate to Apple
 
 `PlaceNamer` uses `CLGeocoder`. Offline, or after 6 s without an answer, the title stays without place ("Corrida da manhã"). It is not retried later. The default title is Portuguese on purpose (user's choice) while the rest of the app is English. Sync of watch recordings is unverified on a device (the CI cannot pair a watch).
+
+## Rendered route line: MapKit conversion unverified
+
+`MapProjector` relies on `MKMapView.convert` answering synchronously after `setCamera(animated: false)` for an off-screen-looking map, and on the snapshotter and the live map clamping the camera the same way. If the line still drifts on a device, the per-frame sanity check may be passing while the two disagree; then the fallback is `FlyoverProjection` (assumed field of view) or the screen-recording flyover, which is exact.
