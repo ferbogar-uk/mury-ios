@@ -35,6 +35,8 @@ struct FlyoverView: View {
     @State private var message: String?
     @State private var afterPreload: Mode = .playing
     @State private var renderProgress: FlyoverRenderer.Progress?
+    /// The newest picture the renderer sent; kept here because only some frames carry one.
+    @State private var renderPreview: UIImage?
     @State private var renderTask: Task<Void, Never>?
     @State private var renderSummary: String?
     @State private var renderStartedAt = Date()
@@ -203,7 +205,7 @@ struct FlyoverView: View {
     private var renderScreen: some View {
         ZStack(alignment: .bottom) {
             Color.black.ignoresSafeArea()
-            if let preview = renderProgress?.preview {
+            if let preview = renderPreview {
                 Image(uiImage: preview)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
@@ -223,7 +225,7 @@ struct FlyoverView: View {
                 ProgressView(value: Double(progress.frame), total: Double(max(progress.total, 1)))
                 Text(renderStageText(progress))
                     .font(MuryTypography.font(.subheadline, size: 14))
-                Text("Frame \(progress.frame) of \(progress.total) · \(String(format: "%.1f", progress.averageSecondsPerFrame)) s per frame · about \(Self.minutesText(progress.secondsRemaining)) left · \(progress.memoryMegabytes) MB")
+                Text("Frame \(progress.frame) of \(progress.total) · \(String(format: "%.1f", progress.averageSecondsPerFrame)) s per frame · about \(Self.minutesText(progress.secondsRemaining)) left · \(progress.memoryMegabytes) MB (\(progress.stageText))")
                     .font(MuryTypography.font(.caption, size: 12))
                     .monospacedDigit()
             } else {
@@ -438,6 +440,7 @@ struct FlyoverView: View {
         player = nil
         renderSummary = nil
         renderProgress = nil
+        renderPreview = nil
         renderStartedAt = Date()
         mode = .rendering
         UIApplication.shared.isIdleTimerDisabled = true
@@ -450,6 +453,7 @@ struct FlyoverView: View {
                     savedDistance: savedDistance, reduceMotion: reduceMotion
                 ) { progress in
                     renderProgress = progress
+                    if let picture = progress.preview { renderPreview = picture }
                 }
                 defer { try? FileManager.default.removeItem(at: output.url) }
                 let file = try VideoShareFile(source: output.url)

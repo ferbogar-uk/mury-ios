@@ -29,6 +29,8 @@ enum FlyoverRenderer {
         let preview: UIImage?
         /// Memory the app is using right now, in MB (0 if unknown). Shown while rendering to find what grows.
         var memoryMegabytes: Int = 0
+        /// Average memory growth per frame by stage ("snapshot +9, draw +3, encode +3 MB"), to find what keeps memory.
+        var stageText: String = ""
         var secondsRemaining: Double { Double(max(0, total - frame)) * averageSecondsPerFrame }
     }
 
@@ -38,11 +40,19 @@ enum FlyoverRenderer {
         let totalSeconds: Double
     }
 
+    /// The render stops cleanly above this footprint instead of waiting for the system to close the app (it did
+    /// at about 3.3 GB on an iPhone in build 18).
+    static let memoryLimitMegabytes = 2800
+
     enum RenderError: LocalizedError {
         case frameFailed(Int, String)
+        case outOfMemory(Int, Int)
 
         var errorDescription: String? {
             switch self {
+            case .outOfMemory(let frame, let megabytes):
+                return "The render stopped at frame \(frame) because it was using \(megabytes) MB of memory and iOS would have closed MURY. Try a shorter clip."
+
             case .frameFailed(let frame, let reason):
                 return "The map image for frame \(frame) could not be fetched (\(reason)). Check the connection and try again, or record the screen instead."
             }
@@ -106,6 +116,7 @@ enum FlyoverRenderer {
         let clock = ContinuousClock()
         let begin = clock.now
         let states = times.map { plan.state(at: $0) }
+        var grewBySnapshot = 0, grewByDraw = 0, grewByEncode = 0
         var pending: [Int: Task<MKMapSnapshotter.Snapshot, Error>] = [:]
         defer {
             for task in pending.values { task.cancel() }
@@ -120,8 +131,11 @@ enum FlyoverRenderer {
             let state = states[index]
             let frame = timeline.sample(at: state.routeElapsedSeconds)
             guard let fetch = pending.removeValue(forKey: index) else { throw ShareVideoComposer.ComposeError.writerFailed("planning the frames") }
+            let memoryBefore = currentMemoryMegabytes()
             let snapshot = try await fetch.value
             try Task.checkCancellation()
+            let memoryAfterSnapshot = currentMemoryMegabytes()
+            grewBySnapshot += memoryAfterSnapshot - memoryBefore
 
             while !input.isReadyForMoreMediaData {
                 try Task.checkCancellation()
@@ -130,21 +144,30 @@ enum FlyoverRenderer {
             }
             guard writer.status == .writing else { throw ShareVideoComposer.ComposeError.writerFailed("encoding a video frame", writer.error) }
             var preview: UIImage?
+            var memoryAfterDraw = memoryAfterSnapshot
             try autoreleasepool {
                 let image = draw(snapshot: snapshot, state: state, frame: frame, timeline: timeline,
                                  routeColor: routeColor, symbolName: symbolName, savedDistance: savedDistance,
                                  reduceMotion: reduceMotion)
-                preview = image
+                // A full-size picture goes to the screen only every 4th frame, so the screen never holds many.
+                preview = index % 4 == 0 ? image : nil
+                memoryAfterDraw = currentMemoryMegabytes()
                 let buffer = try ShareVideoComposer.pixelBuffer(from: image, size: size, pool: pool)
                 guard adaptor.append(buffer, withPresentationTime: CMTime(value: CMTimeValue(index), timescale: Int32(frameRate))) else {
                     throw ShareVideoComposer.ComposeError.writerFailed("appending a video frame", writer.error)
                 }
             }
-            crashLog.update(frame: index + 1, phase: String(describing: state.phase), megabytes: currentMemoryMegabytes())
+            let memoryNow = currentMemoryMegabytes()
+            grewByDraw += memoryAfterDraw - memoryAfterSnapshot
+            grewByEncode += memoryNow - memoryAfterDraw
+            let done = index + 1
+            let stages = "snapshot \(grewBySnapshot / done), draw \(grewByDraw / done), encode \(grewByEncode / done) MB per frame"
+            crashLog.update(frame: done, phase: String(describing: state.phase), megabytes: memoryNow, note: stages)
+            if memoryNow > memoryLimitMegabytes { throw RenderError.outOfMemory(done, memoryNow) }
             let parts = begin.duration(to: clock.now).components
             let elapsed = Double(parts.seconds) + Double(parts.attoseconds) / 1e18
             onProgress?(Progress(frame: index + 1, total: times.count, averageSecondsPerFrame: elapsed / Double(index + 1), preview: preview,
-                                       memoryMegabytes: currentMemoryMegabytes()))
+                                       memoryMegabytes: memoryNow, stageText: stages))
         }
 
         try Task.checkCancellation()

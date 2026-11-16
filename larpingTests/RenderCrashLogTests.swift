@@ -51,6 +51,15 @@ final class RenderCrashLogTests: XCTestCase {
         XCTAssertFalse(RenderCrashLog.reportText(crumb, diagnostics: nil).contains("System diagnostics"))
     }
 
+    func testNoteIsSavedAndShownInReport() throws {
+        let (log, dir) = makeLog()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        log.begin(total: 600, appVersion: "19", systemVersion: "26.1", device: "iPhone")
+        log.update(frame: 10, phase: "follow", megabytes: 900, note: "snapshot 9, draw 3, encode 3 MB per frame")
+        let crumb = try XCTUnwrap(log.interrupted())
+        XCTAssertTrue(RenderCrashLog.reportText(crumb, diagnostics: nil).contains("snapshot 9, draw 3, encode 3 MB per frame"))
+    }
+
     func testDismissRemovesNoteAndDiagnostics() throws {
         let (log, dir) = makeLog()
         defer { try? FileManager.default.removeItem(at: dir) }

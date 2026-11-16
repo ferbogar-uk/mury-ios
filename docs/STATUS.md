@@ -645,3 +645,8 @@ Build 16 (timeout no longer keeps snapshotters alive) still closed the app mid-r
 ## 2026-11-16 — Build 18: render crash report
 
 The render still closed the app on the device and there is no Mac for a crash log. The renderer now leaves a breadcrumb file while it works (cleared on any normal end); if it is still there at the next launch, a sheet shows frame, phase and memory samples plus the newest MetricKit diagnostic, with a Share button. Nothing is sent anywhere (no network in the app by design). Tests: `RenderCrashLogTests`. Unverified on a device.
+
+
+## 2026-11-16 — Build 19: render memory leak located by stage, clean stop
+
+The first real report (build 18, iPhone, iOS 27.0.1): memory grew linearly about 15 MB per frame (1107 MB at frame 120, 3297 MB at frame 270) until the system closed the app near 3.3 GB at frame 275. The leak is not the snapshotter timeout (build 16). 15 MB is about four 720x1280 RGBA frames, so something keeps whole frames. Build 19 measures growth per stage (snapshot, draw, encode) on screen and in the report, sends full-size previews to the screen only every 4th frame, and stops the render cleanly at 2800 MB with a message. This is a diagnostic build, not a fix: unverified on a device.
