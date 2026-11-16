@@ -94,6 +94,15 @@ enum FlyoverRenderer {
         writer.startSession(atSourceTime: .zero)
         guard let pool = adaptor.pixelBufferPool else { throw ShareVideoComposer.ComposeError.writerFailed("creating the video buffer pool") }
 
+        // Leaves a note on the phone that is removed when this function ends in any normal way. If the system
+        // kills the app mid-render the note stays, and the next launch reports where it stopped.
+        let crashLog = RenderCrashLog.shared
+        crashLog.begin(total: times.count,
+                       appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?",
+                       systemVersion: UIDevice.current.systemVersion,
+                       device: UIDevice.current.model)
+        defer { crashLog.clear() }
+
         let clock = ContinuousClock()
         let begin = clock.now
         let states = times.map { plan.state(at: $0) }
@@ -131,6 +140,7 @@ enum FlyoverRenderer {
                     throw ShareVideoComposer.ComposeError.writerFailed("appending a video frame", writer.error)
                 }
             }
+            crashLog.update(frame: index + 1, phase: String(describing: state.phase), megabytes: currentMemoryMegabytes())
             let parts = begin.duration(to: clock.now).components
             let elapsed = Double(parts.seconds) + Double(parts.attoseconds) / 1e18
             onProgress?(Progress(frame: index + 1, total: times.count, averageSecondsPerFrame: elapsed / Double(index + 1), preview: preview,

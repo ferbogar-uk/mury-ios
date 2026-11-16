@@ -640,3 +640,8 @@ Build 15 still closed the app silently at about frame 230 of 600 (phase "followi
 ## 2026-11-15 — Build 17: memory shown while rendering
 
 Build 16 (timeout no longer keeps snapshotters alive) still closed the app mid-render on the device, so the memory theory is not proven. The render bar now ends its frame line with the app's memory footprint in MB (`FlyoverRenderer.currentMemoryMegabytes`, `phys_footprint`), and `prefetchWindow` is 1. A screen recording of the next render shows whether memory climbs until the app closes. If it stays flat, memory is not the cause.
+
+
+## 2026-11-16 — Build 18: render crash report
+
+The render still closed the app on the device and there is no Mac for a crash log. The renderer now leaves a breadcrumb file while it works (cleared on any normal end); if it is still there at the next launch, a sheet shows frame, phase and memory samples plus the newest MetricKit diagnostic, with a Share button. Nothing is sent anywhere (no network in the app by design). Tests: `RenderCrashLogTests`. Unverified on a device.
