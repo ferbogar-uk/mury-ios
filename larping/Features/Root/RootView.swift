@@ -14,6 +14,7 @@ struct RootTabView: View {
     @State private var selectedTab = AppTab.home
     @State private var requestedSport = SportType.run
     @State private var recordRequestID: UUID?
+    @State private var renderReport: RenderReport?
 
     var body: some View {
         Group {
@@ -48,7 +49,14 @@ struct RootTabView: View {
                 ProgressView()
             }
         }
+        .sheet(item: $renderReport) { report in
+            RenderReportView(report: report) {
+                RenderCrashLog.shared.dismiss()
+                renderReport = nil
+            }
+        }
         .onAppear {
+            if renderReport == nil { renderReport = RenderReport.pending() }
             WatchMirror.shared.onCommand = { handleWatchCommand($0) }
             WatchMirror.shared.onRecordingReceived = { importWatchRecordings() }
         }

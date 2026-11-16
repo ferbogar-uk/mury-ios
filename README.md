@@ -25,6 +25,7 @@ touches the network.
 
 ## Features
 
+- **Render crash report** — if the app is closed by the system during a 3D flyover render, the next launch shows where it stopped (frame, memory) with a Share button. Stays on the phone unless shared.
 - **Home** — default tab with sport recording shortcuts, a calendar-based last-seven-days summary and the three newest personal activities. Sample and future-dated activities are excluded from Home metrics/cards; existing history remains unchanged. Home shortcuts preserve active or paused recordings. Native lifecycle validation is pending.
 - **Record** — GPS tracking (background-capable, elevation gain) with live
   map. **Finish attempts to save immediately** and shows an error if persistence fails.
