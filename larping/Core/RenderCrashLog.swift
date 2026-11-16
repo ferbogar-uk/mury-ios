@@ -22,6 +22,8 @@ nonisolated struct RenderBreadcrumb: Codable, Equatable {
     var appVersion: String
     var systemVersion: String
     var device: String
+    /// Free text from the renderer, e.g. where memory grows.
+    var note: String = ""
 }
 
 nonisolated struct RenderCrashLog {
@@ -50,11 +52,12 @@ nonisolated struct RenderCrashLog {
     }
 
     /// Records progress. Only every `saveEvery`-th frame is written to disk.
-    func update(frame: Int, phase: String, megabytes: Int, now: Date = Date()) {
+    func update(frame: Int, phase: String, megabytes: Int, note: String = "", now: Date = Date()) {
         guard frame % Self.saveEvery == 0, var crumb = read() else { return }
         crumb.frame = frame
         crumb.phase = phase
         crumb.megabytes = megabytes
+        crumb.note = note
         crumb.lastUpdate = now
         if frame % Self.sampleEvery == 0 {
             crumb.samples.append(.init(frame: frame, megabytes: megabytes))
@@ -83,6 +86,7 @@ nonisolated struct RenderCrashLog {
         if !crumb.samples.isEmpty {
             lines.append("Memory by frame: " + crumb.samples.map { "\($0.frame)=\($0.megabytes)MB" }.joined(separator: ", "))
         }
+        if !crumb.note.isEmpty { lines.append("Memory growth: " + crumb.note) }
         if let diagnostics, !diagnostics.isEmpty {
             lines.append("System diagnostics:")
             lines.append(String(diagnostics.prefix(8000)))
