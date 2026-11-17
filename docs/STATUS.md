@@ -655,3 +655,8 @@ The first real report (build 18, iPhone, iOS 27.0.1): memory grew linearly about
 ## 2026-11-17 — Build 20: is the full-screen preview the cost?
 
 Build 19 stopped cleanly at frame 233 / 2802 MB (about 12 MB per frame) but did not say which stage keeps memory. The person's hypothesis: the big full-screen preview (added in build 13) uses the memory, since renders did not crash before it. Build 20 adds a fourth measurement, "screen" (memory change after the preview is handed to SwiftUI, per picture shown), and puts all four numbers in the stop message, so one run answers it. Diagnostic build, no fix yet.
+
+
+## 2026-11-17 — Build 21: lighter map pictures, snapshotter released
+
+Build 20 numbers on a phone (stopped at frame 213 / 2807 MB): snapshot 9, draw 3, encode 0, screen -3 MB per frame. So the full-screen preview is not the cost; the map engine (MKMapSnapshotter, flyover) keeps about 9 MB per picture it makes, and the draw stage about 3. Build 21 requests the pictures at scale 1.5 (540x960, drawn enlarged to the 720x1280 video), runs the snapshotter on its own queue inside an `autoreleasepool` and calls `cancel()` when the picture arrives. Whether either lets the engine free its memory is unverified; the 2800 MB clean stop stays as the safety net. If it still climbs: shorter render-in-app clips, or screen recording only (see KNOWN_ISSUES).
