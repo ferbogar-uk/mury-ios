@@ -650,3 +650,8 @@ The render still closed the app on the device and there is no Mac for a crash lo
 ## 2026-11-16 — Build 19: render memory leak located by stage, clean stop
 
 The first real report (build 18, iPhone, iOS 27.0.1): memory grew linearly about 15 MB per frame (1107 MB at frame 120, 3297 MB at frame 270) until the system closed the app near 3.3 GB at frame 275. The leak is not the snapshotter timeout (build 16). 15 MB is about four 720x1280 RGBA frames, so something keeps whole frames. Build 19 measures growth per stage (snapshot, draw, encode) on screen and in the report, sends full-size previews to the screen only every 4th frame, and stops the render cleanly at 2800 MB with a message. This is a diagnostic build, not a fix: unverified on a device.
+
+
+## 2026-11-17 — Build 20: is the full-screen preview the cost?
+
+Build 19 stopped cleanly at frame 233 / 2802 MB (about 12 MB per frame) but did not say which stage keeps memory. The person's hypothesis: the big full-screen preview (added in build 13) uses the memory, since renders did not crash before it. Build 20 adds a fourth measurement, "screen" (memory change after the preview is handed to SwiftUI, per picture shown), and puts all four numbers in the stop message, so one run answers it. Diagnostic build, no fix yet.

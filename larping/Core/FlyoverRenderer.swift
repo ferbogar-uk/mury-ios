@@ -46,12 +46,12 @@ enum FlyoverRenderer {
 
     enum RenderError: LocalizedError {
         case frameFailed(Int, String)
-        case outOfMemory(Int, Int)
+        case outOfMemory(Int, Int, String)
 
         var errorDescription: String? {
             switch self {
-            case .outOfMemory(let frame, let megabytes):
-                return "The render stopped at frame \(frame) because it was using \(megabytes) MB of memory and iOS would have closed MURY. Try a shorter clip."
+            case .outOfMemory(let frame, let megabytes, let stages):
+                return "The render stopped at frame \(frame) because it was using \(megabytes) MB of memory and iOS would have closed MURY. Growth: \(stages). Try a shorter clip."
 
             case .frameFailed(let frame, let reason):
                 return "The map image for frame \(frame) could not be fetched (\(reason)). Check the connection and try again, or record the screen instead."
@@ -116,7 +116,7 @@ enum FlyoverRenderer {
         let clock = ContinuousClock()
         let begin = clock.now
         let states = times.map { plan.state(at: $0) }
-        var grewBySnapshot = 0, grewByDraw = 0, grewByEncode = 0
+        var grewBySnapshot = 0, grewByDraw = 0, grewByEncode = 0, grewByScreen = 0, screenFrames = 0
         var pending: [Int: Task<MKMapSnapshotter.Snapshot, Error>] = [:]
         defer {
             for task in pending.values { task.cancel() }
@@ -161,13 +161,19 @@ enum FlyoverRenderer {
             grewByDraw += memoryAfterDraw - memoryAfterSnapshot
             grewByEncode += memoryNow - memoryAfterDraw
             let done = index + 1
-            let stages = "snapshot \(grewBySnapshot / done), draw \(grewByDraw / done), encode \(grewByEncode / done) MB per frame"
+            let stages = "snapshot \(grewBySnapshot / done), draw \(grewByDraw / done), encode \(grewByEncode / done) MB per frame, screen \(grewByScreen / max(screenFrames, 1)) MB per picture shown"
             crashLog.update(frame: done, phase: String(describing: state.phase), megabytes: memoryNow, note: stages)
-            if memoryNow > memoryLimitMegabytes { throw RenderError.outOfMemory(done, memoryNow) }
+            if memoryNow > memoryLimitMegabytes { throw RenderError.outOfMemory(done, memoryNow, stages) }
             let parts = begin.duration(to: clock.now).components
             let elapsed = Double(parts.seconds) + Double(parts.attoseconds) / 1e18
             onProgress?(Progress(frame: index + 1, total: times.count, averageSecondsPerFrame: elapsed / Double(index + 1), preview: preview,
                                        memoryMegabytes: memoryNow, stageText: stages))
+            if preview != nil {
+                // Let the screen draw the new picture, then see how much memory that cost.
+                try? await Task.sleep(for: .milliseconds(30))
+                grewByScreen += currentMemoryMegabytes() - memoryNow
+                screenFrames += 1
+            }
         }
 
         try Task.checkCancellation()
