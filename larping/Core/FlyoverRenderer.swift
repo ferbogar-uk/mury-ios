@@ -16,6 +16,9 @@ enum FlyoverRenderer {
     /// Output size in pixels (snapshot points x scale 2).
     static let pointSize = CGSize(width: 360, height: 640)
     static let scale: CGFloat = 2
+    /// The map pictures are requested at fewer pixels than the video (540x960 against 720x1280) and drawn
+    /// slightly enlarged: every picture the map engine makes keeps about 9 MB that it does not give back.
+    static let snapshotScale: CGFloat = 1.5
     /// How long one frame may take before it is retried once and then reported as failed.
     static let frameTimeoutSeconds: TimeInterval = 15
     /// How many map images are requested ahead of the one being encoded (they are still encoded in order).
@@ -224,7 +227,7 @@ enum FlyoverRenderer {
             pitch: reduceMotion ? 0 : state.pitchDegrees,
             heading: reduceMotion ? 0 : state.headingDegrees)
         options.size = pointSize
-        options.scale = scale
+        options.scale = snapshotScale
         options.mapType = .hybridFlyover
         options.showsBuildings = true
         options.pointOfInterestFilter = .excludingAll
@@ -233,6 +236,8 @@ enum FlyoverRenderer {
 
     private static func requestSnapshot(options: MKMapSnapshotter.Options) async throws -> MKMapSnapshotter.Snapshot {
         let snapshotter = MKMapSnapshotter(options: options)
+        // Its own queue, so nothing the map engine creates piles up on the main thread's autorelease pool.
+        let queue = DispatchQueue(label: "mury.flyover.snapshot", qos: .userInitiated)
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 let waiter = SnapshotWaiter(continuation)
@@ -245,12 +250,16 @@ enum FlyoverRenderer {
                     waiter.finish(.failure(URLError(.timedOut)))
                     snapshotter?.cancel()
                 }
-                snapshotter.start { snapshot, error in
-                    timeout.cancel()
-                    if let snapshot {
-                        waiter.finish(.success(snapshot))
-                    } else {
-                        waiter.finish(.failure(error ?? URLError(.unknown)))
+                snapshotter.start(with: queue) { [weak snapshotter] snapshot, error in
+                    autoreleasepool {
+                        timeout.cancel()
+                        if let snapshot {
+                            waiter.finish(.success(snapshot))
+                        } else {
+                            waiter.finish(.failure(error ?? URLError(.unknown)))
+                        }
+                        // Done with this picture: tell the map engine to drop what it still holds for it.
+                        snapshotter?.cancel()
                     }
                 }
             }
