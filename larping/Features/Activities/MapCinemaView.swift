@@ -1,4 +1,5 @@
 import AVKit
+import CoreLocation
 import MapTilerSDK
 import ReplayKit
 import SwiftUI
