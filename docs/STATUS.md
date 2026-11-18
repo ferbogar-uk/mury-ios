@@ -665,3 +665,8 @@ Build 20 numbers on a phone (stopped at frame 213 / 2807 MB): snapshot 9, draw 3
 ## 2026-11-18 — Build 22: Render in app hidden
 
 Build 21 still stopped at frame 239 (snapshot 10 MB per frame). The button is hidden behind `FlyoverView.offersRenderInApp = false` so nobody is led into a render that cannot finish; Preview and Record video are unchanged. Strava's own Flyover is its own 3D engine (Fatmap) with live playback; how it creates the shareable video is not published.
+
+
+## 2026-11-18 — Build 23: Record video fixes
+
+Record video failed twice on a phone (see KNOWN_ISSUES): the permission alert counted as "left the screen", and a stale start/stop raced a new recording. Only `.background` aborts a run now and the stop is guarded. Unverified on a device.
