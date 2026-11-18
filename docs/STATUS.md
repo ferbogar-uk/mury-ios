@@ -660,3 +660,8 @@ Build 19 stopped cleanly at frame 233 / 2802 MB (about 12 MB per frame) but did 
 ## 2026-11-17 — Build 21: lighter map pictures, snapshotter released
 
 Build 20 numbers on a phone (stopped at frame 213 / 2807 MB): snapshot 9, draw 3, encode 0, screen -3 MB per frame. So the full-screen preview is not the cost; the map engine (MKMapSnapshotter, flyover) keeps about 9 MB per picture it makes, and the draw stage about 3. Build 21 requests the pictures at scale 1.5 (540x960, drawn enlarged to the 720x1280 video), runs the snapshotter on its own queue inside an `autoreleasepool` and calls `cancel()` when the picture arrives. Whether either lets the engine free its memory is unverified; the 2800 MB clean stop stays as the safety net. If it still climbs: shorter render-in-app clips, or screen recording only (see KNOWN_ISSUES).
+
+
+## 2026-11-18 — Build 22: Render in app hidden
+
+Build 21 still stopped at frame 239 (snapshot 10 MB per frame). The button is hidden behind `FlyoverView.offersRenderInApp = false` so nobody is led into a render that cannot finish; Preview and Record video are unchanged. Strava's own Flyover is its own 3D engine (Fatmap) with live playback; how it creates the shareable video is not published.
