@@ -203,3 +203,11 @@ Device numbers (builds 19-21, iPhone, iOS 27): the memory guard stopped a 30 s r
 ### Record video: permission alert used to cancel the first recording (build 23)
 
 Build 22 on a phone: *Record video* showed "Flyover stopped because MURY left the screen" (the system screen-recording permission alert makes the scene `.inactive`, and the scene-phase handler stopped on anything but `.active`), and the next try showed "Failed due to attempting to stop a recording that wasn't in recording state" (the earlier cancelled attempt finished starting later and its cleanup stopped the new recording). Now only `.background` stops a run, and `finishRun` checks `isRecording` first with a plain message. Unverified on a device.
+
+
+## Map cinema (test, build 24): MapTiler needs internet, a key and written terms
+
+- **Privacy change, only on this screen**: *Map cinema (test)* loads map tiles and the satellite/terrain style from MapTiler over the internet (the app is otherwise fully offline). Nothing of the activity is uploaded except the map areas the camera looks at, which MapTiler can see as tile requests. Everything else in the app is unchanged.
+- **Key**: the repository is public, so the key is not in the source. The workflows (`ci.yml`, `ios-testflight.yml`) write `larping/MapTilerKey.txt` from the GitHub secret `MAPTILER_API_KEY` before building; the file is gitignored. No secret (a fork, or before it is added) means no file and the screen says "This build has no MapTiler key". A mobile key is visible inside the installed app, so keep it restricted in the MapTiler account (do NOT set HTTP-origin restrictions: the SDK sends none and the map would not load).
+- **Terms**: the MapTiler free plan is for testing and non-commercial use (commercial needs a paid plan). Their terms on recording or sharing videos of the map are unclear; get written confirmation before a public release.
+- **Not verified**: capture of the web view by the screen recorder (black frames are possible), the camera/zoom conversion, and the fixed 4 s load wait. The SDK has no "ready" hook the container leaves free and no snapshot API.
