@@ -670,3 +670,8 @@ Build 21 still stopped at frame 239 (snapshot 10 MB per frame). The button is hi
 ## 2026-11-18 — Build 23: Record video fixes
 
 Record video failed twice on a phone (see KNOWN_ISSUES): the permission alert counted as "left the screen", and a stale start/stop raced a new recording. Only `.background` aborts a run now and the stop is guarded. Unverified on a device.
+
+
+## 2026-11-18 — Build 24: Map cinema (MapTiler test)
+
+New test screen *Map cinema (test)* (Activity detail menu): the same `FlyoverPlan` on a live MapTiler satellite map with 3D terrain, camera tilt 78 degrees (Apple Maps stops near 65; MapTiler allows 85), the route and a growing trail as GeoJSON lines, recorded with `RPScreenRecorder` and played on a separate black "cinema" screen with Share. One live map, no per-frame pictures, so the Apple snapshot memory growth does not apply. Added the `MapTilerSDK` Swift package (exact 2.4.0, product MapTilerSDK, WKWebView based, tools 6.0). The SDK has no snapshot or capture API, so frame-by-frame capture of the map was not attempted. Unverified on a device: whether the map loads, the camera/zoom conversion (`MapCinemaMath.zoom`) frames like the Apple flyover, whether the screen recording includes the WebGL map (black frames are possible), the 4 s fixed wait before Record is enabled. The key comes from the GitHub secret `MAPTILER_API_KEY` (see KNOWN_ISSUES).

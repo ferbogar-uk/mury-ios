@@ -55,6 +55,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Write MapTiler key
+        env:
+          MAPTILER_API_KEY: ${{ secrets.MAPTILER_API_KEY }}
+        run: |
+          # Public repo: the key lives only in the GitHub secret. No secret (a fork) means no file and no map.
+          if [ -n "$MAPTILER_API_KEY" ]; then printf '%s' "$MAPTILER_API_KEY" > larping/MapTilerKey.txt; fi
+
       - name: Build
         run: |
           xcodebuild -project larping.xcodeproj -scheme larping \

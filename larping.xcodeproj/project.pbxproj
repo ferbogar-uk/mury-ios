@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		779AAC400000000B00D39CDB /* larpingWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 779AAC400000000200D39CDB /* larpingWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		779AAC400000001200D39CDB /* MapTilerSDK in Frameworks */ = {isa = PBXBuildFile; productRef = 779AAC400000001100D39CDB /* MapTilerSDK */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -108,6 +109,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				779AAC400000001200D39CDB /* MapTilerSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -197,6 +199,7 @@
 			);
 			name = larping;
 			packageProductDependencies = (
+				779AAC400000001100D39CDB /* MapTilerSDK */,
 			);
 			productName = larping;
 			productReference = 779AAC133053160A00D39CDB /* larping.app */;
@@ -285,6 +288,9 @@
 			knownRegions = (
 				en,
 				Base,
+			);
+			packageReferences = (
+				779AAC400000001000D39CDB /* XCRemoteSwiftPackageReference "maptiler-sdk-swift" */,
 			);
 			mainGroup = 779AAC0A3053160A00D39CDB;
 			minimizedProjectReferenceProxies = 1;
@@ -389,7 +395,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Config/larpingWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 23;
+				CURRENT_PROJECT_VERSION = 24;
 				DEVELOPMENT_TEAM = Z6HU7P866U;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/larpingWatch-Info.plist";
@@ -423,7 +429,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Config/larpingWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 23;
+				CURRENT_PROJECT_VERSION = 24;
 				DEVELOPMENT_TEAM = Z6HU7P866U;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/larpingWatch-Info.plist";
@@ -579,7 +585,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = larping/larping.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 23;
+				CURRENT_PROJECT_VERSION = 24;
 				DEVELOPMENT_TEAM = Z6HU7P866U;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -620,7 +626,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = larping/larping.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 23;
+				CURRENT_PROJECT_VERSION = 24;
 				DEVELOPMENT_TEAM = Z6HU7P866U;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -787,6 +793,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		779AAC400000001000D39CDB /* XCRemoteSwiftPackageReference "maptiler-sdk-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/maptiler/maptiler-sdk-swift";
+			requirement = {
+				kind = exactVersion;
+				version = 2.4.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		779AAC400000001100D39CDB /* MapTilerSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 779AAC400000001000D39CDB /* XCRemoteSwiftPackageReference "maptiler-sdk-swift" */;
+			productName = MapTilerSDK;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 779AAC0B3053160A00D39CDB /* Project object */;
 }
