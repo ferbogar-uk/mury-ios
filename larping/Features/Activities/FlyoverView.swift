@@ -60,6 +60,11 @@ struct FlyoverView: View {
             distance: opening.distanceMeters, heading: 0, pitch: 0)))
     }
 
+    /// Off since build 22: rendering frame by frame with Apple's 3D map engine keeps about 10 MB per frame that the
+    /// engine never gives back, so a 30 s clip is stopped by the memory guard near frame 230 (see KNOWN_ISSUES).
+    /// The code stays in `FlyoverRenderer` so it can come back with a lighter map.
+    static let offersRenderInApp = false
+
     private var isRunning: Bool {
         mode == .preloading || mode == .preparing || mode == .playing || mode == .recording || mode == .finishing
     }
@@ -348,13 +353,15 @@ struct FlyoverView: View {
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("flyover-record")
             }
-            Button {
-                startRender()
-            } label: {
-                Label("Render in app (experimental)", systemImage: "film").frame(maxWidth: .infinity)
+            if Self.offersRenderInApp {
+                Button {
+                    startRender()
+                } label: {
+                    Label("Render in app (experimental)", systemImage: "film").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("flyover-render")
             }
-            .buttonStyle(.bordered)
-            .accessibilityIdentifier("flyover-render")
             if let renderSummary, mode == .done {
                 Text(renderSummary)
                     .font(MuryTypography.font(.caption, size: 12))
@@ -365,8 +372,7 @@ struct FlyoverView: View {
                     .font(MuryTypography.font(.caption, size: 12))
                     .foregroundStyle(.red)
             }
-            Text("Render in app builds the video from map images, with no screen recording and no permission prompt. It is slow (minutes) and still being tested: the 3D look, the route alignment and the speed are not confirmed on a phone yet. "
-                 + "Recording captures this screen while the flyover plays. Keep MURY open and tap the screen to stop. Satellite and 3D coverage depend on Apple Maps.")
+            Text("Recording captures this screen while the flyover plays. Keep MURY open and tap the screen to stop. Satellite and 3D coverage depend on Apple Maps.")
                 .font(MuryTypography.font(.caption, size: 12))
                 .foregroundStyle(.secondary)
         }
