@@ -103,7 +103,9 @@ struct FlyoverView: View {
             plan = FlyoverPlan(timeline: timeline, clipSeconds: Double(length.rawValue))
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase != .active && isRunning && mode != .finishing {
+            // Only `.background` stops a run. The system permission alert for screen recording (and a pulled-down
+            // Control Centre) only make the app `.inactive`, and stopping on that cancelled every first recording.
+            if phase == .background && isRunning && mode != .finishing {
                 abortRun("Flyover stopped because MURY left the screen.")
             }
             if phase != .active && mode == .rendering {
@@ -528,6 +530,11 @@ struct FlyoverView: View {
         try? await Task.sleep(for: .milliseconds(600))
         let url = temporaryVideoURL()
         defer { try? FileManager.default.removeItem(at: url) }
+        guard RPScreenRecorder.shared().isRecording else {
+            message = "The system stopped the recording before the flyover ended. Tap Record video to try again."
+            resetToStart()
+            return
+        }
         do {
             try await RPScreenRecorder.shared().stopRecording(withOutput: url)
             let file = try VideoShareFile(source: url)

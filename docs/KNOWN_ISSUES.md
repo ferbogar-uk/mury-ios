@@ -198,3 +198,8 @@ Build 14 positioned the line through a hidden `MKMapView` and the app crashed du
 ### Render in app is switched off (build 22)
 
 Device numbers (builds 19-21, iPhone, iOS 27): the memory guard stopped a 30 s render at frame 213-239 / about 2.8 GB every time. Growth per frame: snapshot 9-10 MB, draw 1-3, encode 0, screen -3 (so the full-screen preview is not the cause). Scale 1.5 pictures, a snapshotter on its own queue and `cancel()` on arrival (build 21) did not change it. The 3D map engine (`.hybridFlyover` snapshots) keeps what it loads. `FlyoverView.offersRenderInApp = false` hides the button; `FlyoverRenderer`, the crash report and the memory guard stay. Ideas not yet tried: a normal (non-3D) satellite map for the frame-by-frame render, or only 15 s clips. Screen recording (*Record video*) is the working way to make the video, as with Strava's live flyover.
+
+
+### Record video: permission alert used to cancel the first recording (build 23)
+
+Build 22 on a phone: *Record video* showed "Flyover stopped because MURY left the screen" (the system screen-recording permission alert makes the scene `.inactive`, and the scene-phase handler stopped on anything but `.active`), and the next try showed "Failed due to attempting to stop a recording that wasn't in recording state" (the earlier cancelled attempt finished starting later and its cleanup stopped the new recording). Now only `.background` stops a run, and `finishRun` checks `isRecording` first with a plain message. Unverified on a device.
