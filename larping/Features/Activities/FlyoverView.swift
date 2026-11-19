@@ -60,10 +60,11 @@ struct FlyoverView: View {
             distance: opening.distanceMeters, heading: 0, pitch: 0)))
     }
 
-    /// Off since build 22: rendering frame by frame with Apple's 3D map engine keeps about 10 MB per frame that the
-    /// engine never gives back, so a 30 s clip is stopped by the memory guard near frame 230 (see KNOWN_ISSUES).
-    /// The code stays in `FlyoverRenderer` so it can come back with a lighter map.
-    static let offersRenderInApp = false
+    /// Back on in build 26, for short clips only. Rendering frame by frame with Apple's 3D map engine keeps about
+    /// 10 MB per frame that the engine never gives back, so a 30 s clip was stopped by the memory guard near frame
+    /// 230 (see KNOWN_ISSUES). 8 s at 20 fps is 160 frames, below that point; the guard still stops a run cleanly.
+    static let offersRenderInApp = true
+    static let renderClipSeconds = 8.0
 
     private var isRunning: Bool {
         mode == .preloading || mode == .preparing || mode == .playing || mode == .recording || mode == .finishing
@@ -192,6 +193,12 @@ struct FlyoverView: View {
             Spacer()
             if isRunning && mode != .preparing && mode != .preloading {
                 statsCard(state: state, frame: frame)
+                // Brand mark, part of the recorded screen.
+                HStack {
+                    Spacer()
+                    Text("MURY").font(MuryTypography.font(.headline, size: 15, weight: .heavy)).tracking(2)
+                        .foregroundStyle(.white).shadow(radius: 3)
+                }
             }
             if mode == .preparing || mode == .preloading {
                 Text(mode == .preloading ? "Preparing map…" : "Starting recording…")
@@ -212,14 +219,14 @@ struct FlyoverView: View {
     private var renderScreen: some View {
         ZStack(alignment: .bottom) {
             Color.black.ignoresSafeArea()
-            if let preview = renderPreview {
-                Image(uiImage: preview)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .ignoresSafeArea()
-                    .accessibilityHidden(true)
+            // A plain waiting screen: the frames being made are not shown.
+            VStack(spacing: 14) {
+                Image(systemName: "film").font(.system(size: 44)).foregroundStyle(.white.opacity(0.85))
+                Text("Making your flyover video…").font(MuryTypography.font(.title3, size: 20, weight: .semibold))
+                    .foregroundStyle(.white)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .accessibilityHidden(true)
             renderBar
         }
     }
@@ -359,7 +366,7 @@ struct FlyoverView: View {
                 Button {
                     startRender()
                 } label: {
-                    Label("Render in app (experimental)", systemImage: "film").frame(maxWidth: .infinity)
+                    Label("Render in app (up to \(Int(Self.renderClipSeconds)) s)", systemImage: "film").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
                 .accessibilityIdentifier("flyover-render")
@@ -452,7 +459,8 @@ struct FlyoverView: View {
         renderStartedAt = Date()
         mode = .rendering
         UIApplication.shared.isIdleTimerDisabled = true
-        let renderPlan = plan
+        // Short clips only: see `offersRenderInApp`.
+        let renderPlan = FlyoverPlan(timeline: timeline, clipSeconds: Self.renderClipSeconds)
         renderTask = Task {
             defer { UIApplication.shared.isIdleTimerDisabled = false }
             do {
