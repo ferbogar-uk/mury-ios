@@ -19,13 +19,10 @@ struct MapCinemaView: View {
         case loading, ready, warming, preparing, playing, recording, finishing, cinema
     }
 
-    /// Map look. Vector shows MapTiler buildings as 3D blocks; satellite is a plain photo draped over the terrain.
+    /// Map look. Both have 3D building blocks; satellite is a photo draped over the terrain, streets is the vector map.
     private enum MapChoice: String, CaseIterable {
-        case vector = "3D buildings", satellite = "Satellite"
+        case satellite = "Satellite 3D", streets = "Streets 3D"
     }
-
-    /// Ground around the route that is loaded before filming (half a kilometre each side).
-    static let marginMeters = 500.0
 
     /// Camera tilt while following. Apple Maps stops near 65 degrees; MapTiler allows up to 85.
     static let cinemaPitchDegrees = 78.0
@@ -38,13 +35,14 @@ struct MapCinemaView: View {
     @State private var mapView: MTMapView?
     @State private var routeSource: MTGeoJSONSource?
     @State private var trailSource: MTGeoJSONSource?
+    @State private var planetSource: MTVectorTileSource?
     @State private var mode: Mode = .loading
     @State private var flyTime: TimeInterval = 0
     @State private var message: String?
     @State private var recorded: VideoShareFile?
     @State private var player: AVPlayer?
     @State private var lastTrailUpdate: TimeInterval = -1
-    @State private var choice: MapChoice = .vector
+    @State private var choice: MapChoice = .satellite
     @State private var idleTicks = 0
 
     init(activity: CDActivity) {
@@ -71,6 +69,7 @@ struct MapCinemaView: View {
             } else {
                 // The map stays in the hierarchy under the cinema screen: removing it would tear down its web view.
                 mapLayer
+                if mode == .warming { Color.black.ignoresSafeArea() }
                 if mode == .cinema {
                     Color.black.ignoresSafeArea()
                     cinema
@@ -97,10 +96,10 @@ struct MapCinemaView: View {
 
     @ViewBuilder private var mapLayer: some View {
         if let mapView, let routeSource, let trailSource {
-            if choice == .vector {
+            if choice == .streets {
                 MTMapViewContainer(map: mapView) {
                     routeSource
-                    Self.buildings()
+                    Self.buildings(source: "maptiler_planet")
                     Self.line("route-faint", source: routeSource, color: UIColor.white.withAlphaComponent(0.7), width: 3)
                     trailSource
                     Self.line("trail", source: trailSource, color: UIColor(theme.route), width: 6)
@@ -110,10 +109,12 @@ struct MapCinemaView: View {
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture { if mode == .recording || mode == .playing || mode == .warming { abortRun("Stopped.") } }
-            } else {
+            } else if let planetSource {
                 MTMapViewContainer(map: mapView) {
+                    planetSource
                     routeSource
-                    Self.line("route-faint", source: routeSource, color: UIColor.white.withAlphaComponent(0.55), width: 3)
+                    Self.buildings(source: planetSource.identifier)
+                    Self.line("route-faint", source: routeSource, color: UIColor.white.withAlphaComponent(0.65), width: 3)
                     trailSource
                     Self.line("trail", source: trailSource, color: UIColor(theme.route), width: 6)
                 }
@@ -122,6 +123,8 @@ struct MapCinemaView: View {
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture { if mode == .recording || mode == .playing || mode == .warming { abortRun("Stopped.") } }
+            } else {
+                ProgressView().tint(.white)
             }
         } else {
             ProgressView().tint(.white)
@@ -137,10 +140,11 @@ struct MapCinemaView: View {
         return layer
     }
 
-    /// Buildings as 3D blocks from the vector tiles of the MapTiler style ("maptiler_planet" source, "building"
-    /// layer). If the style names differ the layer is simply absent and the map shows no buildings.
-    private static func buildings() -> MTFillExtrusionLayer {
-        let layer = MTFillExtrusionLayer(identifier: "buildings-3d", sourceIdentifier: "maptiler_planet")
+    /// Buildings as 3D blocks from MapTiler vector tiles ("building" layer). The streets style already has the
+    /// "maptiler_planet" source; on satellite we add the same tiles as our own source. If the names differ the layer
+    /// is simply absent and the map shows no buildings.
+    private static func buildings(source: String) -> MTFillExtrusionLayer {
+        let layer = MTFillExtrusionLayer(identifier: "buildings-3d", sourceIdentifier: source)
         layer.sourceLayer = "building"
         layer.minZoom = 14
         layer.color = .color(UIColor(white: 0.86, alpha: 1))
@@ -163,13 +167,24 @@ struct MapCinemaView: View {
             center: CLLocationCoordinate2D(latitude: opening.centerLatitude, longitude: opening.centerLongitude),
             zoom: MapCinemaMath.zoom(forDistance: opening.distanceMeters, latitude: opening.centerLatitude),
             bearing: opening.headingDegrees, pitch: 0, maxPitch: Self.maxPitchDegrees,
-            terrainIsEnabled: true, terrainExaggeration: 1.0)
+            terrainIsEnabled: true, terrainExaggeration: 1.0, pixelRatio: 3,
+            logoPosition: .bottomLeft, maptilerLogoIsVisible: true, attributionControlIsVisible: true)
         routeSource = MTGeoJSONSource(identifier: "route", jsonString: routeGeoJSON)
         trailSource = MTGeoJSONSource(identifier: "trail", jsonString: MapCinemaMath.geoJSON(segments: []))
+        if let url = URL(string: "https://api.maptiler.com/tiles/v3/tiles.json?key=\(key)") {
+            planetSource = MTVectorTileSource(identifier: "mt-planet", url: url)
+        }
         mapView = MTMapView(options: options)
         await settle(timeout: 12)
+        // Sky and haze at the horizon instead of the empty white band a low camera shows.
+        await mapView?.setSky(Self.sky, options: nil)
         if mode == .loading { mode = .ready }
     }
+
+    private static let sky = MTSky(
+        skyColor: .color(MTColor(hex: "#5b9bd5")), skyHorizonBlend: .number(0.6),
+        horizonColor: .color(MTColor(hex: "#cfe3f5")), horizonFogBlend: .number(0.6),
+        fogColor: .color(MTColor(hex: "#cfe3f5")), fogGroundBlend: .number(0.3), atmosphereBlend: .number(0.8))
 
     /// Switches between the vector and satellite look: the style is fixed when the map is created, so the map is rebuilt.
     private func changeChoice(_ new: MapChoice) {
@@ -191,28 +206,12 @@ struct MapCinemaView: View {
         }
     }
 
-    /// Loads the ground around the route before filming: first a view from above that frames the whole route plus
-    /// half a kilometre of margin, then a quick low pass along the route so the close-up tiles and buildings are in
-    /// the cache. The screen is covered meanwhile. Recording starts only after this.
+    /// Moves the camera to the first frame and waits for the map to finish loading there, with the screen covered by
+    /// the waiting message. No fly-around: the flight itself starts straight after, and recording only after this.
     private func warmUp() async {
-        guard let mapView, let box = MapCinemaMath.bounds(of: timeline.segments) else { return }
-        let centre = CLLocationCoordinate2D(latitude: (box.minLat + box.maxLat) / 2, longitude: (box.minLon + box.maxLon) / 2)
-        let zoom = MapCinemaMath.overviewZoom(minLat: box.minLat, maxLat: box.maxLat, minLon: box.minLon, maxLon: box.maxLon,
-                                              marginMeters: Self.marginMeters)
-        await mapView.jumpTo(centre, options: MTCameraOptions(zoom: zoom, bearing: 0, pitch: 0))
-        await settle(timeout: 10)
-        guard mode == .warming else { return }
-        let steps = 24
-        for step in 0...steps {
-            guard mode == .warming else { return }
-            let state = plan.state(at: plan.clipSeconds * Double(step) / Double(steps))
-            await apply(state, on: mapView, force: false, trail: false)
-            try? await Task.sleep(for: .milliseconds(250))
-        }
-        await settle(timeout: 6)
-        guard mode == .warming else { return }
+        guard let mapView else { return }
         await apply(plan.state(at: 0), on: mapView, force: true, trail: true)
-        await settle(timeout: 6)
+        await settle(timeout: 8)
     }
 
     // MARK: - Overlay
@@ -230,10 +229,18 @@ struct MapCinemaView: View {
                 Spacer()
             }
             Spacer()
+            if mode == .playing || mode == .recording || mode == .finishing {
+                HStack {
+                    Spacer()
+                    Text("MURY").font(MuryTypography.font(.headline, size: 16, weight: .bold)).tracking(2)
+                        .foregroundStyle(.white).shadow(radius: 3)
+                        .padding(.bottom, 18)
+                }
+            }
             if mode == .loading {
                 pill("Loading MapTiler map…")
             } else if mode == .warming {
-                pill("Loading the map around the route…")
+                pill("Getting the map ready…")
             } else if mode == .preparing {
                 pill("Starting recording…")
             } else if mode == .ready {

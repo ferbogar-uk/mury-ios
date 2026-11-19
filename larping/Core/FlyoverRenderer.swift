@@ -348,6 +348,7 @@ enum FlyoverRenderer {
 
             drawStats(state: state, frame: frame, savedDistance: savedDistance)
             drawText("Apple Maps", at: CGPoint(x: 10, y: pointSize.height - 18), size: 10, weight: .medium, alpha: 0.9)
+            drawText("MURY", at: CGPoint(x: pointSize.width - 50, y: pointSize.height - 20), size: 12, weight: .heavy, alpha: 1)
         }
     }
 

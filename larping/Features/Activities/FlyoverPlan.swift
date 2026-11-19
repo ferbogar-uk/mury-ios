@@ -27,7 +27,7 @@ struct FlyoverPlan {
 
     static let followDistanceMeters = 450.0
     /// MapKit clamps pitch to what the map allows at that zoom, so asking for a high value is safe.
-    static let followPitchDegrees = 65.0
+    static let followPitchDegrees = 72.0
     /// The marker starts falling at this share of the orbit and lands as the orbit ends, so the run starts right after.
     static let dropStartShareOfOrbit = 0.7
     /// Share of the orbit in which the camera reaches full tilt (the rest is turning and closing in).
