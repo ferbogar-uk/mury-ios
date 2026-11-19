@@ -223,3 +223,8 @@ The 3D buildings use the `maptiler_planet` source and `building` layer with `ren
 Map cinema still films with the system screen recorder (the permission prompt and the second tap he dislikes). There is no alternative with MapTiler: its SDK has no capture function and a WebGL page gives black snapshots. Not done in build 26: sky/lower camera/MURY logo on the Apple flyover and bringing back Render in app (it stopped on MapKit snapshot memory, see "Render in app is switched off"); these need a decision first.
 
 - **Render in app is on again, for 8 s clips only (build 26)**: see the entry "Render in app is switched off (build 22)": the cause is unchanged (MapKit keeps ~10 MB per snapshot), so longer clips would be stopped by the memory guard. The 15/30/60 s picker applies to Preview and Record video, not to Render in app. The Apple map has no sky setting.
+
+
+- MapTiler web view cannot read `file://` URLs: never feed a source with `setData(data: <file URL>)`. Reveal data with a layer filter or send a `data:` URL instead.
+
+- Render in app waiting screen plays `larping/RenderSample.mp4` (muted loop, made-up sample, not a real run) when that file is in the bundle; without it the screen is the plain black "Making your flyover video…". The file is supplied by Ricardo (generated outside the app) and bundled automatically (synchronized group). Unverified: memory use of the playing video alongside the 2800 MB render guard.

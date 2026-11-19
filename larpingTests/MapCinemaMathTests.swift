@@ -34,4 +34,14 @@ final class MapCinemaMathTests: XCTestCase {
         XCTAssertEqual(MapTilerConfig.clean("  abc123\n"), "abc123")
         XCTAssertNil(MapTilerConfig.clean(" \n "))
     }
+
+    func testTrailFeaturesCarryRunningIndexAcrossSegments() throws {
+        let a = [ReplayCoordinate(latitude: 1, longitude: 2), ReplayCoordinate(latitude: 1, longitude: 3), ReplayCoordinate(latitude: 1, longitude: 4)]
+        let b = [ReplayCoordinate(latitude: 5, longitude: 6), ReplayCoordinate(latitude: 5, longitude: 7)]
+        let text = MapCinemaMath.trailGeoJSON(segments: [a, b])
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any])
+        let features = try XCTUnwrap(object["features"] as? [[String: Any]])
+        let indexes = features.compactMap { ($0["properties"] as? [String: Int])?["i"] }
+        XCTAssertEqual(indexes, [1, 2, 4])
+    }
 }
