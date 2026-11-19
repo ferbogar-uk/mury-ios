@@ -228,3 +228,6 @@ Map cinema still films with the system screen recorder (the permission prompt an
 - MapTiler web view cannot read `file://` URLs: never feed a source with `setData(data: <file URL>)`. Reveal data with a layer filter or send a `data:` URL instead.
 
 - Render in app waiting screen plays `larping/RenderSample.mp4` (muted loop, made-up sample, not a real run) when that file is in the bundle; without it the screen is the plain black "Making your flyover video…". The file is supplied by Ricardo (generated outside the app) and bundled automatically (synchronized group). Unverified: memory use of the playing video alongside the 2800 MB render guard.
+
+- Build 28 reopened Render in app for 15 / 30 / 60 s on purpose, to test. Expect the 2800 MB guard to stop long clips; the stop message starts with "start N MB": if N is already around 2000, the memory is taken before the render begins (the build 26 print showed 2,679 MB at frame 60 of an 8 s render), if it is a few hundred MB the growth is the snapshots themselves. Not known yet which. The old (build 9/10) renders used the same MKMapSnapshotter code; the earlier clip length they finished at is not recorded.
+- Map cinema has no runner dot during the final pull-back (the dot is a fixed overlay on the screen centre, which only matches the runner while the camera follows it).

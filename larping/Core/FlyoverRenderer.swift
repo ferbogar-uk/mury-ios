@@ -119,6 +119,8 @@ enum FlyoverRenderer {
         let clock = ContinuousClock()
         let begin = clock.now
         let states = times.map { plan.state(at: $0) }
+        // Memory the app already holds before the first picture: tells whether the growth starts in the render or before it.
+        let startMegabytes = currentMemoryMegabytes()
         var grewBySnapshot = 0, grewByDraw = 0, grewByEncode = 0, grewByScreen = 0, screenFrames = 0
         var pending: [Int: Task<MKMapSnapshotter.Snapshot, Error>] = [:]
         defer {
@@ -164,7 +166,7 @@ enum FlyoverRenderer {
             grewByDraw += memoryAfterDraw - memoryAfterSnapshot
             grewByEncode += memoryNow - memoryAfterDraw
             let done = index + 1
-            let stages = "snapshot \(grewBySnapshot / done), draw \(grewByDraw / done), encode \(grewByEncode / done) MB per frame, screen \(grewByScreen / max(screenFrames, 1)) MB per picture shown"
+            let stages = "start \(startMegabytes) MB, snapshot \(grewBySnapshot / done), draw \(grewByDraw / done), encode \(grewByEncode / done) MB per frame, screen \(grewByScreen / max(screenFrames, 1)) MB per picture shown"
             crashLog.update(frame: done, phase: String(describing: state.phase), megabytes: memoryNow, note: stages)
             if memoryNow > memoryLimitMegabytes { throw RenderError.outOfMemory(done, memoryNow, stages) }
             let parts = begin.duration(to: clock.now).components
