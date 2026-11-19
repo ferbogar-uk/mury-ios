@@ -108,7 +108,6 @@ struct MapCinemaView: View {
                     Self.line("route-faint", source: routeSource, color: UIColor.white.withAlphaComponent(0.7), width: 3)
                     trailSource
                     Self.trailLine(source: trailSource, color: UIColor(theme.route))
-                    if let runnerMarker { runnerMarker }
                 }
                 .referenceStyle(.streets)
                 .didTriggerEvent { event, _ in if event == .isIdle { idleTicks += 1 } }
@@ -123,7 +122,6 @@ struct MapCinemaView: View {
                     Self.line("route-faint", source: routeSource, color: UIColor.white.withAlphaComponent(0.65), width: 3)
                     trailSource
                     Self.trailLine(source: trailSource, color: UIColor(theme.route))
-                    if let runnerMarker { runnerMarker }
                 }
                 .referenceStyle(.satellite)
                 .didTriggerEvent { event, _ in if event == .isIdle { idleTicks += 1 } }
@@ -219,6 +217,7 @@ struct MapCinemaView: View {
         await settle(timeout: 12)
         // Sky and haze at the horizon instead of the empty white band a low camera shows.
         await mapView?.setSky(Self.sky, options: nil)
+        if let runnerMarker { await mapView?.addMarker(runnerMarker) }
         if mode == .loading { mode = .ready }
     }
 
