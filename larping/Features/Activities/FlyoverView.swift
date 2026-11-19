@@ -60,11 +60,10 @@ struct FlyoverView: View {
             distance: opening.distanceMeters, heading: 0, pitch: 0)))
     }
 
-    /// Back on in build 26, for short clips only. Rendering frame by frame with Apple's 3D map engine keeps about
-    /// 10 MB per frame that the engine never gives back, so a 30 s clip was stopped by the memory guard near frame
-    /// 230 (see KNOWN_ISSUES). 8 s at 20 fps is 160 frames, below that point; the guard still stops a run cleanly.
+    /// Render in app uses the length chosen in the picker (15 / 30 / 60 s) again, to find what the device can do.
+    /// Rendering frame by frame with Apple's 3D map engine keeps memory per frame; the guard at 2800 MB stops a run
+    /// cleanly and the stop message and progress line show the memory at the start of the render (see KNOWN_ISSUES).
     static let offersRenderInApp = true
-    static let renderClipSeconds = 8.0
 
     private var isRunning: Bool {
         mode == .preloading || mode == .preparing || mode == .playing || mode == .recording || mode == .finishing
@@ -379,7 +378,7 @@ struct FlyoverView: View {
                 Button {
                     startRender()
                 } label: {
-                    Label("Render in app (up to \(Int(Self.renderClipSeconds)) s)", systemImage: "film").frame(maxWidth: .infinity)
+                    Label("Render in app (\(clip.rawValue) s)", systemImage: "film").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
                 .accessibilityIdentifier("flyover-render")
@@ -472,8 +471,7 @@ struct FlyoverView: View {
         renderStartedAt = Date()
         mode = .rendering
         UIApplication.shared.isIdleTimerDisabled = true
-        // Short clips only: see `offersRenderInApp`.
-        let renderPlan = FlyoverPlan(timeline: timeline, clipSeconds: Self.renderClipSeconds)
+        let renderPlan = FlyoverPlan(timeline: timeline, clipSeconds: Double(clip.rawValue))
         renderTask = Task {
             defer { UIApplication.shared.isIdleTimerDisabled = false }
             do {
