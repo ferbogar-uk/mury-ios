@@ -219,14 +219,27 @@ struct FlyoverView: View {
     private var renderScreen: some View {
         ZStack(alignment: .bottom) {
             Color.black.ignoresSafeArea()
-            // A plain waiting screen: the frames being made are not shown.
-            VStack(spacing: 14) {
-                Image(systemName: "film").font(.system(size: 44)).foregroundStyle(.white.opacity(0.85))
-                Text("Making your flyover video…").font(MuryTypography.font(.title3, size: 20, weight: .semibold))
-                    .foregroundStyle(.white)
+            // The frames being made are not shown. With the bundled sample video it plays here like a short
+            // advert; without it, a plain waiting screen.
+            if RenderSampleVideo.isAvailable {
+                RenderSampleVideo().ignoresSafeArea().accessibilityHidden(true)
+                VStack {
+                    Text("Making your flyover video…").font(MuryTypography.font(.headline, size: 17, weight: .semibold))
+                        .foregroundStyle(.white).shadow(radius: 4)
+                        .padding(.top, 60)
+                    Text("Sample video, not your run").font(MuryTypography.font(.caption, size: 12))
+                        .foregroundStyle(.white.opacity(0.8)).shadow(radius: 4)
+                    Spacer()
+                }
+            } else {
+                VStack(spacing: 14) {
+                    Image(systemName: "film").font(.system(size: 44)).foregroundStyle(.white.opacity(0.85))
+                    Text("Making your flyover video…").font(MuryTypography.font(.title3, size: 20, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityHidden(true)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .accessibilityHidden(true)
             renderBar
         }
     }

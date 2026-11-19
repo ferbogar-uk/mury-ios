@@ -226,3 +226,5 @@ Map cinema still films with the system screen recorder (the permission prompt an
 
 
 - MapTiler web view cannot read `file://` URLs: never feed a source with `setData(data: <file URL>)`. Reveal data with a layer filter or send a `data:` URL instead.
+
+- Render in app waiting screen plays `larping/RenderSample.mp4` (muted loop, made-up sample, not a real run) when that file is in the bundle; without it the screen is the plain black "Making your flyover video…". The file is supplied by Ricardo (generated outside the app) and bundled automatically (synchronized group). Unverified: memory use of the playing video alongside the 2800 MB render guard.
