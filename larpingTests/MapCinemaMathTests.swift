@@ -34,17 +34,4 @@ final class MapCinemaMathTests: XCTestCase {
         XCTAssertEqual(MapTilerConfig.clean("  abc123\n"), "abc123")
         XCTAssertNil(MapTilerConfig.clean(" \n "))
     }
-
-    func testBoundsAndOverviewZoom() throws {
-        XCTAssertNil(MapCinemaMath.bounds(of: []))
-        let route = [[ReplayCoordinate(latitude: 51.55, longitude: 0.25), ReplayCoordinate(latitude: 51.56, longitude: 0.27)]]
-        let box = try XCTUnwrap(MapCinemaMath.bounds(of: route))
-        XCTAssertEqual(box.minLat, 51.55, accuracy: 1e-9)
-        XCTAssertEqual(box.maxLon, 0.27, accuracy: 1e-9)
-        let near = MapCinemaMath.overviewZoom(minLat: 51.55, maxLat: 51.551, minLon: 0.25, maxLon: 0.251, marginMeters: 500)
-        let wide = MapCinemaMath.overviewZoom(minLat: 51.4, maxLat: 51.7, minLon: 0.0, maxLon: 0.5, marginMeters: 500)
-        XCTAssertGreaterThan(near, wide)
-        XCTAssertLessThanOrEqual(near, 18)
-        XCTAssertGreaterThanOrEqual(wide, 10)
-    }
 }

@@ -216,3 +216,8 @@ Build 22 on a phone: *Record video* showed "Flyover stopped because MURY left th
 ## Map cinema build 25: building layer names and idle waits are assumptions
 
 The 3D buildings use the `maptiler_planet` source and `building` layer with `render_height` / `render_min_height`, as in MapTiler vector styles; the SDK reports no error if they do not exist, the map just shows no buildings. Each wait for the map `idle` event has a timeout (10-12 s), so a map that never goes idle still starts after the cap. The warm-up cache is the browser tile cache, which can still drop tiles on a long route.
+
+
+## Map cinema build 26: still screen recording; Apple flyover requests not done yet
+
+Map cinema still films with the system screen recorder (the permission prompt and the second tap he dislikes). There is no alternative with MapTiler: its SDK has no capture function and a WebGL page gives black snapshots. Not done in build 26: sky/lower camera/MURY logo on the Apple flyover and bringing back Render in app (it stopped on MapKit snapshot memory, see "Render in app is switched off"); these need a decision first.
