@@ -232,7 +232,7 @@ struct MapCinemaView: View {
             if mode == .playing || mode == .recording || mode == .finishing {
                 HStack {
                     Spacer()
-                    Text("MURY").font(MuryTypography.font(.headline, size: 16, weight: .heavy)).tracking(2)
+                    Text("MURY").font(MuryTypography.font(.headline, size: 16, weight: .bold)).tracking(2)
                         .foregroundStyle(.white).shadow(radius: 3)
                         .padding(.bottom, 18)
                 }
