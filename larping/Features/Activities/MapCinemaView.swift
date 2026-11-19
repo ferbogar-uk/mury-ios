@@ -30,18 +30,21 @@ struct MapCinemaView: View {
 
     private let timeline: ReplayTimeline
     private let routeGeoJSON: String
+    private let trailGeoJSON: String
+    private let symbolName: String
 
     @State private var plan: FlyoverPlan
     @State private var mapView: MTMapView?
     @State private var routeSource: MTGeoJSONSource?
     @State private var trailSource: MTGeoJSONSource?
+    @State private var runnerMarker: MTMarker?
     @State private var planetSource: MTVectorTileSource?
     @State private var mode: Mode = .loading
     @State private var flyTime: TimeInterval = 0
     @State private var message: String?
     @State private var recorded: VideoShareFile?
     @State private var player: AVPlayer?
-    @State private var lastTrailUpdate: TimeInterval = -1
+    @State private var lastRevealedPoints = -1
     @State private var choice: MapChoice = .satellite
     @State private var idleTicks = 0
 
@@ -54,6 +57,8 @@ struct MapCinemaView: View {
                                       startedAt: activity.startedAt, endedAt: activity.endedAt)
         timeline = snapshot
         routeGeoJSON = MapCinemaMath.geoJSON(segments: snapshot.segments)
+        trailGeoJSON = MapCinemaMath.trailGeoJSON(segments: snapshot.segments)
+        symbolName = activity.sportType.symbolName
         _plan = State(initialValue: FlyoverPlan(timeline: snapshot, clipSeconds: 30))
     }
 
@@ -102,7 +107,8 @@ struct MapCinemaView: View {
                     Self.buildings(source: "maptiler_planet")
                     Self.line("route-faint", source: routeSource, color: UIColor.white.withAlphaComponent(0.7), width: 3)
                     trailSource
-                    Self.line("trail", source: trailSource, color: UIColor(theme.route), width: 6)
+                    Self.trailLine(source: trailSource, color: UIColor(theme.route))
+                    if let runnerMarker { runnerMarker }
                 }
                 .referenceStyle(.streets)
                 .didTriggerEvent { event, _ in if event == .isIdle { idleTicks += 1 } }
@@ -116,7 +122,8 @@ struct MapCinemaView: View {
                     Self.buildings(source: planetSource.identifier)
                     Self.line("route-faint", source: routeSource, color: UIColor.white.withAlphaComponent(0.65), width: 3)
                     trailSource
-                    Self.line("trail", source: trailSource, color: UIColor(theme.route), width: 6)
+                    Self.trailLine(source: trailSource, color: UIColor(theme.route))
+                    if let runnerMarker { runnerMarker }
                 }
                 .referenceStyle(.satellite)
                 .didTriggerEvent { event, _ in if event == .isIdle { idleTicks += 1 } }
@@ -138,6 +145,37 @@ struct MapCinemaView: View {
         layer.cap = .round
         layer.join = .round
         return layer
+    }
+
+    /// The red trail: the whole route is in the source and the filter reveals it point by point (hidden at the start).
+    private static func trailLine(source: MTGeoJSONSource, color: UIColor) -> MTLineLayer {
+        let layer = line("trail", source: source, color: color, width: 6)
+        layer.initialFilter = trailFilter(revealedPoints: 0)
+        return layer
+    }
+
+    private static func trailFilter(revealedPoints: Int) -> MTPropertyValue {
+        .array([.string("<="), MTExpression.get("i"), .number(Double(revealedPoints - 1))])
+    }
+
+    /// The runner: a red dot with a white runner symbol, moved along the route while filming.
+    private static func makeRunnerMarker(at coordinate: CLLocationCoordinate2D, color: UIColor, symbolName: String) -> MTMarker {
+        let marker = MTMarker(coordinates: coordinate, anchor: .center, pitchAlignment: .viewport)
+        let size = CGSize(width: 44, height: 44)
+        marker.icon = UIGraphicsImageRenderer(size: size).image { _ in
+            let rect = CGRect(origin: .zero, size: size).insetBy(dx: 3, dy: 3)
+            color.setFill()
+            UIBezierPath(ovalIn: rect).fill()
+            UIColor.white.setStroke()
+            let ring = UIBezierPath(ovalIn: rect)
+            ring.lineWidth = 3
+            ring.stroke()
+            let config = UIImage.SymbolConfiguration(pointSize: 20, weight: .bold)
+            if let symbol = UIImage(systemName: symbolName, withConfiguration: config)?.withTintColor(.white, renderingMode: .alwaysOriginal) {
+                symbol.draw(at: CGPoint(x: (size.width - symbol.size.width) / 2, y: (size.height - symbol.size.height) / 2))
+            }
+        }
+        return marker
     }
 
     /// Buildings as 3D blocks from MapTiler vector tiles ("building" layer). The streets style already has the
@@ -170,10 +208,13 @@ struct MapCinemaView: View {
             terrainIsEnabled: true, terrainExaggeration: 1.0, pixelRatio: 3,
             logoPosition: .bottomLeft, maptilerLogoIsVisible: true, attributionControlIsVisible: true)
         routeSource = MTGeoJSONSource(identifier: "route", jsonString: routeGeoJSON)
-        trailSource = MTGeoJSONSource(identifier: "trail", jsonString: MapCinemaMath.geoJSON(segments: []))
+        trailSource = MTGeoJSONSource(identifier: "trail", jsonString: trailGeoJSON)
         if let url = URL(string: "https://api.maptiler.com/tiles/v3/tiles.json?key=\(key)") {
             planetSource = MTVectorTileSource(identifier: "mt-planet", url: url)
         }
+        runnerMarker = Self.makeRunnerMarker(
+            at: CLLocationCoordinate2D(latitude: opening.centerLatitude, longitude: opening.centerLongitude),
+            color: UIColor(theme.route), symbolName: symbolName)
         mapView = MTMapView(options: options)
         await settle(timeout: 12)
         // Sky and haze at the horizon instead of the empty white band a low camera shows.
@@ -181,10 +222,11 @@ struct MapCinemaView: View {
         if mode == .loading { mode = .ready }
     }
 
+    /// The far ground melts into the same pale blue as the sky, so there is no hard horizon line.
     private static let sky = MTSky(
-        skyColor: .color(MTColor(hex: "#5b9bd5")), skyHorizonBlend: .number(0.6),
-        horizonColor: .color(MTColor(hex: "#cfe3f5")), horizonFogBlend: .number(0.6),
-        fogColor: .color(MTColor(hex: "#cfe3f5")), fogGroundBlend: .number(0.3), atmosphereBlend: .number(0.8))
+        skyColor: .color(MTColor(hex: "#5b9bd5")), skyHorizonBlend: .number(0.9),
+        horizonColor: .color(MTColor(hex: "#a9cdee")), horizonFogBlend: .number(0.9),
+        fogColor: .color(MTColor(hex: "#a9cdee")), fogGroundBlend: .number(0.85), atmosphereBlend: .number(1.0))
 
     /// Switches between the vector and satellite look: the style is fixed when the map is created, so the map is rebuilt.
     private func changeChoice(_ new: MapChoice) {
@@ -336,7 +378,7 @@ struct MapCinemaView: View {
         guard plan.isUsable, mapView != nil else { return }
         message = nil
         flyTime = 0
-        lastTrailUpdate = -1
+        lastRevealedPoints = -1
         if recording {
             guard RPScreenRecorder.shared().isAvailable else {
                 message = "Screen recording is not available right now."
@@ -392,14 +434,16 @@ struct MapCinemaView: View {
         await mapView.jumpTo(center, options: MTCameraOptions(
             zoom: MapCinemaMath.zoom(forDistance: state.distanceMeters, latitude: state.centerLatitude),
             bearing: state.headingDegrees, pitch: pitch))
-        // The growing trail is a file the map reads; refreshing it a few times a second is enough.
-        if trail, force || flyTime - lastTrailUpdate >= 0.25, let trailSource {
-            lastTrailUpdate = flyTime
-            let frame = timeline.sample(at: state.routeElapsedSeconds)
-            let url = FileManager.default.temporaryDirectory.appendingPathComponent("mury-cinema-trail.geojson")
-            if (try? MapCinemaMath.geoJSON(segments: frame.revealedSegments).write(to: url, atomically: true, encoding: .utf8)) != nil {
-                await trailSource.setData(data: url, in: mapView)
-            }
+        // The trail is revealed with a filter and the runner dot follows the route; both are cheap, so every frame.
+        guard trail else { return }
+        let frame = timeline.sample(at: state.routeElapsedSeconds)
+        let revealed = frame.revealedSegments.reduce(0) { $0 + $1.count }
+        if force || revealed != lastRevealedPoints {
+            lastRevealedPoints = revealed
+            await mapView.style?.setFilter(layerId: "trail", filter: Self.trailFilter(revealedPoints: revealed))
+        }
+        if let marker = runnerMarker, let position = frame.position, state.phase != .overview {
+            await marker.setCoordinates(CLLocationCoordinate2D(latitude: position.latitude, longitude: position.longitude), in: mapView)
         }
     }
 
