@@ -112,21 +112,15 @@ jobs:
         run: |
           set -o pipefail
 
-          # Each app is signed with its own profile, chosen by the kind of device it
-          # runs on: the iPhone app by the iPhone profile, the watch app (embedded in
-          # it) by the watch profile. The bundle identifiers come from the project.
-          {
-            echo "PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*] = $PROFILE_NAME"
-            echo "PROVISIONING_PROFILE_SPECIFIER[sdk=watchos*] = $WATCH_PROFILE_NAME"
-          } > "$RUNNER_TEMP/signing.xcconfig"
-
+          # Each app is signed with its own profile (iPhone app and embedded watch app). The profile names are
+          # set per target in the project (Release); a global setting here also hit the MapTiler package's
+          # resource bundle, which cannot take a profile and failed the archive in build 24.
           xcodebuild archive \
             -project larping.xcodeproj \
             -scheme larping \
             -configuration Release \
             -destination "generic/platform=iOS" \
             -archivePath "$RUNNER_TEMP/Larping.xcarchive" \
-            -xcconfig "$RUNNER_TEMP/signing.xcconfig" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
             DEVELOPMENT_TEAM="$TEAM_ID"
