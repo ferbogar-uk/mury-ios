@@ -211,3 +211,8 @@ Build 22 on a phone: *Record video* showed "Flyover stopped because MURY left th
 - **Key**: the repository is public, so the key is not in the source. The workflows (`ci.yml`, `ios-testflight.yml`) write `larping/MapTilerKey.txt` from the GitHub secret `MAPTILER_API_KEY` before building; the file is gitignored. No secret (a fork, or before it is added) means no file and the screen says "This build has no MapTiler key". A mobile key is visible inside the installed app, so keep it restricted in the MapTiler account (do NOT set HTTP-origin restrictions: the SDK sends none and the map would not load).
 - **Terms**: the MapTiler free plan is for testing and non-commercial use (commercial needs a paid plan). Their terms on recording or sharing videos of the map are unclear; get written confirmation before a public release.
 - **Not verified**: capture of the web view by the screen recorder (black frames are possible), the camera/zoom conversion, and the fixed 4 s load wait. The SDK has no "ready" hook the container leaves free and no snapshot API.
+
+
+## Map cinema build 25: building layer names and idle waits are assumptions
+
+The 3D buildings use the `maptiler_planet` source and `building` layer with `render_height` / `render_min_height`, as in MapTiler vector styles; the SDK reports no error if they do not exist, the map just shows no buildings. Each wait for the map `idle` event has a timeout (10-12 s), so a map that never goes idle still starts after the cap. The warm-up cache is the browser tile cache, which can still drop tiles on a long route.

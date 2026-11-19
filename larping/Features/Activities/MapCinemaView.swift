@@ -4,7 +4,7 @@ import MapTilerSDK
 import ReplayKit
 import SwiftUI
 
-/// TEST screen (build 24): the same flyover as `FlyoverView`, but on a live MapTiler map with a much lower camera
+/// TEST screen (builds 24-25): the same flyover as `FlyoverView`, but on a live MapTiler map with a much lower camera
 /// (like Strava), recorded with the system screen recorder, then watched on a separate "cinema" screen that
 /// only plays the finished video. There is one map and it never takes per-frame pictures, so it does not hit the
 /// memory growth that stopped the in-app render.
@@ -16,8 +16,16 @@ struct MapCinemaView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     private enum Mode: Equatable {
-        case loading, ready, preparing, playing, recording, finishing, cinema
+        case loading, ready, warming, preparing, playing, recording, finishing, cinema
     }
+
+    /// Map look. Vector shows MapTiler buildings as 3D blocks; satellite is a plain photo draped over the terrain.
+    private enum MapChoice: String, CaseIterable {
+        case vector = "3D buildings", satellite = "Satellite"
+    }
+
+    /// Ground around the route that is loaded before filming (half a kilometre each side).
+    static let marginMeters = 500.0
 
     /// Camera tilt while following. Apple Maps stops near 65 degrees; MapTiler allows up to 85.
     static let cinemaPitchDegrees = 78.0
@@ -36,6 +44,8 @@ struct MapCinemaView: View {
     @State private var recorded: VideoShareFile?
     @State private var player: AVPlayer?
     @State private var lastTrailUpdate: TimeInterval = -1
+    @State private var choice: MapChoice = .vector
+    @State private var idleTicks = 0
 
     init(activity: CDActivity) {
         let raw = activity.trackPoints.map {
@@ -49,7 +59,7 @@ struct MapCinemaView: View {
         _plan = State(initialValue: FlyoverPlan(timeline: snapshot, clipSeconds: 30))
     }
 
-    private var isRunning: Bool { mode == .preparing || mode == .playing || mode == .recording || mode == .finishing }
+    private var isRunning: Bool { mode == .warming || mode == .preparing || mode == .playing || mode == .recording || mode == .finishing }
 
     var body: some View {
         ZStack {
@@ -87,16 +97,32 @@ struct MapCinemaView: View {
 
     @ViewBuilder private var mapLayer: some View {
         if let mapView, let routeSource, let trailSource {
-            MTMapViewContainer(map: mapView) {
-                routeSource
-                Self.line("route-faint", source: routeSource, color: UIColor.white.withAlphaComponent(0.55), width: 3)
-                trailSource
-                Self.line("trail", source: trailSource, color: UIColor(theme.route), width: 6)
+            if choice == .vector {
+                MTMapViewContainer(map: mapView) {
+                    routeSource
+                    Self.buildings()
+                    Self.line("route-faint", source: routeSource, color: UIColor.white.withAlphaComponent(0.7), width: 3)
+                    trailSource
+                    Self.line("trail", source: trailSource, color: UIColor(theme.route), width: 6)
+                }
+                .referenceStyle(.streets)
+                .didTriggerEvent { event, _ in if event == .isIdle { idleTicks += 1 } }
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture { if mode == .recording || mode == .playing || mode == .warming { abortRun("Stopped.") } }
+            } else {
+                MTMapViewContainer(map: mapView) {
+                    routeSource
+                    Self.line("route-faint", source: routeSource, color: UIColor.white.withAlphaComponent(0.55), width: 3)
+                    trailSource
+                    Self.line("trail", source: trailSource, color: UIColor(theme.route), width: 6)
+                }
+                .referenceStyle(.satellite)
+                .didTriggerEvent { event, _ in if event == .isIdle { idleTicks += 1 } }
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture { if mode == .recording || mode == .playing || mode == .warming { abortRun("Stopped.") } }
             }
-            .referenceStyle(.satellite)
-            .ignoresSafeArea()
-            .contentShape(Rectangle())
-            .onTapGesture { if mode == .recording || mode == .playing { abortRun("Stopped.") } }
         } else {
             ProgressView().tint(.white)
         }
@@ -108,6 +134,19 @@ struct MapCinemaView: View {
         layer.width = width
         layer.cap = .round
         layer.join = .round
+        return layer
+    }
+
+    /// Buildings as 3D blocks from the vector tiles of the MapTiler style ("maptiler_planet" source, "building"
+    /// layer). If the style names differ the layer is simply absent and the map shows no buildings.
+    private static func buildings() -> MTFillExtrusionLayer {
+        let layer = MTFillExtrusionLayer(identifier: "buildings-3d", sourceIdentifier: "maptiler_planet")
+        layer.sourceLayer = "building"
+        layer.minZoom = 14
+        layer.color = .color(UIColor(white: 0.86, alpha: 1))
+        layer.opacity = .number(0.92)
+        layer.height = .expression(.rawExpression("[\"get\",\"render_height\"]"))
+        layer.base = .expression(.rawExpression("[\"get\",\"render_min_height\"]"))
         return layer
     }
 
@@ -128,9 +167,52 @@ struct MapCinemaView: View {
         routeSource = MTGeoJSONSource(identifier: "route", jsonString: routeGeoJSON)
         trailSource = MTGeoJSONSource(identifier: "trail", jsonString: MapCinemaMath.geoJSON(segments: []))
         mapView = MTMapView(options: options)
-        // The SDK gives no public "tiles are ready" signal that the container leaves free, so wait a fixed moment.
-        try? await Task.sleep(for: .seconds(4))
+        await settle(timeout: 12)
         if mode == .loading { mode = .ready }
+    }
+
+    /// Switches between the vector and satellite look: the style is fixed when the map is created, so the map is rebuilt.
+    private func changeChoice(_ new: MapChoice) {
+        guard new != choice, mode == .ready else { return }
+        choice = new
+        mapView?.destroy()
+        mapView = nil
+        mode = .loading
+        Task { await prepareMap() }
+    }
+
+    /// Waits until the map reports "idle" (nothing left to draw or load), or the timeout passes.
+    private func settle(timeout: Double) async {
+        let before = idleTicks
+        let clock = ContinuousClock()
+        let end = clock.now.advanced(by: .seconds(timeout))
+        while idleTicks == before && clock.now < end && !Task.isCancelled {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+    }
+
+    /// Loads the ground around the route before filming: first a view from above that frames the whole route plus
+    /// half a kilometre of margin, then a quick low pass along the route so the close-up tiles and buildings are in
+    /// the cache. The screen is covered meanwhile. Recording starts only after this.
+    private func warmUp() async {
+        guard let mapView, let box = MapCinemaMath.bounds(of: timeline.segments) else { return }
+        let centre = CLLocationCoordinate2D(latitude: (box.minLat + box.maxLat) / 2, longitude: (box.minLon + box.maxLon) / 2)
+        let zoom = MapCinemaMath.overviewZoom(minLat: box.minLat, maxLat: box.maxLat, minLon: box.minLon, maxLon: box.maxLon,
+                                              marginMeters: Self.marginMeters)
+        await mapView.jumpTo(centre, options: MTCameraOptions(zoom: zoom, bearing: 0, pitch: 0))
+        await settle(timeout: 10)
+        guard mode == .warming else { return }
+        let steps = 24
+        for step in 0...steps {
+            guard mode == .warming else { return }
+            let state = plan.state(at: plan.clipSeconds * Double(step) / Double(steps))
+            await apply(state, on: mapView, force: false, trail: false)
+            try? await Task.sleep(for: .milliseconds(250))
+        }
+        await settle(timeout: 6)
+        guard mode == .warming else { return }
+        await apply(plan.state(at: 0), on: mapView, force: true, trail: true)
+        await settle(timeout: 6)
     }
 
     // MARK: - Overlay
@@ -150,6 +232,8 @@ struct MapCinemaView: View {
             Spacer()
             if mode == .loading {
                 pill("Loading MapTiler map…")
+            } else if mode == .warming {
+                pill("Loading the map around the route…")
             } else if mode == .preparing {
                 pill("Starting recording…")
             } else if mode == .ready {
@@ -168,6 +252,10 @@ struct MapCinemaView: View {
     private var panel: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Map cinema (test)").font(MuryTypography.font(.headline, size: 17, weight: .semibold))
+            Picker("Map", selection: Binding(get: { choice }, set: { changeChoice($0) })) {
+                ForEach(MapChoice.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented)
             if let recorded {
                 Button { showCinema(recorded) } label: {
                     Label("Open cinema", systemImage: "play.rectangle").frame(maxWidth: .infinity)
@@ -249,8 +337,13 @@ struct MapCinemaView: View {
             }
             recorded = nil
             stopPlayer()
-            mode = .preparing
-            Task {
+        }
+        mode = .warming
+        Task {
+            await warmUp()
+            guard mode == .warming else { return }
+            if recording {
+                mode = .preparing
                 do {
                     try await RPScreenRecorder.shared().startRecording()
                     try? await Task.sleep(for: .milliseconds(700))
@@ -259,9 +352,9 @@ struct MapCinemaView: View {
                     message = "Could not start recording: \(error.localizedDescription)"
                     mode = .ready
                 }
+            } else {
+                mode = .playing
             }
-        } else {
-            mode = .playing
         }
     }
 
@@ -286,14 +379,14 @@ struct MapCinemaView: View {
         }
     }
 
-    private func apply(_ state: FlyoverPlan.State, on mapView: MTMapView, force: Bool) async {
+    private func apply(_ state: FlyoverPlan.State, on mapView: MTMapView, force: Bool, trail: Bool = true) async {
         let center = CLLocationCoordinate2D(latitude: state.centerLatitude, longitude: state.centerLongitude)
         let pitch = min(Self.maxPitchDegrees, state.pitchDegrees * Self.cinemaPitchDegrees / FlyoverPlan.followPitchDegrees)
         await mapView.jumpTo(center, options: MTCameraOptions(
             zoom: MapCinemaMath.zoom(forDistance: state.distanceMeters, latitude: state.centerLatitude),
             bearing: state.headingDegrees, pitch: pitch))
         // The growing trail is a file the map reads; refreshing it a few times a second is enough.
-        if force || flyTime - lastTrailUpdate >= 0.25, let trailSource {
+        if trail, force || flyTime - lastTrailUpdate >= 0.25, let trailSource {
             lastTrailUpdate = flyTime
             let frame = timeline.sample(at: state.routeElapsedSeconds)
             let url = FileManager.default.temporaryDirectory.appendingPathComponent("mury-cinema-trail.geojson")
