@@ -196,7 +196,7 @@ struct FlyoverView: View {
                 // Brand mark, part of the recorded screen.
                 HStack {
                     Spacer()
-                    Text("MURY").font(MuryTypography.font(.headline, size: 15, weight: .heavy)).tracking(2)
+                    Text("MURY").font(MuryTypography.font(.headline, size: 15, weight: .bold)).tracking(2)
                         .foregroundStyle(.white).shadow(radius: 3)
                 }
             }
