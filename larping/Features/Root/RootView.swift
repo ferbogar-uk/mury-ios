@@ -4,6 +4,7 @@ import SwiftUI
 struct RootTabView: View {
     @Environment(\.brandTheme) private var theme
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @State private var activitiesStore: ActivitiesStore?
     @State private var tracker = LocationTracker()
     /// Set when the watch asks to finish. The Record tab shows the confirmation;
@@ -66,8 +67,14 @@ struct RootTabView: View {
                 let store = ActivitiesStore(modelContext: modelContext)
                 activitiesStore = store
                 store.refresh()
+                HealthBackgroundDelivery.start(store: store)
             }
             importWatchRecordings()
+            if let store = activitiesStore { await HealthSync.runIfDue(store: store) }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active, let store = activitiesStore else { return }
+            Task { await HealthSync.runIfDue(store: store) }
         }
     }
 

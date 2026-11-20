@@ -50,6 +50,7 @@ struct BackupActivity: Codable {
     let eventName: String?
     let createdAt: Date
     let trackPoints: [BackupTrackPoint]
+    var externalID: String? = nil
 }
 
 struct BackupTrackPoint: Codable {

@@ -38,6 +38,19 @@ final class BackupFormatTests: XCTestCase {
         XCTAssertEqual(back.activities.first?.startedAt, t0)
     }
 
+    func testExternalIDSurvivesTheRoundTrip() throws {
+        var a = activity()
+        a.externalID = "HK-1"
+        let result = try BackupImportPlan.container(from: try encoded(container([a])))
+        XCTAssertEqual(result.activities.first?.externalID, "HK-1")
+    }
+
+    func testOldBackupWithoutExternalIDStillReads() throws {
+        let data = try encoded(container([activity()]))
+        XCTAssertFalse(String(decoding: data, as: UTF8.self).contains("externalID"))
+        XCTAssertNil(try BackupImportPlan.container(from: data).activities.first?.externalID)
+    }
+
     func testGarbageIsAnInvalidFile() {
         XCTAssertThrowsError(try BackupImportPlan.container(from: Data("not json".utf8))) {
             XCTAssertEqual($0 as? BackupError, .invalidFile)
