@@ -55,6 +55,20 @@ final class ActivitiesStoreTests: XCTestCase {
         XCTAssertEqual(reloaded.trackPoints.count, 1)
     }
 
+    func testCreateStoresExternalIDAndExistingImportsListsOnlyHealthImports() throws {
+        let (store, _) = try makeStore()
+        func make(_ source: String, _ id: String?) throws {
+            try store.create(sportType: .walk, startedAt: Date(), endedAt: nil, durationSeconds: 60,
+                             distanceMeters: nil, elevationGainMeters: nil, averageSpeedMps: nil,
+                             maxSpeedMps: nil, source: source, externalID: id, trackPointsPayloads: [])
+        }
+        try make("healthkit_import", "HK-1")
+        try make("mobile", nil)
+        let imports = store.existingImports()
+        XCTAssertEqual(imports.count, 1)
+        XCTAssertEqual(imports.first?.externalID, "HK-1")
+    }
+
     func testRenameTrimsAndEmptyClearsToNil() throws {
         let (store, container) = try makeStore()
         store.refresh()

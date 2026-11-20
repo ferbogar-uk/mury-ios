@@ -14,6 +14,8 @@ final class CDActivity {
     var maxSpeedMps: Double?
     var source: String = "mobile"
     var eventName: String?
+    /// Id of the Health workout this activity was imported from (nil for MURY recordings).
+    var externalID: String?
     var createdAt: Date = Date()
 
     @Relationship(deleteRule: .cascade, inverse: \CDTrackPoint.activity)

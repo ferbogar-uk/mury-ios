@@ -40,7 +40,8 @@ enum BackupService {
                         speedMps: $0.speedMps,
                         heartRateBpm: $0.heartRateBpm,
                         cadenceRpm: $0.cadenceRpm
-                    ) }
+                    ) },
+                externalID: activity.externalID
             )
         }
 
@@ -90,6 +91,7 @@ enum BackupService {
             activity.maxSpeedMps = backup.maxSpeedMps
             activity.source = backup.source
             activity.eventName = backup.eventName
+            activity.externalID = backup.externalID
             activity.createdAt = backup.createdAt
 
             let points = backup.trackPoints.map { backupPoint in

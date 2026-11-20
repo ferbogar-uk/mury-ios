@@ -62,6 +62,7 @@ final class ActivitiesStore {
         maxSpeedMps: Double?,
         source: String?,
         eventName: String? = nil,
+        externalID: String? = nil,
         trackPointsPayloads: [TrackPointPayload]
     ) throws -> CDActivity {
         let activity = CDActivity()
@@ -75,6 +76,7 @@ final class ActivitiesStore {
         activity.maxSpeedMps = maxSpeedMps
         activity.source = source ?? "mobile"
         activity.eventName = eventName
+        activity.externalID = externalID
 
         let points: [CDTrackPoint] = trackPointsPayloads.map { payload in
             let point = CDTrackPoint()
@@ -102,6 +104,13 @@ final class ActivitiesStore {
         }
         activities.insert(activity, at: 0)
         return activity
+    }
+
+    /// What Health imports already exist, so a later sync never imports the same workout twice.
+    func existingImports() -> [ExistingImport] {
+        activities
+            .filter { $0.source == "healthkit_import" }
+            .map { ExistingImport(externalID: $0.externalID, startedAt: $0.startedAt) }
     }
 
     /// Renames an activity's event title. Throws on persistence failure — the
