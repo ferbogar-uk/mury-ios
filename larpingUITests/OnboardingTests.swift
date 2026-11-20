@@ -37,10 +37,13 @@ final class OnboardingTests: XCTestCase {
 
         app.buttons["profile-add-birthdate"].tap()
         app.segmentedControls["profile-sex"].buttons["Female"].tap()
-        let height = app.textFields["profile-height"]
-        height.tap(); height.typeText("170")
+        // Weight first: once the keyboard is up it covers the lower rows.
         let weight = app.textFields["profile-weight"]
         weight.tap(); weight.typeText("65")
+        let height = app.textFields["profile-height"]
+        height.tap(); height.typeText("170")
+        app.buttons["Next"].tap()
+        app.buttons["Done"].tap()
         XCTAssertTrue(next.isEnabled)
         next.tap()
 
@@ -64,10 +67,12 @@ final class OnboardingTests: XCTestCase {
         app.buttons["onboarding-skip-health"].tap()
         app.buttons["profile-add-birthdate"].tap()
         app.segmentedControls["profile-sex"].buttons["Male"].tap()
-        let height = app.textFields["profile-height"]
-        height.tap(); height.typeText("900")
         let weight = app.textFields["profile-weight"]
         weight.tap(); weight.typeText("70")
+        let height = app.textFields["profile-height"]
+        height.tap(); height.typeText("900")
+        app.buttons["Next"].tap()
+        app.buttons["Done"].tap()
         XCTAssertFalse(app.buttons["onboarding-continue"].isEnabled)
     }
 }

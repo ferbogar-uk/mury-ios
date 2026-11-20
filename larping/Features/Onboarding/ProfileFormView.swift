@@ -15,6 +15,8 @@ struct ProfileFormView: View {
     @Environment(\.brandTheme) private var theme
     @State private var heightText = ""
     @State private var weightText = ""
+    private enum Field { case height, weight }
+    @FocusState private var focused: Field?
 
     var body: some View {
         VStack(spacing: 10) {
@@ -48,12 +50,12 @@ struct ProfileFormView: View {
             .padding(14)
             .background(rowBackground)
 
-            row("Height", fromHealth: profile.heightCm?.source == .health) {
-                numberField(text: $heightText, unit: "cm", id: "profile-height")
+            row("Height", fromHealth: profile.heightCm?.source == .health, focus: .height) {
+                numberField(text: $heightText, unit: "cm", id: "profile-height", field: .height)
                     .onChange(of: heightText) { _, text in profile.heightCm = typed(text, replacing: profile.heightCm) }
             }
-            row("Weight", fromHealth: profile.weightKg?.source == .health) {
-                numberField(text: $weightText, unit: "kg", id: "profile-weight")
+            row("Weight", fromHealth: profile.weightKg?.source == .health, focus: .weight) {
+                numberField(text: $weightText, unit: "kg", id: "profile-weight", field: .weight)
                     .onChange(of: weightText) { _, text in profile.weightKg = typed(text, replacing: profile.weightKg) }
             }
 
@@ -70,6 +72,16 @@ struct ProfileFormView: View {
                 .padding(.top, 4)
             }
         }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                if focused == .height {
+                    Button("Next") { focused = .weight }
+                } else {
+                    Button("Done") { focused = nil }
+                }
+            }
+        }
         .onAppear {
             heightText = profile.heightCm.map { Self.format($0.value) } ?? ""
             weightText = profile.weightKg.map { Self.format($0.value) } ?? ""
@@ -78,7 +90,7 @@ struct ProfileFormView: View {
 
     // MARK: Pieces
 
-    private func row<Trailing: View>(_ title: String, fromHealth: Bool, @ViewBuilder trailing: () -> Trailing) -> some View {
+    private func row<Trailing: View>(_ title: String, fromHealth: Bool, focus: Field? = nil, @ViewBuilder trailing: () -> Trailing) -> some View {
         HStack(spacing: 8) {
             Text(title).font(MuryTypography.font(.body, size: 16))
             if fromHealth { healthTag }
@@ -88,6 +100,8 @@ struct ProfileFormView: View {
         .padding(.horizontal, 14)
         .frame(minHeight: 56)
         .background(rowBackground)
+        .contentShape(RoundedRectangle(cornerRadius: 14))
+        .onTapGesture { if let focus { focused = focus } }
     }
 
     private var rowBackground: some View {
@@ -105,14 +119,15 @@ struct ProfileFormView: View {
             .accessibilityLabel("from Apple Health")
     }
 
-    private func numberField(text: Binding<String>, unit: String, id: String) -> some View {
+    private func numberField(text: Binding<String>, unit: String, id: String, field: Field) -> some View {
         HStack(spacing: 4) {
             TextField("0", text: text)
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
                 .font(MuryTypography.font(.body, size: 17, weight: .semibold))
                 .monospacedDigit()
-                .frame(width: 72)
+                .frame(width: 88, height: 44)
+                .focused($focused, equals: field)
                 .accessibilityIdentifier(id)
             Text(unit).foregroundStyle(theme.muted)
         }
