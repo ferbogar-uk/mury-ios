@@ -74,6 +74,17 @@ He wants MURY to feel complete in the same way, and the profile data (date of bi
 - Rebuilt using real data: recent activities with maps, week and month summary, progress toward the stated goal, and a prompt to record.
 - Adapts to the interest answers. Exact layout is designed with mockups at the start of the slice.
 
+## How the phases run (Ricardo's rule)
+
+Each phase is started and finished completely before the next one begins. A phase is done only when all of these are true:
+
+1. Everything in the phase works, with nothing left as visuals only.
+2. CI is green and the docs (README, ARCHITECTURE, STATUS, KNOWN_ISSUES) are updated in the same change.
+3. It is merged to main with his OK, then on TestFlight with his explicit yes.
+4. He has tried it on his phone and says it is good, or lists what is wrong and that is fixed first.
+
+Phases: 1 Health and profile; 2 Settings (profile data, privacy, units and zones, Health status, local notifications); 3 Home; 4 Weather on activities, last, because it needs the WeatherKit capability and changes the "zero networking" statement. Weather moves out of phase 2 so that phase 2 can be finished completely.
+
 ## Constraints
 
 - SwiftUI, SwiftData, no networking; follow `CLAUDE.md` (update README, ARCHITECTURE, STATUS, KNOWN_ISSUES in the same change).
