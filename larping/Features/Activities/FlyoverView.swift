@@ -83,6 +83,13 @@ struct FlyoverView: View {
                             if mode == .recording || mode == .playing || mode == .preloading { abortRun("Flyover stopped.") }
                         }
                 }
+                if mode != .rendering, state.phase == .follow, frame.position != nil {
+                    // In the follow phase the camera is centred on the runner, so a dot fixed on the screen centre
+                    // sits exactly on the route and cannot lag behind the camera (no tremble).
+                    Color.clear.ignoresSafeArea().overlay { runnerBadge }
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
                 if mode == .rendering { renderScreen }
                 controlsOverlay(state: state, frame: frame)
             } else {
@@ -142,6 +149,15 @@ struct FlyoverView: View {
 
     // MARK: - Map
 
+    private var runnerBadge: some View {
+        Image(systemName: symbol)
+            .font(.headline)
+            .foregroundStyle(theme.routeCasing)
+            .padding(8)
+            .background(theme.route, in: Circle())
+            .overlay(Circle().strokeBorder(theme.routeCasing, lineWidth: 2))
+    }
+
     private func flyMap(state: FlyoverPlan.State, frame: ReplayFrame) -> some View {
         Map(position: $camera, interactionModes: []) {
             ForEach(Array(timeline.segments.enumerated()), id: \.offset) { _, segment in
@@ -161,20 +177,18 @@ struct FlyoverView: View {
                         .overlay(Circle().strokeBorder(.white, lineWidth: 2.5))
                 }
             }
-            if state.phase != .overview, state.markerDrop < 1, let position = frame.position {
+            // Orbit (drop-in) and finish (pull-back): the camera is not on the runner, so the dot is a map annotation.
+            // In the follow phase it is the fixed overlay in `body` instead (an annotation trembled there).
+            if state.phase != .overview, state.phase != .follow, state.markerDrop < 1, let position = frame.position {
                 Annotation("Position", coordinate: coordinate(position)) {
-                    Image(systemName: symbol)
-                        .font(.headline)
-                        .foregroundStyle(theme.routeCasing)
-                        .padding(8)
-                        .background(theme.route, in: Circle())
-                        .overlay(Circle().strokeBorder(theme.routeCasing, lineWidth: 2))
+                    runnerBadge
                         // Drops in from above and lands on the start point.
                         .offset(y: -state.markerDrop * 360)
                         .opacity(min(1, (1 - state.markerDrop) * 6))
                 }
             }
         }
+        .annotationTitles(.hidden)
         .mapStyle(.hybrid(elevation: .realistic))
         .mapControlVisibility(.hidden)
         .accessibilityIdentifier("flyover-map")

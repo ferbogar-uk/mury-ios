@@ -99,14 +99,14 @@ struct MapCinemaView: View {
 
     // MARK: - Runner
 
-    /// The runner sits on the screen centre: while the camera is in the orbit or follow phase it is centred on the
-    /// runner's position, so a fixed overlay stays exactly on the route with no lag (a map marker moved by a separate
-    /// call from the camera trembled). It drops in during the orbit like the Apple flyover. In the final pull-back the
-    /// camera leaves the runner, so no dot is drawn there (the full trail stays).
+    /// The runner sits on the screen centre, drawn only in the follow phase: there the camera is centred exactly on the
+    /// runner's position, so a fixed overlay stays on the route with no lag (a map marker moved by a call separate from
+    /// the camera trembled). In the orbit the camera centre is still moving towards the start point and in the final
+    /// pull-back it leaves the runner, so no dot is drawn in those two phases (the trail stays).
     @ViewBuilder private var runnerOverlay: some View {
         if mode == .playing || mode == .recording {
             let state = plan.state(at: flyTime)
-            if (state.phase == .orbit || state.phase == .follow), state.markerDrop < 1 {
+            if state.phase == .follow {
                 // Same full-screen frame as the map, so its centre is the map's centre.
                 Color.clear.ignoresSafeArea().overlay {
                     Image(systemName: symbolName)
