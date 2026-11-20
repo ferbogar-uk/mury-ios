@@ -36,6 +36,12 @@ enum HealthKitService {
         let share: Set<HKSampleType> = [.workoutType(), HKSeriesType.workoutRoute()]
         var read: Set<HKObjectType> = [.workoutType(), HKSeriesType.workoutRoute()]
         if let heartRateType { read.insert(heartRateType) }
+        for id in [HKQuantityTypeIdentifier.activeEnergyBurned, .height, .bodyMass] {
+            if let type = HKQuantityType.quantityType(forIdentifier: id) { read.insert(type) }
+        }
+        for id in [HKCharacteristicTypeIdentifier.dateOfBirth, .biologicalSex] {
+            if let type = HKCharacteristicType.characteristicType(forIdentifier: id) { read.insert(type) }
+        }
         _ = try? await store.requestAuthorization(toShare: share, read: read)
     }
 
@@ -187,10 +193,10 @@ extension HealthKitService {
     }
 
     /// Heart-rate samples inside a workout's time window, oldest first.
-    /// Empty when unavailable or read access is denied.
+    /// Empty when unavailable or read access is denied (HealthKit cannot tell us which, and
+    /// `authorizationStatus` only describes write access, so it is not checked here).
     static func heartRateSamples(for workout: HKWorkout) async -> [HKQuantitySample] {
-        guard isAvailable, let heartRateType,
-              HKHealthStore().authorizationStatus(for: heartRateType) == .sharingAuthorized else { return [] }
+        guard isAvailable, let heartRateType else { return [] }
         let predicate = HKQuery.predicateForSamples(
             withStart: workout.startDate,
             end: workout.endDate,
@@ -206,6 +212,70 @@ extension HealthKitService {
                 continuation.resume(returning: (samples as? [HKQuantitySample]) ?? [])
             }
             HKHealthStore().execute(query)
+        }
+    }
+}
+extension HealthKitService {
+    /// Every workout that started on or after `since`, newest first.
+    static func fetchWorkouts(since: Date) async throws -> [HKWorkout] {
+        guard isAvailable else { return [] }
+        let store = HKHealthStore()
+        let predicate = HKQuery.predicateForSamples(withStart: since, end: nil, options: [])
+        let sort = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: .workoutType(), predicate: predicate,
+                limit: HKObjectQueryNoLimit, sortDescriptors: [sort]
+            ) { _, samples, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(returning: (samples as? [HKWorkout]) ?? [])
+                }
+            }
+            store.execute(query)
+        }
+    }
+
+    /// Birth date, sex, and the latest height and weight Health holds. Anything missing or
+    /// not allowed comes back nil; the first-launch form then asks for it by hand.
+    static func readProfileSnapshot() async -> HealthProfileSnapshot {
+        guard isAvailable else { return HealthProfileSnapshot() }
+        let store = HKHealthStore()
+        var snapshot = HealthProfileSnapshot()
+        if let components = try? store.dateOfBirthComponents() {
+            snapshot.birthDate = Calendar(identifier: .gregorian).date(from: components)
+        }
+        if let sex = try? store.biologicalSex().biologicalSex {
+            switch sex {
+            case .female: snapshot.sex = .female
+            case .male: snapshot.sex = .male
+            case .other: snapshot.sex = .other
+            case .notSet: break
+            @unknown default: break
+            }
+        }
+        if let latest = await latestSample(.height, store: store) {
+            snapshot.heightCm = latest.quantity.doubleValue(for: .meterUnit(with: .centi))
+            snapshot.heightDate = latest.endDate
+        }
+        if let latest = await latestSample(.bodyMass, store: store) {
+            snapshot.weightKg = latest.quantity.doubleValue(for: .gramUnit(with: .kilo))
+            snapshot.weightDate = latest.endDate
+        }
+        return snapshot
+    }
+
+    private static func latestSample(_ id: HKQuantityTypeIdentifier, store: HKHealthStore) async -> HKQuantitySample? {
+        guard let type = HKQuantityType.quantityType(forIdentifier: id) else { return nil }
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: type, predicate: nil, limit: 1,
+                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)]
+            ) { _, samples, _ in
+                continuation.resume(returning: samples?.first as? HKQuantitySample)
+            }
+            store.execute(query)
         }
     }
 }

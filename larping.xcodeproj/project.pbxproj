@@ -593,7 +593,7 @@
 				INFOPLIST_FILE = larping/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = MURY;
 				INFOPLIST_KEY_NSCameraUsageDescription = "MURY uses your camera to add a photo to your activity.";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "MURY writes your finished activities to the Health app so they appear alongside your other workouts.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "MURY reads your workouts, routes, heart rate, calories and body details (birth date, sex, height, weight) from Health so your past activities and profile appear in MURY. Nothing leaves your phone.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "MURY writes your finished activities to the Health app.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "MURY uses your location to keep tracking distance and route if you switch apps mid-recording.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "MURY uses your location to track distance, pace, and route during a recording.";
@@ -635,7 +635,7 @@
 				INFOPLIST_FILE = larping/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = MURY;
 				INFOPLIST_KEY_NSCameraUsageDescription = "MURY uses your camera to add a photo to your activity.";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "MURY writes your finished activities to the Health app so they appear alongside your other workouts.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "MURY reads your workouts, routes, heart rate, calories and body details (birth date, sex, height, weight) from Health so your past activities and profile appear in MURY. Nothing leaves your phone.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "MURY writes your finished activities to the Health app.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "MURY uses your location to keep tracking distance and route if you switch apps mid-recording.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "MURY uses your location to track distance, pace, and route during a recording.";

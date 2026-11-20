@@ -19,7 +19,9 @@ struct ImportHealthKitView: View {
     @State private var errorMessage: String?
     @State private var status: HKAuthorizationStatus = .notDetermined
 
-    private var isAuthorized: Bool { status == .sharingAuthorized }
+    /// Health only reports write access. Once the permission sheet has been shown we just try to read:
+    /// an empty list is what a denied read looks like.
+    private var isAuthorized: Bool { status != .notDetermined }
 
     var body: some View {
         NavigationStack {
@@ -167,7 +169,7 @@ struct ImportHealthKitView: View {
         isLoading = true
         errorMessage = nil
         status = HealthKitService.shareStatus ?? .notDetermined
-        guard status == .sharingAuthorized else {
+        guard status != .notDetermined else {
             isLoading = false
             return
         }
@@ -189,79 +191,11 @@ struct ImportHealthKitView: View {
         isImporting = true
         errorMessage = nil
         defer { isImporting = false }
-
-        let duration = selected.duration > 0 ? Int(selected.duration) : Int(selected.endDate.timeIntervalSince(selected.startDate))
-        let route = await HealthKitService.fetchRoute(for: selected)
-        let heartRate = await HealthKitService.heartRateSamples(for: selected)
-
-        let distance: Double
-        if let total = selected.totalDistance?.doubleValue(for: .meter()), total > 0 {
-            distance = total
-        } else {
-            distance = routeDistance(route)
-        }
-
-        let points = trackPoints(route: route, heartRate: heartRate)
-
         do {
-            try activitiesStore.create(
-                sportType: sportType,
-                startedAt: selected.startDate,
-                endedAt: selected.endDate,
-                durationSeconds: duration > 0 ? duration : nil,
-                distanceMeters: distance > 0 ? Int(distance) : nil,
-                elevationGainMeters: elevationGain(route) > 0 ? Int(elevationGain(route)) : nil,
-                averageSpeedMps: duration > 0 && distance > 0 ? distance / Double(duration) : nil,
-                maxSpeedMps: maxSpeed(route),
-                source: "healthkit_import",
-                trackPointsPayloads: points
-            )
+            try await HealthSync.importOne(selected, sport: sportType, store: activitiesStore)
             dismiss()
         } catch {
             errorMessage = "Couldn't save: \(error.localizedDescription)"
-        }
-    }
-
-    private func routeDistance(_ route: [CLLocation]) -> Double {
-        let sortedRoute = route.sorted { $0.timestamp < $1.timestamp }
-        return zip(sortedRoute, sortedRoute.dropFirst()).reduce(0) { $0 + $1.1.distance(from: $1.0) }
-    }
-
-    private func elevationGain(_ route: [CLLocation]) -> Double {
-        var gain: Double = 0
-        var last: Double?
-        for location in route.sorted(by: { $0.timestamp < $1.timestamp }) where location.verticalAccuracy >= 0 {
-            if let last, location.altitude > last {
-                gain += location.altitude - last
-            }
-            last = location.altitude
-        }
-        return gain
-    }
-
-    private func maxSpeed(_ route: [CLLocation]) -> Double? {
-        let speeds = route.map(\.speed).filter { $0 >= 0 }
-        return speeds.max()
-    }
-
-    private func trackPoints(route: [CLLocation], heartRate: [HKQuantitySample]) -> [TrackPointPayload] {
-        let hr = heartRate.compactMap { sample -> (Date, Int)? in
-            let bpm = Int(sample.quantity.doubleValue(for: HKUnit.count().unitDivided(by: .minute())))
-            return bpm > 0 ? (sample.startDate, bpm) : nil
-        }
-        .sorted { $0.0 < $1.0 }
-        let formatter = ISO8601DateFormatter()
-        return route.map { location in
-            let bpm = hr.last(where: { $0.0 <= location.timestamp })?.1
-            return TrackPointPayload(
-                timestamp: formatter.string(from: location.timestamp),
-                latitude: location.coordinate.latitude,
-                longitude: location.coordinate.longitude,
-                altitudeMeters: location.verticalAccuracy >= 0 ? location.altitude : nil,
-                speedMps: location.speed >= 0 ? location.speed : nil,
-                heartRateBpm: bpm,
-                cadenceRpm: nil
-            )
         }
     }
 }
