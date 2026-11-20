@@ -53,10 +53,14 @@ touches the network.
   bare toolbar images); auto-refreshes via `@Query`. A "This week"
   distance/time/count strip sits above the list, and activities are grouped
   into month sections instead of one flat list; each row shows the event
-  title (falls back to the sport label). Detail opens with a hero map (route
-  draws itself in sync with a bouncing sport-symbol rider, event
-  title + sport icon overlaid bottom-left/bottom-right), bold stat tiles
-  (avg/max heart rate tiles appear when the activity has HR data), a heart-rate
+  title (falls back to the sport label). Detail (premium redesign, build 35)
+  opens with a full-width map (route draws itself with a bouncing
+  sport-symbol rider), then sport, date and source (Apple Health, Apple Watch,
+  iPhone, GPX), the title, the distance in large type and a grid of the other
+  numbers (time, pace or speed, elevation, best pace or top speed, heart rate,
+  estimated calories — each only when known), Replay and Flyover buttons,
+  per-kilometre splits with the fastest in brand red, an elevation profile
+  (only when the GPS points carry altitude that varies), a heart-rate
   graph with the five zones behind it (drag across it to read any moment) and
   a time-in-zones card — both only when the activity has enough HR readings — and
   an overflow (`•••`) menu for Share / **Rename event** / Delete.
@@ -77,7 +81,7 @@ touches the network.
   *Route flyover*): the whole route from above (fitted to the screen), a quarter turn tilting down onto
   the start, then the camera chases the moving point on the satellite 3D map
   with the trail growing and live time/speed on screen, and a pull-back to the
-  full route at the end. Reachable from Activity detail and from Share → Video → *3D Flyover Video*. The camera heading is smoothed over the route so it stays on the route instead of swinging with GPS noise (the live Replay uses the same smoothing). The route line is smoothed (about 10 s each way), the marker drops in and lands on the start point, the camera follows close (450 m) and tilted (72 degrees, MapKit may clamp it), and the map area along the route is pre-loaded before *Preview* / *Record* start. Length 15 / 30 / 60 s (default 30). *Render in app* (frame-by-frame video from map snapshots, no screen recording) uses the chosen 15 / 30 / 60 s length again (build 28, to find what the device can do): the Apple 3D map engine keeps memory per frame, so a long clip may be stopped cleanly by the 2800 MB guard; the stop message and progress line show the memory at the start of the render. A waiting screen shows while it works (the bundled sample video if present). Every video (Apple flyover live and rendered, Map cinema) has the white MURY logo big across the top (soft shadow, no band) and a Strava-style glass card along the bottom (avatar initials, name from the profile, activity title with sport icon, distance, pace or speed, elevation, thin route-progress bar). *Preview* plays it;
+  full route at the end. Reachable from Activity detail and from Share → Video → *3D Flyover Video*. The camera heading is smoothed over the route so it stays on the route instead of swinging with GPS noise (the live Replay uses the same smoothing). The route line is smoothed (about 10 s each way), the marker drops in and lands on the start point, the camera follows close (450 m) and tilted (72 degrees, MapKit may clamp it), and the map area along the route is pre-loaded before *Preview* / *Record* start. Length 15 / 30 / 60 s (default 30). *Render in app* (frame-by-frame video from map snapshots, no screen recording) uses the chosen 15 / 30 / 60 s length again (build 28, to find what the device can do): the Apple 3D map engine keeps memory per frame, so a long clip may be stopped cleanly by the 2800 MB guard; the stop message and progress line show the memory at the start of the render. A waiting screen shows while it works (the bundled sample video if present). Every video (Apple flyover live and rendered, Map cinema) has the red MURY logo big across the top with a 3D look (darker red extruded side and a cast shadow, no band) and a Strava-style glass card along the bottom (avatar initials, name from the profile, activity title with sport icon, distance, pace or speed, elevation, thin route-progress bar). *Preview* plays it;
   *Record video* captures it with the system screen recorder (in-app only, asks
   for permission the first time) and offers the clip to share. Needs a physical
   iPhone to record; satellite/3D detail depends on Apple Maps coverage.

@@ -82,7 +82,8 @@ Features/
                   ThemeSelectionView — required first-launch colour selection
   Home/          HomeDashboardView + HomeSummary — personal last-seven-days summary, recent real activities, recording shortcuts
   Record/        RecordView — live map, local save attempt on finish, event name + auto-fill
-  Activities/    ActivitiesListView (@Query), ActivityDetailView (hero map),
+  Activities/    ActivitiesListView (@Query), ActivityDetailView (full-width map, header with big distance + metric grid,
+                  Replay/Flyover buttons, splits card, elevation card via Core/ActivityAnalysis — Foundation-only, Linux-tested),
                   HeartRateSection (graph + zones card, Swift Charts),
                   ImportGPXView, ImportHealthKitView, ShareActivityView, ActivitiesStore
   Stats/         StatsView — Swift Charts last-7-days + all-time + per-sport + personal bests
@@ -474,7 +475,7 @@ Route position in rendered frames: `FlyoverProjection` (assumed 30 degree field 
 
 ### Flyover / cinema video overlay (build 30)
 
-`Core/VideoOverlayInfo.swift` holds the text of the bottom card (built from `CDActivity` plus the `displayName` setting). `Features/Activities/VideoOverlayViews.swift` has `VideoLogoMark` (white `LogoWhite` asset, 190 pt, soft shadow, top centre, no band) and `VideoInfoCard` (glass card with avatar initials, name, sport icon + activity title, distance / pace-or-speed / elevation, thin progress bar from `routeProgress`). Used by `FlyoverView`, `MapCinemaView` (while playing/recording/finishing) and, drawn with Core Graphics in `FlyoverRenderer.drawLogo` / `drawCard`, by the in-app render. The old small "MURY" text and the Total distance / Time / Speed card are gone.
+`Core/VideoOverlayInfo.swift` holds the text of the bottom card (built from `CDActivity` plus the `displayName` setting). `Features/Activities/VideoOverlayViews.swift` has `VideoLogoMark` (red logo = light variant of the `LogoHorizontal` asset via `VideoLogo.image`, 200 pt, top centre, no band; 3D look from 5 copies tinted `VideoLogo.depthColor` stacked 1 pt lower each under the logo, plus one shadow cast by the whole block — `FlyoverRenderer.drawLogo` draws the same inside a CG transparency layer) and `VideoInfoCard` (glass card with avatar initials, name, sport icon + activity title, distance / pace-or-speed / elevation, thin progress bar from `routeProgress`). Used by `FlyoverView`, `MapCinemaView` (while playing/recording/finishing) and, drawn with Core Graphics in `FlyoverRenderer.drawLogo` / `drawCard`, by the in-app render. The old small "MURY" text and the Total distance / Time / Speed card are gone.
 
 
 ## Profile and first launch (build 31)

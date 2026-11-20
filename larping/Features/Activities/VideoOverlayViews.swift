@@ -1,14 +1,46 @@
 import SwiftUI
 
-/// The real MURY logo (white) across the top of a video, with a soft shadow so it reads on any map. No band.
+/// The red MURY logo used on every video, and how its 3D look is built: the logo is
+/// stacked a few times, one point lower each time, in a darker red (the "side" of the
+/// letters), with a soft shadow cast under the whole block. Live screens and the
+/// in-app render share these numbers so all videos look the same.
+enum VideoLogo {
+    /// The red horizontal logo from the brand pack (the light variant of `LogoHorizontal`).
+    static let image = UIImage(named: "LogoHorizontal", in: nil,
+                               compatibleWith: UITraitCollection(userInterfaceStyle: .light))
+    static let width: CGFloat = 200
+    static let depthLayers = 5
+    /// Darker red for the extruded side.
+    static let depthColor = UIColor(red: 0.42, green: 0.03, blue: 0.07, alpha: 1)
+    static let shadowColor = UIColor.black.withAlphaComponent(0.6)
+    static let shadowBlur: CGFloat = 10
+    static let shadowOffset = CGSize(width: 0, height: 7)
+}
+
+/// The red MURY logo across the top of a video with a 3D look. No band.
 struct VideoLogoMark: View {
     var body: some View {
-        Image("LogoWhite")
-            .resizable()
-            .scaledToFit()
-            .frame(width: 190)
-            .shadow(color: .black.opacity(0.55), radius: 6, x: 0, y: 2)
+        if let logo = VideoLogo.image {
+            ZStack {
+                ForEach((1...VideoLogo.depthLayers).reversed(), id: \.self) { layer in
+                    Image(uiImage: logo)
+                        .resizable()
+                        .renderingMode(.template)
+                        .scaledToFit()
+                        .foregroundStyle(Color(uiColor: VideoLogo.depthColor))
+                        .offset(y: CGFloat(layer))
+                }
+                Image(uiImage: logo)
+                    .resizable()
+                    .renderingMode(.original)
+                    .scaledToFit()
+            }
+            .frame(width: VideoLogo.width)
+            .compositingGroup()
+            .shadow(color: Color(uiColor: VideoLogo.shadowColor), radius: VideoLogo.shadowBlur / 2,
+                    x: VideoLogo.shadowOffset.width, y: VideoLogo.shadowOffset.height)
             .accessibilityHidden(true)
+        }
     }
 }
 
