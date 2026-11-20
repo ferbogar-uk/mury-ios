@@ -75,7 +75,9 @@ enum HealthKitService {
             duration: duration,
             totalEnergyBurned: nil,
             totalDistance: activity.distanceMeters.map { HKQuantity(unit: .meter(), doubleValue: Double($0)) },
-            metadata: ["larping.activityID": activity.id.uuidString]
+            metadata: activity.sportType.isIndoor
+                ? ["larping.activityID": activity.id.uuidString, HKMetadataKeyIndoorWorkout: true]
+                : ["larping.activityID": activity.id.uuidString]
         )
 
         do {
@@ -105,32 +107,6 @@ enum HealthKitService {
                 verticalAccuracy: point.altitudeMeters != nil ? 10 : -1,
                 timestamp: point.timestamp
             )
-        }
-    }
-}
-
-extension HKWorkoutActivityType {
-    init(sport: SportType) {
-        switch sport {
-        case .run: self = .running
-        case .ride: self = .cycling
-        case .walk: self = .walking
-        case .hike: self = .hiking
-        case .swim: self = .swimming
-        case .other: self = .other
-        }
-    }
-}
-
-extension SportType {
-    init(workoutActivityType: HKWorkoutActivityType) {
-        switch workoutActivityType {
-        case .running: self = .run
-        case .cycling: self = .ride
-        case .walking: self = .walk
-        case .hiking: self = .hike
-        case .swimming: self = .swim
-        default: self = .other
         }
     }
 }
@@ -224,6 +200,26 @@ extension HealthKitService {
     }
 }
 extension HealthKitService {
+    /// The Health workouts with these ids (used to re-classify older imports).
+    static func fetchWorkouts(ids: [UUID]) async throws -> [HKWorkout] {
+        guard isAvailable, !ids.isEmpty else { return [] }
+        let store = HKHealthStore()
+        let predicate = HKQuery.predicateForObjects(with: Set(ids))
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: .workoutType(), predicate: predicate,
+                limit: HKObjectQueryNoLimit, sortDescriptors: nil
+            ) { _, samples, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(returning: (samples as? [HKWorkout]) ?? [])
+                }
+            }
+            store.execute(query)
+        }
+    }
+
     /// Every workout that started on or after `since`, newest first.
     static func fetchWorkouts(since: Date) async throws -> [HKWorkout] {
         guard isAvailable else { return [] }

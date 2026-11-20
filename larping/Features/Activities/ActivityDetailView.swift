@@ -176,7 +176,9 @@ extension ActivityDetailView {
         }
         if let avg = activity.averageHeartRateBpm { items.append(("Avg HR", "\(avg) bpm")) }
         if let max = activity.maxHeartRateBpm { items.append(("Max HR", "\(max) bpm")) }
-        if let calories = activity.calories { items.append(("Calories (est.)", "\(calories)")) }
+        if let calories = activity.calories {
+            items.append((activity.caloriesMeasured ? "Calories" : "Calories (est.)", "\(calories)"))
+        }
         return items
     }
 

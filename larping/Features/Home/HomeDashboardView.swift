@@ -101,7 +101,7 @@ struct HomeDashboardView: View {
                 .accessibilityAddTraits(.isHeader)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
-                    ForEach(SportType.allCases) { sport in
+                    ForEach(SportType.recordable) { sport in
                         Button { onRecord(sport) } label: {
                             Label(sport.label, systemImage: sport.symbolName)
                                 .font(MuryTypography.font(.body, size: 15, weight: .semibold))

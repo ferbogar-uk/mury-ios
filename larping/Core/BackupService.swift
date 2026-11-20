@@ -41,7 +41,9 @@ enum BackupService {
                         heartRateBpm: $0.heartRateBpm,
                         cadenceRpm: $0.cadenceRpm
                     ) },
-                externalID: activity.externalID
+                externalID: activity.externalID,
+                heartRateSeriesData: activity.heartRateSeriesData,
+                energyKcal: activity.energyKcal
             )
         }
 
@@ -92,6 +94,8 @@ enum BackupService {
             activity.source = backup.source
             activity.eventName = backup.eventName
             activity.externalID = backup.externalID
+            activity.heartRateSeriesData = backup.heartRateSeriesData
+            activity.energyKcal = backup.energyKcal
             activity.createdAt = backup.createdAt
 
             let points = backup.trackPoints.map { backupPoint in

@@ -1,39 +1,91 @@
 import Foundation
 
+/// Every kind of activity MURY knows (phase 2: the wide Apple Exercise list).
+/// Raw values are stored in SwiftData and backups, so existing ones never change.
 nonisolated enum SportType: String, Codable, CaseIterable, Identifiable {
-    case run, ride, walk, hike, swim, other
+    // Outdoor, with GPS and a map.
+    case run, walk, hike, ride, swim, rowing, tennis, football
+    // Indoor and gym, no route: time, heart rate, calories.
+    case strength, treadmill, indoorCycle, stairs, elliptical, hiit, yoga, pilates, core, dance, climbing, indoorRow, boxing
+    case other
     var id: String { rawValue }
 
     var label: String {
         switch self {
-        case .run: return "Run"
-        case .ride: return "Ride"
-        case .walk: return "Walk"
-        case .hike: return "Hike"
-        case .swim: return "Swim"
-        case .other: return "Other"
+        case .run: "Run"
+        case .walk: "Walk"
+        case .hike: "Hike"
+        case .ride: "Ride"
+        case .swim: "Swim"
+        case .rowing: "Rowing"
+        case .tennis: "Tennis"
+        case .football: "Football"
+        case .strength: "Strength"
+        case .treadmill: "Treadmill"
+        case .indoorCycle: "Indoor cycle"
+        case .stairs: "Stairs"
+        case .elliptical: "Elliptical"
+        case .hiit: "HIIT"
+        case .yoga: "Yoga"
+        case .pilates: "Pilates"
+        case .core: "Core"
+        case .dance: "Dance"
+        case .climbing: "Climbing"
+        case .indoorRow: "Indoor row"
+        case .boxing: "Boxing"
+        case .other: "Other"
         }
     }
 
+    /// SF Symbols, the same figures Apple's Exercise app uses.
     var symbolName: String {
         switch self {
-        case .run: return "figure.run"
-        case .ride: return "figure.outdoor.cycle"
-        case .walk: return "figure.walk"
-        case .hike: return "figure.hiking"
-        case .swim: return "figure.pool.swim"
-        case .other: return "figure.mixed.cardio"
+        case .run: "figure.run"
+        case .walk: "figure.walk"
+        case .hike: "figure.hiking"
+        case .ride: "figure.outdoor.cycle"
+        case .swim: "figure.pool.swim"
+        case .rowing: "figure.outdoor.rowing"
+        case .tennis: "figure.tennis"
+        case .football: "figure.soccer"
+        case .strength: "figure.strengthtraining.traditional"
+        case .treadmill: "figure.run.treadmill"
+        case .indoorCycle: "figure.indoor.cycle"
+        case .stairs: "figure.stair.stepper"
+        case .elliptical: "figure.elliptical"
+        case .hiit: "figure.highintensity.intervaltraining"
+        case .yoga: "figure.yoga"
+        case .pilates: "figure.pilates"
+        case .core: "figure.core.training"
+        case .dance: "figure.dance"
+        case .climbing: "figure.climbing"
+        case .indoorRow: "figure.indoor.rowing"
+        case .boxing: "figure.boxing"
+        case .other: "figure.mixed.cardio"
         }
     }
 
-    /// Running/walking/hiking/swimming read naturally as pace (min/km);
+    /// Running/walking/hiking/swimming (and treadmill) read naturally as pace (min/km);
     /// cycling and everything else read naturally as speed (km/h).
     var usesPaceMetric: Bool {
         switch self {
-        case .run, .walk, .hike, .swim: return true
-        case .ride, .other: return false
+        case .run, .walk, .hike, .swim, .treadmill: true
+        default: false
         }
     }
+
+    /// Indoor and gym activities have no route; they show time, heart rate and calories.
+    var isIndoor: Bool {
+        switch self {
+        case .strength, .treadmill, .indoorCycle, .stairs, .elliptical, .hiit, .yoga, .pilates,
+             .core, .dance, .climbing, .indoorRow, .boxing: true
+        default: false
+        }
+    }
+
+    /// What the GPS recorder can record today. Indoor recording on the iPhone is phase 7,
+    /// so indoor types only arrive from Health for now.
+    static var recordable: [SportType] { allCases.filter { !$0.isIndoor } }
 }
 
 /// Builds the default event title for an activity: "Larping Run", bumped to

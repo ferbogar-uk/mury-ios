@@ -31,12 +31,8 @@ struct HeartRateSection: View {
     }
 
     private func makeModel() -> HeartRateModel? {
-        let samples = activity.trackPoints.compactMap { point -> HeartRateSample? in
-            guard let bpm = point.heartRateBpm, bpm > 0 else { return nil }
-            return HeartRateSample(timestamp: point.timestamp, bpm: bpm)
-        }
         return HeartRateModel(
-            samples: samples,
+            samples: activity.heartRateSamples,
             origin: activity.startedAt,
             measuredMax: HeartRateZones.measuredMaxBpm(in: allActivities.map(\.statsEntry)),
             ownMax: activity.maxHeartRateBpm

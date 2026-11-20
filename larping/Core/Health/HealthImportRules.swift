@@ -18,6 +18,14 @@ nonisolated struct ExistingImport: Equatable {
 
 /// Decides which Health workouts to import. Pure so it is tested without HealthKit.
 nonisolated enum HealthImportRules {
+    /// Bumped when the Health-to-MURY type mapping widens; older imports are then looked at again.
+    static let sportMappingVersion = 2
+
+    /// A Health import saved as "Other" may now have a proper type (phase 2 widened the list).
+    static func needsReclassifying(sport: SportType, source: String, externalID: String?) -> Bool {
+        sport == .other && source == "healthkit_import" && UUID(uuidString: externalID ?? "") != nil
+    }
+
     static let backfillDays = 90
     /// Manual imports made before ids were stored match by start time within this many seconds.
     static let sameStartToleranceSeconds: TimeInterval = 60

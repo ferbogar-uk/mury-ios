@@ -139,7 +139,7 @@ struct RecordView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 10) {
                         Menu {
-                            ForEach(SportType.allCases) { sport in
+                            ForEach(SportType.recordable) { sport in
                                 Button {
                                     selectedSport = sport
                                 } label: {
