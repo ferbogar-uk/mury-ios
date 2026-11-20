@@ -44,6 +44,13 @@ final class OnboardingTests: XCTestCase {
         XCTAssertTrue(next.isEnabled)
         next.tap()
 
+        let sports = app.buttons["onboarding-sports-continue"]
+        XCTAssertTrue(sports.waitForExistence(timeout: 5))
+        sports.tap()
+        let goal = app.buttons["onboarding-goal-continue"]
+        XCTAssertTrue(goal.waitForExistence(timeout: 5))
+        goal.tap()
+
         let finish = app.buttons["onboarding-finish"]
         XCTAssertTrue(finish.waitForExistence(timeout: 5))
         finish.tap()

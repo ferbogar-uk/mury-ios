@@ -36,7 +36,15 @@ enum HealthKitService {
         let share: Set<HKSampleType> = [.workoutType(), HKSeriesType.workoutRoute()]
         var read: Set<HKObjectType> = [.workoutType(), HKSeriesType.workoutRoute()]
         if let heartRateType { read.insert(heartRateType) }
-        for id in [HKQuantityTypeIdentifier.activeEnergyBurned, .height, .bodyMass] {
+        // Each type has a planned screen (docs/superpowers/specs/2026-11-20-mury-roadmap-phases.md);
+        // Apple expects apps to ask only for data they use.
+        let quantities: [HKQuantityTypeIdentifier] = [
+            .activeEnergyBurned, .basalEnergyBurned, .restingHeartRate, .heartRateVariabilitySDNN, .vo2Max,
+            .stepCount, .flightsClimbed, .distanceWalkingRunning, .distanceCycling, .distanceSwimming,
+            .swimmingStrokeCount, .cyclingCadence, .cyclingPower, .runningSpeed, .runningPower,
+            .height, .bodyMass, .bodyFatPercentage,
+        ]
+        for id in quantities {
             if let type = HKQuantityType.quantityType(forIdentifier: id) { read.insert(type) }
         }
         for id in [HKCharacteristicTypeIdentifier.dateOfBirth, .biologicalSex] {

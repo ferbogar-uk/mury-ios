@@ -93,9 +93,12 @@ touches the network.
   itself wrote to Health are never imported back. No route/HR means a
   metadata-only activity, never fabricated data. Activities → Import → "Import
   from Health" still lets you pick one workout and override its sport.
-- **First launch** — after the theme choice: connect Apple Health (optional),
-  confirm or type birth date, sex, height and weight, then pick sports, goal and
-  level. Stored on the device only (`ProfileStorage`, key `userProfile`).
+- **First launch** — after the theme choice, five steps with a progress bar and
+  back button: connect Apple Health (optional; explains the benefit first),
+  confirm birth date, sex, height and weight (values from Health tagged
+  "Health"), pick sports from 16 Apple Exercise types in large cards, pick a goal,
+  then a welcome that shows how many workouts came in and the newest one on a
+  map. Stored on the device only (`ProfileStorage`, key `userProfile`).
 - **Stats** — last-7-days distance chart + per-sport totals (distance, time,
   activity count, max heart rate when present), plus all-time totals and
   personal bests (longest distance, longest duration, highest heart rate).

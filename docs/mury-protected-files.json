@@ -2,7 +2,7 @@
   "larping/Core/AppearanceMode.swift": "eec8592ea980ee0d5e10152f0a5a149c5e57b608de611f6c9e4af85f63ecb853",
   "larping/Core/BackupService.swift": "a80b037fac5ec706e02a2d47ae1a02e5d754a6af980bce57ef974a47e01c9a86",
   "larping/Core/GPXParser.swift": "f5604100cc73584f5cf45a6bd04e04e2b440680a181b1b47292a1e02077ad038",
-  "larping/Core/Health/HealthKitService.swift": "6a9cb16c0d6da3a9c31903044021776900978d4fe4bb4b4725ee7870123d4617",
+  "larping/Core/Health/HealthKitService.swift": "364c7c65ff2520a8fdd6533df04900e6ab2c1313f32adb8b162a2914d85a3a11",
   "larping/Core/Location/LocationTracker.swift": "e9cfc79739bf7c1828afdeae0838d3a35f6f3345db0d7f42b712b17248cf2f36",
   "larping/Core/Models/Activity.swift": "63cc56201ce7be2869dec2e3e309d30859e61c7e3d48191fcfec728ce607047f",
   "larping/Core/Models/CDActivity.swift": "0df6ec99a219deb0750729547e409ea959efec6d52823768a9d61db45152da97",
