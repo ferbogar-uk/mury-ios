@@ -180,7 +180,7 @@ struct FlyoverView: View {
             // Orbit (drop-in) and finish (pull-back): the camera is not on the runner, so the dot is a map annotation.
             // In the follow phase it is the fixed overlay in `body` instead (an annotation trembled there).
             if state.phase != .overview, state.phase != .follow, state.markerDrop < 1, let position = frame.position {
-                Annotation("Position", coordinate: coordinate(position)) {
+                Annotation("", coordinate: coordinate(position)) {
                     runnerBadge
                         // Drops in from above and lands on the start point.
                         .offset(y: -state.markerDrop * 360)
@@ -188,7 +188,6 @@ struct FlyoverView: View {
                 }
             }
         }
-        .annotationTitles(.hidden)
         .mapStyle(.hybrid(elevation: .realistic))
         .mapControlVisibility(.hidden)
         .accessibilityIdentifier("flyover-map")
