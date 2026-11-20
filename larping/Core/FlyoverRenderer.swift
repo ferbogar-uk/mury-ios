@@ -354,15 +354,22 @@ enum FlyoverRenderer {
         }
     }
 
-    /// The white MURY logo across the top with a soft shadow, same look as the live screens.
+    /// The red MURY logo across the top with the same 3D look as the live screens (`VideoLogo`).
     private static func drawLogo(in cg: CGContext) {
-        guard let logo = UIImage(named: "LogoWhite") else { return }
-        let width: CGFloat = 190
+        guard let logo = VideoLogo.image else { return }
+        let width = VideoLogo.width
         let height = width * logo.size.height / max(logo.size.width, 1)
         let rect = CGRect(x: (pointSize.width - width) / 2, y: 62, width: width, height: height)
+        let side = logo.withTintColor(VideoLogo.depthColor, renderingMode: .alwaysOriginal)
         cg.saveGState()
-        cg.setShadow(offset: CGSize(width: 0, height: 2), blur: 8, color: UIColor.black.withAlphaComponent(0.55).cgColor)
+        cg.setShadow(offset: VideoLogo.shadowOffset, blur: VideoLogo.shadowBlur, color: VideoLogo.shadowColor.cgColor)
+        // One transparency layer so the shadow is cast once by the whole block, not by every copy.
+        cg.beginTransparencyLayer(auxiliaryInfo: nil)
+        for layer in (1...VideoLogo.depthLayers).reversed() {
+            side.draw(in: rect.offsetBy(dx: 0, dy: CGFloat(layer)))
+        }
         logo.draw(in: rect)
+        cg.endTransparencyLayer()
         cg.restoreGState()
     }
 
