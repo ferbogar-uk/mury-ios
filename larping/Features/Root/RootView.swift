@@ -17,6 +17,27 @@ struct RootTabView: View {
     @State private var recordRequestID: UUID?
     @State private var renderReport: RenderReport?
 
+    init() {
+        Self.applyTabBarItemColors()
+    }
+
+    /// Unselected tab icons default to iOS grey, which reads at about 2.1:1 on the light-blue bar.
+    /// Ink at 70% gives about 6:1 in light mode and stays legible on the dark bar.
+    private static func applyTabBarItemColors() {
+        let normal = UIColor { traits in
+            (UIColor(named: "MuryInk") ?? .label).resolvedColor(with: traits).withAlphaComponent(0.7)
+        }
+        let appearance = UITabBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = UIColor(named: "MuryNavigation")
+        for layout in [appearance.stackedLayoutAppearance, appearance.inlineLayoutAppearance, appearance.compactInlineLayoutAppearance] {
+            layout.normal.iconColor = normal
+            layout.normal.titleTextAttributes = [.foregroundColor: normal]
+        }
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().scrollEdgeAppearance = appearance
+    }
+
     var body: some View {
         Group {
             if let activitiesStore {
