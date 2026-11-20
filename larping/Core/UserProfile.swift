@@ -29,6 +29,83 @@ nonisolated enum UsageGoal: String, Codable, CaseIterable, Sendable {
         case .buildMuscle: return "Build muscle"
         }
     }
+    var detail: String {
+        switch self {
+        case .buildHabit: return "Move every week"
+        case .trainForEvent: return "A race, a trail or a swim"
+        case .stayHealthy: return "Move more, no pressure"
+        case .loseWeight: return "Burn more than you eat"
+        case .buildMuscle: return "Strength and heavier lifts"
+        }
+    }
+    var symbolName: String {
+        switch self {
+        case .buildHabit: return "calendar.badge.checkmark"
+        case .trainForEvent: return "flag.checkered"
+        case .stayHealthy: return "heart"
+        case .loseWeight: return "flame"
+        case .buildMuscle: return "dumbbell"
+        }
+    }
+}
+
+/// Sports a person says they do at first launch. Wider than `SportType` (what MURY records today) on purpose:
+/// interests follow the Apple Exercise list, while recording those types arrives in later phases.
+nonisolated enum InterestSport: String, Codable, CaseIterable, Sendable {
+    case run, walk, hike, ride, indoorCycle, treadmill, strength, elliptical, rowing, hiit, yoga, pilates, swim, climbing, stairs, dance
+    /// Anything stored by an older build that is no longer offered.
+    case other
+
+    static var selectable: [InterestSport] { allCases.filter { $0 != .other } }
+
+    init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = InterestSport(rawValue: raw) ?? .other
+    }
+
+    var label: String {
+        switch self {
+        case .run: return "Running"
+        case .walk: return "Walking"
+        case .hike: return "Hiking"
+        case .ride: return "Cycling"
+        case .indoorCycle: return "Indoor cycling"
+        case .treadmill: return "Treadmill"
+        case .strength: return "Strength"
+        case .elliptical: return "Elliptical"
+        case .rowing: return "Rowing"
+        case .hiit: return "HIIT"
+        case .yoga: return "Yoga"
+        case .pilates: return "Pilates"
+        case .swim: return "Swimming"
+        case .climbing: return "Climbing"
+        case .stairs: return "Stairs"
+        case .dance: return "Dance"
+        case .other: return "Other"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .run: return "figure.run"
+        case .walk: return "figure.walk"
+        case .hike: return "figure.hiking"
+        case .ride: return "figure.outdoor.cycle"
+        case .indoorCycle: return "figure.indoor.cycle"
+        case .treadmill: return "figure.run.circle"
+        case .strength: return "figure.strengthtraining.traditional"
+        case .elliptical: return "figure.elliptical"
+        case .rowing: return "figure.rower"
+        case .hiit: return "figure.highintensity.intervaltraining"
+        case .yoga: return "figure.yoga"
+        case .pilates: return "figure.pilates"
+        case .swim: return "figure.pool.swim"
+        case .climbing: return "figure.climbing"
+        case .stairs: return "figure.stairs"
+        case .dance: return "figure.dance"
+        case .other: return "figure.mixed.cardio"
+        }
+    }
 }
 
 /// A profile number plus where it came from and when, so the newest source can win.
@@ -53,7 +130,7 @@ nonisolated struct UserProfile: Codable, Equatable, Sendable {
     var sex: BiologicalSex?
     var heightCm: ProfileValue<Double>?
     var weightKg: ProfileValue<Double>?
-    var sports: [SportType] = []
+    var sports: [InterestSport] = []
     var goal: UsageGoal?
     var level: FitnessLevel?
 

@@ -1,22 +1,32 @@
 import SwiftUI
 
-/// Birth date, sex, height and weight. Used by the first-launch flow; Settings reuses it in a later phase.
-/// Health pre-fills these when it can; whatever is typed here is stored as a manual value dated now.
+/// Which profile fields came from Apple Health in this session, so the form can label them.
+struct HealthFilledFields: OptionSet {
+    let rawValue: Int
+    static let birthDate = HealthFilledFields(rawValue: 1 << 0)
+    static let sex = HealthFilledFields(rawValue: 1 << 1)
+}
+
+/// Birth date, sex, height and weight as a list of rows. Values from Health carry a "Health" tag; typing
+/// a new value turns it into a manual value dated now. Used by the first-launch flow; Settings reuses it later.
 struct ProfileFormView: View {
     @Binding var profile: UserProfile
+    var healthFilled: HealthFilledFields = []
     @Environment(\.brandTheme) private var theme
     @State private var heightText = ""
     @State private var weightText = ""
+    private enum Field { case height, weight }
+    @FocusState private var focused: Field?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Birth date").font(MuryTypography.font(.subheadline, size: 15, weight: .semibold))
+        VStack(spacing: 10) {
+            row("Birth date", fromHealth: healthFilled.contains(.birthDate) && profile.birthDate != nil) {
                 if profile.birthDate == nil {
-                    Button("Add birth date") {
+                    Button("Add") {
                         profile.birthDate = Calendar.current.date(byAdding: .year, value: -30, to: Date())
                     }
-                    .buttonStyle(.bordered)
+                    .font(MuryTypography.font(.body, size: 16, weight: .semibold))
+                    .tint(theme.accent)
                     .accessibilityIdentifier("profile-add-birthdate")
                 } else {
                     DatePicker("Birth date", selection: birthDateBinding, in: ...Date(), displayedComponents: .date)
@@ -25,32 +35,101 @@ struct ProfileFormView: View {
                 }
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Sex").font(MuryTypography.font(.subheadline, size: 15, weight: .semibold))
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("Sex").font(MuryTypography.font(.body, size: 16))
+                    if healthFilled.contains(.sex) && profile.sex != nil { healthTag }
+                    Spacer()
+                }
                 Picker("Sex", selection: sexBinding) {
-                    Text("Not set").tag(BiologicalSex?.none)
                     ForEach(BiologicalSex.allCases, id: \.self) { Text($0.label).tag(BiologicalSex?.some($0)) }
                 }
                 .pickerStyle(.segmented)
                 .accessibilityIdentifier("profile-sex")
             }
+            .padding(14)
+            .background(rowBackground)
 
-            HStack(spacing: 14) {
-                numberField("Height (cm)", text: $heightText, id: "profile-height")
+            row("Height", fromHealth: profile.heightCm?.source == .health, focus: .height) {
+                numberField(text: $heightText, unit: "cm", id: "profile-height", field: .height)
                     .onChange(of: heightText) { _, text in profile.heightCm = typed(text, replacing: profile.heightCm) }
-                numberField("Weight (kg)", text: $weightText, id: "profile-weight")
+            }
+            row("Weight", fromHealth: profile.weightKg?.source == .health, focus: .weight) {
+                numberField(text: $weightText, unit: "kg", id: "profile-weight", field: .weight)
                     .onChange(of: weightText) { _, text in profile.weightKg = typed(text, replacing: profile.weightKg) }
             }
 
-            ForEach(profile.validationIssues(now: Date()), id: \.self) { issue in
-                Label(issue, systemImage: "exclamationmark.circle")
-                    .font(MuryTypography.font(.footnote, size: 13))
-                    .foregroundStyle(theme.muted)
+            let issues = profile.validationIssues(now: Date())
+            if !issues.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(issues, id: \.self) { issue in
+                        Label(issue, systemImage: "exclamationmark.circle")
+                    }
+                }
+                .font(MuryTypography.font(.footnote, size: 13))
+                .foregroundStyle(theme.muted)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 4)
+            }
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                if focused == .height {
+                    Button("Next") { focused = .weight }
+                } else {
+                    Button("Done") { focused = nil }
+                }
             }
         }
         .onAppear {
             heightText = profile.heightCm.map { Self.format($0.value) } ?? ""
             weightText = profile.weightKg.map { Self.format($0.value) } ?? ""
+        }
+    }
+
+    // MARK: Pieces
+
+    private func row<Trailing: View>(_ title: String, fromHealth: Bool, focus: Field? = nil, @ViewBuilder trailing: () -> Trailing) -> some View {
+        HStack(spacing: 8) {
+            Text(title).font(MuryTypography.font(.body, size: 16))
+            if fromHealth { healthTag }
+            Spacer(minLength: 8)
+            trailing()
+        }
+        .padding(.horizontal, 14)
+        .frame(minHeight: 56)
+        .background(rowBackground)
+        .contentShape(RoundedRectangle(cornerRadius: 14))
+        .onTapGesture { if let focus { focused = focus } }
+    }
+
+    private var rowBackground: some View {
+        RoundedRectangle(cornerRadius: 14)
+            .fill(theme.surface)
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(theme.border.opacity(0.35), lineWidth: 1))
+    }
+
+    private var healthTag: some View {
+        Text("Health")
+            .font(MuryTypography.font(.caption2, size: 11, weight: .semibold))
+            .foregroundStyle(theme.accent)
+            .padding(.horizontal, 7).padding(.vertical, 2)
+            .background(theme.accent.opacity(0.12), in: Capsule())
+            .accessibilityLabel("from Apple Health")
+    }
+
+    private func numberField(text: Binding<String>, unit: String, id: String, field: Field) -> some View {
+        HStack(spacing: 4) {
+            TextField("0", text: text)
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .font(MuryTypography.font(.body, size: 17, weight: .semibold))
+                .monospacedDigit()
+                .frame(width: 88, height: 44)
+                .focused($focused, equals: field)
+                .accessibilityIdentifier(id)
+            Text(unit).foregroundStyle(theme.muted)
         }
     }
 
@@ -62,20 +141,10 @@ struct ProfileFormView: View {
         Binding(get: { profile.sex }, set: { profile.sex = $0 })
     }
 
-    private func numberField(_ title: String, text: Binding<String>, id: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(MuryTypography.font(.subheadline, size: 15, weight: .semibold))
-            TextField("0", text: text)
-                .keyboardType(.decimalPad)
-                .textFieldStyle(.roundedBorder)
-                .accessibilityIdentifier(id)
-        }
-    }
-
     /// A typed number becomes a manual value dated now; empty or unreadable text clears it.
     private func typed(_ text: String, replacing current: ProfileValue<Double>?) -> ProfileValue<Double>? {
         guard let number = Double(text.replacingOccurrences(of: ",", with: ".")) else { return nil }
-        if let current, current.value == number { return current }
+        if let current, abs(current.value - number) < 0.05 { return current }
         return ProfileValue(value: number, source: .manual, updatedAt: Date())
     }
 

@@ -76,12 +76,24 @@ final class UserProfileTests: XCTestCase {
         XCTAssertEqual(profile.age(now: before), 29)
     }
 
+    func testOldProfileWithRetiredSportStillLoads() throws {
+        let json = Data(#"{"sports":["run","other","kayak"],"goal":"stayHealthy"}"#.utf8)
+        let profile = try JSONDecoder().decode(UserProfile.self, from: json)
+        XCTAssertEqual(profile.sports, [.run, .other, .other])
+        XCTAssertEqual(profile.goal, .stayHealthy)
+    }
+
+    func testSelectableInterestsHideOther() {
+        XCTAssertEqual(InterestSport.selectable.count, 16)
+        XCTAssertFalse(InterestSport.selectable.contains(.other))
+    }
+
     func testStorageRoundTripAndEmptyDefaults() throws {
         let suite = "UserProfileTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         XCTAssertEqual(ProfileStorage.load(defaults), UserProfile())
-        var profile = complete(); profile.sports = [.run, .walk]; profile.goal = .stayHealthy; profile.level = .beginner
+        var profile = complete(); profile.sports = [.run, .strength]; profile.goal = .stayHealthy; profile.level = .beginner
         ProfileStorage.save(profile, to: defaults)
         XCTAssertEqual(ProfileStorage.load(defaults), profile)
         defaults.set(Data("junk".utf8), forKey: ProfileStorage.key)
