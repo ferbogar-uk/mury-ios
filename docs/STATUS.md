@@ -723,3 +723,7 @@ Device feedback on build 32: the first launch was too basic and broke Laws of UX
 ## 2026-11-20 — Build 34: Home in the premium style (phase 1.5 starts)
 
 Ricardo approved the premium direction (mockups built with UI UX Pro Max, taste and impeccable). Home rebuilt as a scroll of cards: big week distance with a count-up, seven-day bars, record chips, and the newest activities as map cards (`ActivityRouteCard`, also used by the first-launch welcome). Only data MURY already has; no goal ring or streak until the progress phase.
+
+## 2026-11-20 — Build 35: activity detail in the premium style (phase 1.5)
+
+Mockup approved by Ricardo. The detail now leads with a full-width map, then a header (sport, date, where it came from, title, distance in large type, a grid of the other numbers), Replay and Flyover as two large buttons, and two new sections worked out from the stored GPS points: per-kilometre splits (time at each kilometre mark interpolated between points, the last stretch shown when 100 m or more, fastest full kilometre in brand red) and an elevation profile (hidden when no point has an altitude or the line is flat). Both live in the new `Core/ActivityAnalysis.swift`, Foundation-only and run in the Linux tests. Calories are labelled as an estimate because the existing formula ignores weight and sport; a proper figure comes with the profile and Health energy work. Unverified on a device: the layout, and how GPS noise on short Watch walks affects the splits.

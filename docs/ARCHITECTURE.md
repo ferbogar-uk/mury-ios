@@ -82,7 +82,8 @@ Features/
                   ThemeSelectionView — required first-launch colour selection
   Home/          HomeDashboardView + HomeSummary — personal last-seven-days summary, recent real activities, recording shortcuts
   Record/        RecordView — live map, local save attempt on finish, event name + auto-fill
-  Activities/    ActivitiesListView (@Query), ActivityDetailView (hero map),
+  Activities/    ActivitiesListView (@Query), ActivityDetailView (full-width map, header with big distance + metric grid,
+                  Replay/Flyover buttons, splits card, elevation card via Core/ActivityAnalysis — Foundation-only, Linux-tested),
                   HeartRateSection (graph + zones card, Swift Charts),
                   ImportGPXView, ImportHealthKitView, ShareActivityView, ActivitiesStore
   Stats/         StatsView — Swift Charts last-7-days + all-time + per-sport + personal bests

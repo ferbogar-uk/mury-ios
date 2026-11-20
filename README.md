@@ -53,10 +53,14 @@ touches the network.
   bare toolbar images); auto-refreshes via `@Query`. A "This week"
   distance/time/count strip sits above the list, and activities are grouped
   into month sections instead of one flat list; each row shows the event
-  title (falls back to the sport label). Detail opens with a hero map (route
-  draws itself in sync with a bouncing sport-symbol rider, event
-  title + sport icon overlaid bottom-left/bottom-right), bold stat tiles
-  (avg/max heart rate tiles appear when the activity has HR data), a heart-rate
+  title (falls back to the sport label). Detail (premium redesign, build 35)
+  opens with a full-width map (route draws itself with a bouncing
+  sport-symbol rider), then sport, date and source (Apple Health, Apple Watch,
+  iPhone, GPX), the title, the distance in large type and a grid of the other
+  numbers (time, pace or speed, elevation, best pace or top speed, heart rate,
+  estimated calories — each only when known), Replay and Flyover buttons,
+  per-kilometre splits with the fastest in brand red, an elevation profile
+  (only when the GPS points carry altitude that varies), a heart-rate
   graph with the five zones behind it (drag across it to read any moment) and
   a time-in-zones card — both only when the activity has enough HR readings — and
   an overflow (`•••`) menu for Share / **Rename event** / Delete.

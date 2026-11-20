@@ -47,4 +47,28 @@ final class ReplayTests: XCTestCase {
         XCTAssertTrue(play.waitForExistence(timeout: 5))
         XCTAssertEqual(play.label, "Play replay")
     }
+
+    /// The redesigned detail shows per-kilometre splits for a sample Run with a route.
+    @MainActor
+    func testDetailShowsSplits() throws {
+        let app = XCUIApplication.skippingOnboarding()
+        app.launch()
+        if app.buttons["theme-continue"].waitForExistence(timeout: 3) {
+            app.buttons["theme-continue"].tap()
+        }
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
+        app.tabBars.buttons["Activities"].tap()
+        let link = app.cells.containing(.staticText, identifier: "Run").firstMatch
+        guard link.waitForExistence(timeout: 5) else {
+            throw XCTSkip("No existing Run sample is visible; this test never resets owner data.")
+        }
+        link.tap()
+        guard app.buttons["activity-replay"].waitForExistence(timeout: 5) else {
+            throw XCTSkip("The selected activity has no route, so it has no splits.")
+        }
+        let first = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == %@", "Kilometre 1")).firstMatch
+        for _ in 0..<4 where !first.exists { app.swipeUp() }
+        XCTAssertTrue(first.waitForExistence(timeout: 3))
+    }
 }
