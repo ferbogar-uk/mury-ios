@@ -67,7 +67,7 @@ enum FlyoverRenderer {
         timeline: ReplayTimeline,
         routeColor: UIColor,
         symbolName: String,
-        savedDistance: String,
+        overlayInfo: VideoOverlayInfo,
         reduceMotion: Bool,
         onProgress: (@MainActor (Progress) -> Void)? = nil
     ) async throws -> Output {
@@ -152,7 +152,7 @@ enum FlyoverRenderer {
             var memoryAfterDraw = memoryAfterSnapshot
             try autoreleasepool {
                 let image = draw(snapshot: snapshot, state: state, frame: frame, timeline: timeline,
-                                 routeColor: routeColor, symbolName: symbolName, savedDistance: savedDistance,
+                                 routeColor: routeColor, symbolName: symbolName, overlayInfo: overlayInfo,
                                  reduceMotion: reduceMotion)
                 // A full-size picture goes to the screen only every 4th frame, so the screen never holds many.
                 preview = index % 4 == 0 ? image : nil
@@ -279,7 +279,7 @@ enum FlyoverRenderer {
         timeline: ReplayTimeline,
         routeColor: UIColor,
         symbolName: String,
-        savedDistance: String,
+        overlayInfo: VideoOverlayInfo,
         reduceMotion: Bool
     ) -> UIImage {
         let format = UIGraphicsImageRendererFormat()
@@ -348,27 +348,68 @@ enum FlyoverRenderer {
                 }
             }
 
-            drawStats(state: state, frame: frame, savedDistance: savedDistance)
+            drawLogo(in: cg)
+            drawCard(info: overlayInfo, progress: state.routeProgress, in: cg)
             drawText("Apple Maps", at: CGPoint(x: 10, y: pointSize.height - 18), size: 10, weight: .medium, alpha: 0.9)
-            drawText("MURY", at: CGPoint(x: pointSize.width - 50, y: pointSize.height - 20), size: 12, weight: .heavy, alpha: 1)
         }
     }
 
-    private static func drawStats(state: FlyoverPlan.State, frame: ReplayFrame, savedDistance: String) {
-        let card = CGRect(x: 14, y: pointSize.height - 96, width: pointSize.width - 28, height: 62)
-        UIColor.black.withAlphaComponent(0.6).setFill()
-        UIBezierPath(roundedRect: card, cornerRadius: 14).fill()
-        let columns: [(String, String)] = [
-            ("Total distance", savedDistance),
-            ("Time", Formatters.duration(seconds: Int(min(state.routeElapsedSeconds, Double(Int.max / 2))))),
-            ("Speed", Formatters.speed(metersPerSecond: frame.speedMps)),
+    /// The white MURY logo across the top with a soft shadow, same look as the live screens.
+    private static func drawLogo(in cg: CGContext) {
+        guard let logo = UIImage(named: "LogoWhite") else { return }
+        let width: CGFloat = 190
+        let height = width * logo.size.height / max(logo.size.width, 1)
+        let rect = CGRect(x: (pointSize.width - width) / 2, y: 62, width: width, height: height)
+        cg.saveGState()
+        cg.setShadow(offset: CGSize(width: 0, height: 2), blur: 8, color: UIColor.black.withAlphaComponent(0.55).cgColor)
+        logo.draw(in: rect)
+        cg.restoreGState()
+    }
+
+    /// Strava-style card: avatar, name, activity, three numbers and a thin progress bar.
+    private static func drawCard(info: VideoOverlayInfo, progress: Double, in cg: CGContext) {
+        let card = CGRect(x: 14, y: pointSize.height - 126, width: pointSize.width - 28, height: 104)
+        UIColor.black.withAlphaComponent(0.55).setFill()
+        UIBezierPath(roundedRect: card, cornerRadius: 18).fill()
+
+        let avatar = CGRect(x: card.minX + 14, y: card.minY + 12, width: 34, height: 34)
+        UIColor.white.withAlphaComponent(0.22).setFill()
+        UIBezierPath(ovalIn: avatar).fill()
+        let initials = info.initials as NSString
+        let initialsAttributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 14, weight: .bold), .foregroundColor: UIColor.white,
         ]
-        let width = card.width / 3
+        let initialsSize = initials.size(withAttributes: initialsAttributes)
+        initials.draw(at: CGPoint(x: avatar.midX - initialsSize.width / 2, y: avatar.midY - initialsSize.height / 2),
+                      withAttributes: initialsAttributes)
+
+        let textX = avatar.maxX + 10
+        drawText(info.athleteName, at: CGPoint(x: textX, y: card.minY + 11), size: 14, weight: .bold, alpha: 1)
+        let config = UIImage.SymbolConfiguration(pointSize: 11, weight: .semibold)
+        var titleX = textX
+        if let icon = UIImage(systemName: info.symbolName, withConfiguration: config)?
+            .withTintColor(UIColor.white.withAlphaComponent(0.85), renderingMode: .alwaysOriginal) {
+            icon.draw(at: CGPoint(x: textX, y: card.minY + 31))
+            titleX += icon.size.width + 5
+        }
+        drawText(info.activityTitle, at: CGPoint(x: titleX, y: card.minY + 30), size: 12, weight: .regular, alpha: 0.85)
+
+        let columns: [(String, String)] = [
+            ("Distance", info.distance), (info.paceLabel, info.pace), ("Elevation", info.elevation),
+        ]
+        let width = (card.width - 28) / 3
         for (index, column) in columns.enumerated() {
             let x = card.minX + 14 + CGFloat(index) * width
-            drawText(column.0, at: CGPoint(x: x, y: card.minY + 10), size: 11, weight: .regular, alpha: 0.75)
-            drawText(column.1, at: CGPoint(x: x, y: card.minY + 28), size: 18, weight: .semibold, alpha: 1)
+            drawText(column.0, at: CGPoint(x: x, y: card.minY + 54), size: 11, weight: .regular, alpha: 0.75)
+            drawText(column.1, at: CGPoint(x: x, y: card.minY + 68), size: 17, weight: .bold, alpha: 1)
         }
+
+        let bar = CGRect(x: card.minX + 14, y: card.maxY - 12, width: card.width - 28, height: 3)
+        UIColor.white.withAlphaComponent(0.3).setFill()
+        UIBezierPath(roundedRect: bar, cornerRadius: 1.5).fill()
+        let done = CGFloat(min(1, max(0, progress)))
+        UIColor.white.setFill()
+        UIBezierPath(roundedRect: CGRect(x: bar.minX, y: bar.minY, width: bar.width * done, height: 3), cornerRadius: 1.5).fill()
     }
 
     private static func drawText(_ text: String, at point: CGPoint, size: CGFloat, weight: UIFont.Weight, alpha: CGFloat) {
