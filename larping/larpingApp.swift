@@ -5,6 +5,7 @@ import SwiftUI
 struct larpingApp: App {
     @AppStorage("appearanceMode") private var appearanceMode = AppearanceMode.system
     @AppStorage(BrandTheme.storageKey) private var themeSelection = ""
+    @AppStorage("onboardingDone") private var onboardingDone = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showSplash = true
 
@@ -16,6 +17,11 @@ struct larpingApp: App {
             UserDefaults.standard.set(seed, forKey: BrandTheme.storageKey)
         }
         _themeSelection = AppStorage(wrappedValue: "", BrandTheme.storageKey)
+        // UI tests that seed a theme skip the first-launch flow unless they ask to see it.
+        if ProcessInfo.processInfo.environment["MURY_UI_TEST_BRAND_THEME"] != nil {
+            let showOnboarding = ProcessInfo.processInfo.environment["MURY_UI_TEST_SHOW_ONBOARDING"] != nil
+            UserDefaults.standard.set(!showOnboarding, forKey: "onboardingDone")
+        }
         #endif
     }
 
@@ -25,7 +31,11 @@ struct larpingApp: App {
         WindowGroup {
             ZStack {
                 if BrandTheme.resolvePreference(themeSelection) != nil {
-                    RootTabView()
+                    if onboardingDone {
+                        RootTabView()
+                    } else {
+                        OnboardingView { onboardingDone = true }
+                    }
                 } else {
                     ThemeSelectionView(selection: $themeSelection)
                 }
