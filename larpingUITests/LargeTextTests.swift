@@ -15,9 +15,12 @@ final class LargeTextTests: XCTestCase {
         XCTAssertTrue(tabs.waitForExistence(timeout: 10))
         for name in ["Activities", "Stats", "Profile", "Home"] {
             let tab = tabs.buttons[name]
-            XCTAssertTrue(tab.exists, name)
+            // At this text size a tab switch can take a moment on a slow CI simulator.
+            XCTAssertTrue(tab.waitForExistence(timeout: 10), name)
             tab.tap()
-            XCTAssertTrue(tab.isSelected, name)
+            let selected = NSPredicate(format: "isSelected == true")
+            let wait = XCTNSPredicateExpectation(predicate: selected, object: tab)
+            XCTAssertEqual(XCTWaiter().wait(for: [wait], timeout: 5), .completed, name)
         }
     }
 }
