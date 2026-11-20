@@ -43,7 +43,8 @@ Core/
       CDActivity.swift      SwiftData @Model — one activity (+ Time-Transient
                             computed pace/calories)
       CDTrackPoint.swift    SwiftData @Model — one GPS point (cascade with activity)
-      Activity.swift        SportType enum, EventNamer (auto event-title numbering),
+      Activity.swift        SportType enum (22 cases; isIndoor, recordable, usesPaceMetric;
+                            raw values are stored, never rename), EventNamer (auto event-title numbering),
                             TrackPointPayload value type
   Location/
     LocationTracker.swift  CLLocationManager wrapper (one per recording)
@@ -503,3 +504,7 @@ Build 33 redesign of the first launch: `OnboardingView` steps `health → profil
 ## Premium visual, phase 1.5 (build 34 onwards)
 
 Shared components in `Features/Shared/`: `ActivityRouteCard` (still `Map` with `MapPolyline` casing + route, start dot, max ~300 points, falls back to a sport header without a route; soft two-layer shadow, 20 pt continuous corners). `PressableStyle` (in `OnboardingView.swift`) gives press feedback. Home is a `ScrollView` (not `List`) with a week card (`HomeSummary.dailyDistance` → `WeekStrip`), record chips (identifiers `home-record-<sport>` kept for UI tests) and map cards. Motion: the week figure animates with `.numericText`; no animation under Reduce Motion.
+
+## Activity types (phase 2, build 36)
+
+`SportType` holds 22 cases. `isIndoor` marks the 13 gym/indoor ones (no route); `SportType.recordable` (outdoor only) feeds the Record menu and Home shortcuts until phase 7 adds indoor recording. Health mapping both ways lives in `Core/Health/HealthSportMapping.swift` (`SportType(workout:)` reads `HKMetadataKeyIndoorWorkout` to split treadmill / indoor cycle / indoor row from their outdoor twins; `HKWorkoutActivityType(sport:)` for writing, and `saveWorkout` adds the indoor flag). `CDActivity` gained `heartRateSeriesData` (heart rate for activities without GPS points, encoded by the Foundation-only `Core/HeartRateSeriesCodec.swift`) and `energyKcal` (Health's active energy). `heartRateSamples` merges both sources; `maxHeartRateBpm`, `averageHeartRateBpm` and `HeartRateSection` read it. `calories` prefers `energyKcal` (`caloriesMeasured` drives the "Calories" vs "Calories (est.)" label). Backups carry both new fields as optionals, so older backups still restore. `HealthSync.reclassify` runs once per mapping version (`HealthImportRules.sportMappingVersion`, stored under `healthSportMappingVersion`): Health imports still marked "Other" are fetched by UUID (`HealthKitService.fetchWorkouts(ids:)`), given their type, and filled with energy and, for indoor ones, heart rate (`ActivitiesStore.updateFromHealth`). If Health returns nothing it retries on the next sync.

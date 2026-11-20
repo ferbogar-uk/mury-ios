@@ -16,6 +16,10 @@ final class CDActivity {
     var eventName: String?
     /// Id of the Health workout this activity was imported from (nil for MURY recordings).
     var externalID: String?
+    /// Heart rate for activities with no route (see `HeartRateSeriesCodec`); nil otherwise.
+    var heartRateSeriesData: Data?
+    /// Active energy from Apple Health, in kcal (nil when Health had none).
+    var energyKcal: Int?
     var createdAt: Date = Date()
 
     @Relationship(deleteRule: .cascade, inverse: \CDTrackPoint.activity)
@@ -33,24 +37,41 @@ final class CDActivity {
         return Int(1000 / averageSpeedMps)
     }
 
+    /// Calories: Health's measured active energy when there is one, otherwise a rough estimate.
     @Transient
     var calories: Int? {
+        if let energyKcal, energyKcal > 0 { return energyKcal }
         guard let distanceMeters, let durationSeconds, durationSeconds > 0 else { return nil }
         let km = Double(distanceMeters) / 1000
         let hours = Double(durationSeconds) / 3600
         return Int(km * hours * 60)
     }
 
-    /// Highest heart rate in any track point (nil when the activity has none —
-    /// live iPhone recordings never populate HR; HealthKit-imported ones do).
+    /// True when `calories` is Health's measured figure, not the estimate.
+    @Transient
+    var caloriesMeasured: Bool { (energyKcal ?? 0) > 0 }
+
+    /// Heart rate over the activity: from the GPS points when they carry it,
+    /// otherwise from the stored series (activities without a route).
+    @Transient
+    var heartRateSamples: [HeartRateSample] {
+        let fromPoints = trackPoints.compactMap { point -> HeartRateSample? in
+            guard let bpm = point.heartRateBpm, bpm > 0 else { return nil }
+            return HeartRateSample(timestamp: point.timestamp, bpm: bpm)
+        }
+        return fromPoints.isEmpty ? HeartRateSeriesCodec.decode(heartRateSeriesData) : fromPoints
+    }
+
+    /// Highest heart rate (nil when the activity has none — live iPhone
+    /// recordings never populate HR; HealthKit-imported ones do).
     @Transient
     var maxHeartRateBpm: Int? {
-        trackPoints.compactMap(\.heartRateBpm).max()
+        heartRateSamples.map(\.bpm).max()
     }
 
     @Transient
     var averageHeartRateBpm: Int? {
-        let rates = trackPoints.compactMap(\.heartRateBpm)
+        let rates = heartRateSamples.map(\.bpm)
         guard !rates.isEmpty else { return nil }
         return rates.reduce(0, +) / rates.count
     }

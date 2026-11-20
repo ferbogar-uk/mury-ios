@@ -238,3 +238,7 @@ Map cinema still films with the system screen recorder (the permission prompt an
 - Health sports other than run, ride, walk, hike and swim import as "Other" until the activity-types phase.
 - Tab bar item colours are set through `UITabBarAppearance` in `RootTabView.init`, while the bar background also comes from SwiftUI `.toolbarBackground`. If a future change makes SwiftUI rebuild the tab bar appearance, unselected icons can fall back to iOS grey; check on a phone after tab bar changes.
 - Since build 33 MURY asks Health for 23 types, but only workouts, routes, heart rate, energy and body details are shown so far; the rest (VO2 max, HRV, resting heart rate, steps, cycling and running power and the like) get screens in the progress phase. App Store review expects requested data to be used, so those screens must ship before an App Store submission.
+
+## Indoor types can't be recorded yet — not a bug
+
+Strength, Treadmill, Yoga and the other indoor types (build 36) only arrive from Apple Health. The Record menu and Home shortcuts list just the outdoor types, because the recorder is GPS-only. Timer-only indoor recording is phase 7.

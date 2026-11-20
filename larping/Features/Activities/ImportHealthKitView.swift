@@ -134,15 +134,15 @@ struct ImportHealthKitView: View {
     private func row(_ workout: HKWorkout) -> some View {
         Button {
             selected = workout
-            sportType = SportType(workoutActivityType: workout.workoutActivityType)
+            sportType = SportType(workout: workout)
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: SportType(workoutActivityType: workout.workoutActivityType).symbolName)
+                Image(systemName: SportType(workout: workout).symbolName)
                     .font(.title2)
                     .foregroundStyle(.tint)
                     .frame(width: 36)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(SportType(workoutActivityType: workout.workoutActivityType).label)
+                    Text(SportType(workout: workout).label)
                         .font(.headline)
                     Text(Formatters.displayDate(date: workout.startDate))
                         .font(.caption)

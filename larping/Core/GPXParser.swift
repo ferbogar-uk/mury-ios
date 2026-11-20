@@ -27,6 +27,7 @@ enum GPXParser {
         if value.contains("walk") { return .walk }
         if value.contains("hik") || value.contains("trail") { return .hike }
         if value.contains("swim") { return .swim }
+        if value.contains("row") { return .rowing }
         return nil
     }
 

@@ -51,6 +51,8 @@ struct BackupActivity: Codable {
     let createdAt: Date
     let trackPoints: [BackupTrackPoint]
     var externalID: String? = nil
+    var heartRateSeriesData: Data? = nil
+    var energyKcal: Int? = nil
 }
 
 struct BackupTrackPoint: Codable {

@@ -13,6 +13,7 @@ struct HealthSyncResult: Equatable {
 @MainActor
 enum HealthSync {
     static let lastSyncKey = "lastHealthSync"
+    static let mappingVersionKey = "healthSportMappingVersion"
     private static var isRunning = false
 
     /// Imports every Health workout in the window that MURY does not already hold, oldest first, one at a time.
@@ -25,6 +26,11 @@ enum HealthSync {
         guard let workouts = try? await HealthKitService.fetchWorkouts(since: now.addingTimeInterval(-Double(days) * 86_400)) else {
             return HealthSyncResult()
         }
+        if UserDefaults.standard.integer(forKey: mappingVersionKey) < HealthImportRules.sportMappingVersion,
+           await reclassify(store: store) {
+            UserDefaults.standard.set(HealthImportRules.sportMappingVersion, forKey: mappingVersionKey)
+        }
+
         let byID = Dictionary(workouts.map { ($0.uuid.uuidString, $0) }, uniquingKeysWith: { first, _ in first })
         let records = workouts.map(record(from:))
         let selected = HealthImportRules.select(records, existing: store.existingImports(), now: now, days: days)
@@ -33,7 +39,7 @@ enum HealthSync {
         for item in selected {
             guard let workout = byID[item.externalID] else { continue }
             do {
-                try await importOne(workout, sport: SportType(workoutActivityType: workout.workoutActivityType), store: store)
+                try await importOne(workout, sport: SportType(workout: workout), store: store)
                 result.imported += 1
             } catch {
                 result.failed += 1
@@ -41,6 +47,30 @@ enum HealthSync {
         }
         UserDefaults.standard.set(Date(), forKey: lastSyncKey)
         return result
+    }
+
+    /// Gives older "Other" imports their proper type from Health. True when it finished.
+    static func reclassify(store: ActivitiesStore) async -> Bool {
+        let candidates = store.activities.filter {
+            HealthImportRules.needsReclassifying(sport: $0.sportType, source: $0.source, externalID: $0.externalID)
+        }
+        guard !candidates.isEmpty else { return true }
+        let ids = candidates.compactMap { $0.externalID.flatMap(UUID.init(uuidString:)) }
+        // Nothing back (Health not reachable or not allowed yet): try again on a later sync.
+        guard let workouts = try? await HealthKitService.fetchWorkouts(ids: ids), !workouts.isEmpty else { return false }
+        let byID = Dictionary(workouts.map { ($0.uuid.uuidString, $0) }, uniquingKeysWith: { first, _ in first })
+        var ok = true
+        for activity in candidates {
+            guard let id = activity.externalID, let workout = byID[id] else { continue }
+            let sport = SportType(workout: workout)
+            guard sport != .other else { continue }
+            var heartRate: [HeartRateSample] = []
+            if sport.isIndoor { heartRate = samples(await HealthKitService.heartRateSamples(for: workout)) }
+            do {
+                try store.updateFromHealth(activity, sport: sport, energyKcal: energy(workout), heartRate: heartRate)
+            } catch { ok = false }
+        }
+        return ok
     }
 
     /// Runs a sync unless one ran in the last ten minutes.
@@ -85,8 +115,22 @@ enum HealthSync {
             maxSpeedMps: maxSpeed(route),
             source: "healthkit_import",
             externalID: workout.uuid.uuidString,
+            energyKcal: energy(workout),
+            heartRate: samples(heartRate),
             trackPointsPayloads: trackPoints(route: route, heartRate: heartRate)
         )
+    }
+
+    /// Active energy Health measured for the workout, in kcal.
+    static func energy(_ workout: HKWorkout) -> Int? {
+        guard let kcal = workout.statistics(for: HKQuantityType(.activeEnergyBurned))?
+            .sumQuantity()?.doubleValue(for: .kilocalorie()), kcal >= 1 else { return nil }
+        return Int(kcal.rounded())
+    }
+
+    private static func samples(_ heartRate: [HKQuantitySample]) -> [HeartRateSample] {
+        let unit = HKUnit.count().unitDivided(by: .minute())
+        return heartRate.map { HeartRateSample(timestamp: $0.startDate, bpm: Int($0.quantity.doubleValue(for: unit))) }
     }
 
     private static func routeDistance(_ route: [CLLocation]) -> Double {

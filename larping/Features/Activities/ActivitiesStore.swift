@@ -63,6 +63,8 @@ final class ActivitiesStore {
         source: String?,
         eventName: String? = nil,
         externalID: String? = nil,
+        energyKcal: Int? = nil,
+        heartRate: [HeartRateSample] = [],
         trackPointsPayloads: [TrackPointPayload]
     ) throws -> CDActivity {
         let activity = CDActivity()
@@ -77,6 +79,11 @@ final class ActivitiesStore {
         activity.source = source ?? "mobile"
         activity.eventName = eventName
         activity.externalID = externalID
+        activity.energyKcal = energyKcal
+        // Without GPS points there is nowhere else to keep the heart rate.
+        if !trackPointsPayloads.contains(where: { $0.heartRateBpm != nil }) {
+            activity.heartRateSeriesData = HeartRateSeriesCodec.encode(heartRate)
+        }
 
         let points: [CDTrackPoint] = trackPointsPayloads.map { payload in
             let point = CDTrackPoint()
@@ -111,6 +118,23 @@ final class ActivitiesStore {
         activities
             .filter { $0.source == "healthkit_import" }
             .map { ExistingImport(externalID: $0.externalID, startedAt: $0.startedAt) }
+    }
+
+    /// Re-classifies an older Health import and fills what it was missing (heart rate
+    /// without a route, measured energy). Reverts in memory if the save fails.
+    func updateFromHealth(_ activity: CDActivity, sport: SportType, energyKcal: Int?, heartRate: [HeartRateSample]) throws {
+        let old = (activity.sportType, activity.energyKcal, activity.heartRateSeriesData)
+        activity.sportType = sport
+        if activity.energyKcal == nil { activity.energyKcal = energyKcal }
+        if activity.heartRateSeriesData == nil, !activity.trackPoints.contains(where: { $0.heartRateBpm != nil }) {
+            activity.heartRateSeriesData = HeartRateSeriesCodec.encode(heartRate)
+        }
+        do {
+            try persist()
+        } catch {
+            (activity.sportType, activity.energyKcal, activity.heartRateSeriesData) = old
+            throw error
+        }
     }
 
     /// Renames an activity's event title. Throws on persistence failure — the
