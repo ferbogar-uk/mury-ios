@@ -47,6 +47,8 @@ to its source (`larping/`), tests (`larpingTests/`, `larpingUITests/`), and
 
 ## Verification
 
+Before changing a file listed in `docs/mury-protected-files.json`, tell Ricardo; after the change, update its hash in that file in the same PR. `node scripts/check-branding.mjs` (also run in CI) checks it, and colour assets must stay equal to the brand pack.
+
 ```bash
 xcodebuild -project larping.xcodeproj -scheme larping \
   -destination 'generic/platform=iOS Simulator' -configuration Debug build \

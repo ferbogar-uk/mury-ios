@@ -30,6 +30,16 @@ A phase starts and finishes completely before the next begins. Done means: every
 | 8 | Record indoors on Apple Watch | The watch app (Stage 3 of the watch plan) records indoor workouts and sends them to the iPhone. | 7 |
 | 9 | Social | Accounts, friends, feed, challenges on a Cloudflare backend. Needs its own interview first: privacy model, costs, moderation, what data leaves the phone. | all |
 
+## Running alongside every phase: move CI work from macOS to Linux
+
+Ricardo asked for this on 2026-11-20. macOS runners are slow (about 25 minutes, queued) and cost more; Linux takes about a minute. Rule for each phase: decision logic goes into Foundation-only `nonisolated` files with tests listed in `scripts/test-core-logic.sh`, so it runs on Linux; screens stay thin. Planned steps:
+
+1. Done in build 32: the brand and protected-file check runs on Linux (`core-tests.yml`).
+2. Move more existing logic into Linux tests (activity store rules, share route maths, onboarding validation already pure).
+3. Run SwiftLint and a project-file sanity check on Linux.
+4. Only start macOS when Swift or project files change, and keep UI tests on main and by hand (already so).
+5. What cannot move: compiling the iOS app, UI tests, HealthKit, MapKit and video export need macOS.
+
 ## Open items per phase (settled at the start of that phase)
 
 - Phase 2: exact list and icon choices; whether strength activities link later to the separate gym app.

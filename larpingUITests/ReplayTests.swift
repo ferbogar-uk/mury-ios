@@ -5,7 +5,7 @@ final class ReplayTests: XCTestCase {
 
     @MainActor
     func testReplayControlsAndReopenPaused() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.skippingOnboarding()
         app.launch()
         if app.buttons["theme-continue"].waitForExistence(timeout: 3) {
             app.buttons["theme-continue"].tap()

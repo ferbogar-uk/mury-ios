@@ -22,6 +22,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Brand and protected-file check
+        # Fails when a colour asset leaves the brand pack or a protected file changes
+        # without docs/mury-protected-files.json being updated in the same PR.
+        run: node scripts/check-branding.mjs
+
       - name: Set up Swift
         uses: swift-actions/setup-swift@v2
         with:

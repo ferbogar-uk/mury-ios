@@ -3,6 +3,19 @@ import XCTest
 final class OnboardingTests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
+    /// These tests leave the first-launch flow half done. Launch once with a seeded theme (which marks
+    /// onboarding done) so later UI tests that launch the app plainly land on the tab bar, whatever
+    /// order the tests run in.
+    override func tearDown() async throws {
+        await MainActor.run {
+            let app = XCUIApplication()
+            app.launchEnvironment["MURY_UI_TEST_BRAND_THEME"] = "mury"
+            app.launch()
+            app.terminate()
+        }
+        try await super.tearDown()
+    }
+
     private func launchOnboarding() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["MURY_UI_TEST_BRAND_THEME"] = "mury"

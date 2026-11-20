@@ -20,7 +20,7 @@ final class ScreenshotTests: XCTestCase {
 
     @MainActor
     func testCaptureScreens() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.skippingOnboarding()
         app.launch()
         if app.buttons["theme-continue"].waitForExistence(timeout: 3) {
             app.buttons["theme-continue"].tap()

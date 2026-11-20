@@ -236,3 +236,4 @@ Map cinema still films with the system screen recorder (the permission prompt an
 - Workouts imported before build 31 have no Health id; they are matched by start time (within 60 s) so the backfill does not duplicate them.
 - First launch needs all four body fields (birth date, sex, height, weight); units are metric only until the Settings phase.
 - Health sports other than run, ride, walk, hike and swim import as "Other" until the activity-types phase.
+- Tab bar item colours are set through `UITabBarAppearance` in `RootTabView.init`, while the bar background also comes from SwiftUI `.toolbarBackground`. If a future change makes SwiftUI rebuild the tab bar appearance, unselected icons can fall back to iOS grey; check on a phone after tab bar changes.

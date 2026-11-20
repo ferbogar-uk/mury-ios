@@ -321,6 +321,7 @@ struct ShareActivityView: View {
                                     .foregroundStyle(.white)
                                     .padding()
                             }
+                            .accessibilityLabel("Close preview")
                         }
                         Spacer()
                     }

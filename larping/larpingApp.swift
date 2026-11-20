@@ -22,6 +22,9 @@ struct larpingApp: App {
             let showOnboarding = ProcessInfo.processInfo.environment["MURY_UI_TEST_SHOW_ONBOARDING"] != nil
             UserDefaults.standard.set(!showOnboarding, forKey: "onboardingDone")
         }
+        if ProcessInfo.processInfo.environment["MURY_UI_TEST_SKIP_ONBOARDING"] != nil {
+            UserDefaults.standard.set(true, forKey: "onboardingDone")
+        }
         #endif
     }
 

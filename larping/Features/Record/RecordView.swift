@@ -90,6 +90,7 @@ struct RecordView: View {
                     } label: {
                         Image(systemName: "location.fill")
                     }
+                    .accessibilityLabel("Centre on my location")
                 }
             }
             .task { tracker.requestPermission() }

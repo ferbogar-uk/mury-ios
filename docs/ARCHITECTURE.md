@@ -492,3 +492,7 @@ later phase). `CDActivity.externalID` (optional, lightweight migration) holds th
 Health workout id; it is in the backup file as an optional key. UI tests that seed
 `MURY_UI_TEST_BRAND_THEME` skip the flow unless `MURY_UI_TEST_SHOW_ONBOARDING` is set.
 Units are metric only until the Settings phase.
+
+## Protected files and brand check (build 32)
+
+`docs/mury-protected-files.json` lists files that must not change by accident (data model, backup, Health, location, entitlements, Info.plist, workflows, licence) with their SHA-256. `scripts/check-branding.mjs` verifies those hashes plus the brand pack (colour assets equal `design/branding/brand-pack` tokens exactly, contrast, logos, fonts). It now runs in CI (`core-tests.yml`), so a change to a protected file must update its hash in the same PR, which makes the change visible in review. The manifest was refreshed in build 32: ten files had drifted since it was captured, including three changed in build 31 (HealthKitService, ActivitiesStore, entitlements).
