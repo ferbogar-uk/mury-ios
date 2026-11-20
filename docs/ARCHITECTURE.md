@@ -61,8 +61,20 @@ Core/
   BrandTheme.swift         persisted theme identity, shared SwiftUI/UIKit tokens
   Health/
     HealthKitService.swift optional HealthKit interop — write: finished activity →
-                          HKWorkout (+ route); read: recent HR samples,
-                          workout routes (healthkit_import source).
+                          HKWorkout (+ route); read: workouts since a date, HR
+                          samples, routes, profile snapshot (birth date, sex,
+                          height, weight). Read-only types never report
+                          `.sharingAuthorized`, so read access is never checked
+                          by status: an empty result is what a denied read looks like.
+    HealthImportRules.swift pure (Linux-tested): which Health workouts to import —
+                          90-day window, skip MURY's own (metadata
+                          `larping.activityID`), skip ones already held (same
+                          `externalID`, or an older import starting within 60 s).
+    HealthSync.swift       `run` (backfill/top-up, one workout at a time, guarded
+                          against overlapping runs), `runIfDue` (10-minute throttle,
+                          called when the app becomes active), `importOne`.
+    HealthBackgroundDelivery.swift HKObserverQuery + background delivery; an extra,
+                          foreground sync is the guaranteed path.
 
 Features/
   Root/          RootTabView — 5 tabs (Home, Activities, Record, Stats, Profile),
@@ -463,3 +475,20 @@ Route position in rendered frames: `FlyoverProjection` (assumed 30 degree field 
 ### Flyover / cinema video overlay (build 30)
 
 `Core/VideoOverlayInfo.swift` holds the text of the bottom card (built from `CDActivity` plus the `displayName` setting). `Features/Activities/VideoOverlayViews.swift` has `VideoLogoMark` (white `LogoWhite` asset, 190 pt, soft shadow, top centre, no band) and `VideoInfoCard` (glass card with avatar initials, name, sport icon + activity title, distance / pace-or-speed / elevation, thin progress bar from `routeProgress`). Used by `FlyoverView`, `MapCinemaView` (while playing/recording/finishing) and, drawn with Core Graphics in `FlyoverRenderer.drawLogo` / `drawCard`, by the in-app render. The old small "MURY" text and the Total distance / Time / Speed card are gone.
+
+
+## Profile and first launch (build 31)
+
+`Core/UserProfile.swift` (pure, Linux-tested): `UserProfile` (birth date, sex,
+height and weight as `ProfileValue` with source `health`/`manual` and a date,
+sports, goal, level), `merging(health:)` (newest sample wins for height and
+weight; Health only fills birth date and sex when missing),
+`validationIssues(now:)` (all four body fields required; birth date not in the
+future or over 150 years; height 50–300 cm; weight 20–400 kg), and
+`ProfileStorage` (JSON in UserDefaults, key `userProfile`; corrupt data loads as
+empty). `Features/Onboarding/OnboardingView` runs after the theme choice until
+`onboardingDone` is set; `ProfileFormView` is reusable (Settings uses it in a
+later phase). `CDActivity.externalID` (optional, lightweight migration) holds the
+Health workout id; it is in the backup file as an optional key. UI tests that seed
+`MURY_UI_TEST_BRAND_THEME` skip the flow unless `MURY_UI_TEST_SHOW_ONBOARDING` is set.
+Units are metric only until the Settings phase.

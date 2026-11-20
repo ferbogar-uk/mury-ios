@@ -84,11 +84,18 @@ touches the network.
 - **GPX import** — `.gpx` file → activity (`source: gpx_import`); the sport
   is auto-detected from the file's `<type>` element (unknown/absent keeps
   the picker default).
-- **HealthKit import** — Profile "Allow HealthKit access" (read) unlocks
-  Activities → Import → "Import from Health": pick a Watch/iPhone workout,
-  override the sport, and bring it into MURY with route + heart rate where
-  available (`source: healthkit_import`). Same graceful fallbacks as GPX — no
-  route/HR means a metadata-only activity, never fabricated data.
+- **HealthKit import** — the first-launch flow (and Profile → "Sync Health now")
+  asks Health for workouts, routes, heart rate, calories and your body details
+  (birth date, sex, height, weight), imports the last 90 days of workouts with
+  route and heart rate where Health has them (`source: healthkit_import`, Health
+  id kept so nothing imports twice), and tops up whenever MURY opens; Health may
+  also wake MURY in the background when a new workout is saved. Workouts MURY
+  itself wrote to Health are never imported back. No route/HR means a
+  metadata-only activity, never fabricated data. Activities → Import → "Import
+  from Health" still lets you pick one workout and override its sport.
+- **First launch** — after the theme choice: connect Apple Health (optional),
+  confirm or type birth date, sex, height and weight, then pick sports, goal and
+  level. Stored on the device only (`ProfileStorage`, key `userProfile`).
 - **Stats** — last-7-days distance chart + per-sport totals (distance, time,
   activity count, max heart rate when present), plus all-time totals and
   personal bests (longest distance, longest duration, highest heart rate).
@@ -99,11 +106,10 @@ touches the network.
   Import backup back (idempotent — existing ids are skipped). Event names
   round-trip through backups. Profile shows when the last successful
   export/import happened.
-- **HealthKit (optional)** — Profile → "Allow HealthKit access" opts in;
-  after a recording finishes, the saved activity is mirrored to the Health
-  app as a workout with its route. Purely additive: recording works
-  identically with or without it, HealthKit never shows a prompt unless you
-  ask, and a failed/denied write never blocks or loses the local save.
+- **HealthKit writes (optional)** — after a recording finishes, the saved
+  activity is mirrored to the Health app as a workout with its route. Recording
+  works identically with or without it, and a failed/denied write never blocks
+  or loses the local save.
 - **Profile** — a compact card (not a tall hero banner) with a fixed accent
   gradient (no custom cover photo) behind avatar/name/bio and a full-height
   darkening scrim so the gradient never reads as raw lime/blue, and the

@@ -16,7 +16,8 @@ struct ProfileView: View {
     @State private var pendingImportURL: URL?
     @State private var confirmImport = false
     @State private var backupMessage: String?
-    @State private var healthAuthorized = HealthKitService.isAuthorized
+    @State private var isSyncing = false
+    @State private var syncMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -121,17 +122,24 @@ struct ProfileView: View {
                     Section("Health") {
                         Button {
                             Task {
+                                isSyncing = true
                                 await HealthKitService.requestAuthorization()
-                                healthAuthorized = HealthKitService.isAuthorized
+                                let result = await HealthSync.run(store: activitiesStore)
+                                syncMessage = result.imported == 0
+                                    ? "Nothing new to import (\(result.skipped) already in MURY)."
+                                    : "Imported \(result.imported), skipped \(result.skipped)."
+                                isSyncing = false
                             }
                         } label: {
-                            Label(
-                                healthAuthorized ? "HealthKit connected" : "Allow HealthKit access",
-                                systemImage: healthAuthorized ? "heart.fill" : "heart.text.square"
-                            )
+                            Label("Sync Health now", systemImage: "arrow.triangle.2.circlepath")
                         }
-                        .disabled(healthAuthorized)
-                        Label("Finished activities are written to the Health app alongside your other workouts. Recording always works with or without it.", systemImage: "heart")
+                        .disabled(isSyncing)
+                        .accessibilityIdentifier("profile-sync-health")
+                        if isSyncing { ProgressView() }
+                        if let syncMessage {
+                            Text(syncMessage).font(.footnote).foregroundStyle(.secondary)
+                        }
+                        Label("MURY reads your workouts from the last 90 days and imports new ones whenever it opens. Finished activities are also written to Health. If nothing appears, check Settings → Health → Data Access & Devices → MURY.", systemImage: "heart")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -150,7 +158,6 @@ struct ProfileView: View {
             .toolbarBackground(theme.navigation, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .navigationTitle("Profile")
-            .onAppear { healthAuthorized = HealthKitService.isAuthorized }
             .sheet(isPresented: $showEdit) {
                 EditProfileView(displayName: displayName, bio: bio) { name, newBio in
                     displayName = name

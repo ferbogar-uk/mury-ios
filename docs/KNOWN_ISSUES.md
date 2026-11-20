@@ -231,3 +231,8 @@ Map cinema still films with the system screen recorder (the permission prompt an
 
 - Build 28 reopened Render in app for 15 / 30 / 60 s on purpose, to test. Expect the 2800 MB guard to stop long clips; the stop message starts with "start N MB": if N is already around 2000, the memory is taken before the render begins (the build 26 print showed 2,679 MB at frame 60 of an 8 s render), if it is a few hundred MB the growth is the snapshots themselves. Not known yet which. The old (build 9/10) renders used the same MKMapSnapshotter code; the earlier clip length they finished at is not recorded.
 - Map cinema has no runner dot in the orbit or the final pull-back (the dot is a fixed overlay on the screen centre, which only matches the runner while the camera follows it, i.e. the follow phase).
+- HealthKit cannot tell an app whether a read was denied. An empty Health looks the same as "no workouts", so Profile points to Settings → Health → Data Access & Devices → MURY. The code never checks read status.
+- Background import (Health waking MURY when a workout is saved) depends on the HealthKit background-delivery entitlement being accepted at signing and on iOS choosing to deliver; treat it as unproven until seen on a phone. New workouts always appear when MURY is opened.
+- Workouts imported before build 31 have no Health id; they are matched by start time (within 60 s) so the backfill does not duplicate them.
+- First launch needs all four body fields (birth date, sex, height, weight); units are metric only until the Settings phase.
+- Health sports other than run, ride, walk, hike and swim import as "Other" until the activity-types phase.
