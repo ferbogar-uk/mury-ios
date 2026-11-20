@@ -28,7 +28,7 @@ final class HomeDashboardTests: XCTestCase {
         guard app.staticTexts["No personal activities yet"].exists else {
             throw XCTSkip("Empty/sample-only UI requires an install without real activities; this test never deletes owner data.")
         }
-        XCTAssertTrue(app.staticTexts["Record an activity to see your progress here. Sample activities stay in Activities."].exists)
+        XCTAssertTrue(app.staticTexts["Record an activity, or connect Apple Health in Profile, and it shows up here."].exists)
     }
 
     @MainActor

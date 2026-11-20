@@ -50,6 +50,15 @@ final class HomeSummaryTests: XCTestCase {
         XCTAssertEqual(summary.recentActivities.map(\.id), [atNow.id, atLower.id, before.id])
     }
 
+    func testWeekStripHasSevenDaysOldestFirstWithTodayLast() {
+        let now = date("2026-10-30T12:00:00Z")
+        let summary = HomeSummary(activities: [activity(now)], now: now, calendar: calendar)
+        XCTAssertEqual(summary.dailyDistance.count, 7)
+        XCTAssertTrue(calendar.isDate(summary.dailyDistance.last!.day, inSameDayAs: now))
+        XCTAssertEqual(summary.dailyDistance.last?.distanceMeters, 1000)
+        XCTAssertEqual(summary.dailyDistance.map(\.day), summary.dailyDistance.map(\.day).sorted())
+    }
+
     func testCalendarDayRolloverExpiresOldestDayFromWeeklyTotals() {
         let beforeMidnight = date("2026-10-30T23:59:59Z")
         let afterMidnight = date("2026-10-31T00:00:00Z")
