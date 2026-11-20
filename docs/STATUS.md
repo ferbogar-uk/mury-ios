@@ -719,3 +719,7 @@ Also in build 32: build 31's main CI failed in two `HomeDashboardTests` UI tests
 ## 2026-11-20 — Build 33: first launch redesigned (Laws of UX), 16 sports, 23 Health types
 
 Device feedback on build 32: the first launch was too basic and broke Laws of UX (goal hidden behind a red "Not set" menu, unselected sports looked disabled, goal and level on one screen, "Intermedi…" truncated, no progress, no ending). Redesigned with UI UX Pro Max, taste and impeccable after a mockup Ricardo approved: five steps with progress and back, one question per screen (Hick), large cards with a check mark (Fitts), Health values pre-filled and tagged (recognition over recall), a welcome showing the imported workouts (peak-end). Interests now offer 16 Apple Exercise types. Health asks for 23 types, as Ricardo chose, each tied to a planned screen; the screens for VO2 max, heart rate variability, power and the other fitness measures arrive in the progress phase.
+
+## 2026-11-20 — Build 34: Home in the premium style (phase 1.5 starts)
+
+Ricardo approved the premium direction (mockups built with UI UX Pro Max, taste and impeccable). Home rebuilt as a scroll of cards: big week distance with a count-up, seven-day bars, record chips, and the newest activities as map cards (`ActivityRouteCard`, also used by the first-launch welcome). Only data MURY already has; no goal ring or streak until the progress phase.

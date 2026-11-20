@@ -1,4 +1,3 @@
-import MapKit
 import SwiftData
 import SwiftUI
 
@@ -196,7 +195,7 @@ struct OnboardingView: View {
                   importedCount.map { $0 == 0 ? "No workouts in Health from the last 90 days. Your first recording starts here." : "We brought in \($0) workouts from the last 90 days." }
                   ?? "You're all set. Your first recording starts here.")
             if let latest {
-                LatestActivityCard(activity: latest)
+                ActivityRouteCard(activity: latest, mapHeight: 160)
             }
         }
     }
@@ -383,60 +382,6 @@ private struct OptionRow: View {
         .foregroundStyle(theme.ink)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isOn ? .isSelected : [])
-    }
-}
-
-/// The newest activity as a card with its route, shown at the end of the first launch.
-private struct LatestActivityCard: View {
-    let activity: CDActivity
-    @Environment(\.brandTheme) private var theme
-
-    private var coordinates: [CLLocationCoordinate2D] {
-        activity.trackPoints.sorted { $0.timestamp < $1.timestamp }
-            .map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if coordinates.count > 1 {
-                Map(initialPosition: .automatic, interactionModes: []) {
-                    MapPolyline(coordinates: coordinates).stroke(.white, style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round))
-                    MapPolyline(coordinates: coordinates).stroke(theme.route, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
-                }
-                .frame(height: 160)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-            }
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Label(activity.sportType.label, systemImage: activity.sportType.symbolName)
-                        .font(MuryTypography.font(.body, size: 16, weight: .semibold))
-                    Spacer()
-                    Text(activity.startedAt, format: .dateTime.day().month(.abbreviated))
-                        .font(MuryTypography.font(.subheadline, size: 14))
-                        .foregroundStyle(theme.muted)
-                }
-                HStack(alignment: .top) {
-                    stat("Distance", Formatters.distance(meters: activity.distanceMeters.map(Double.init)))
-                    Spacer()
-                    stat("Time", Formatters.duration(seconds: activity.durationSeconds ?? 0))
-                    Spacer()
-                    stat("Avg HR", activity.averageHeartRateBpm.map { "\($0)" } ?? "—")
-                }
-            }
-            .padding(14)
-        }
-        .background(RoundedRectangle(cornerRadius: 18).fill(theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(theme.border.opacity(0.35), lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .accessibilityElement(children: .combine)
-    }
-
-    private func stat(_ title: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(MuryTypography.font(.caption, size: 12)).foregroundStyle(theme.muted)
-            Text(value).font(MuryTypography.font(.headline, size: 18, weight: .semibold)).monospacedDigit()
-        }
     }
 }
 
