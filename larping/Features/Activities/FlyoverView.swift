@@ -23,7 +23,7 @@ struct FlyoverView: View {
 
     private let timeline: ReplayTimeline
     private let symbol: String
-    private let savedDistance: String
+    private let overlayInfo: VideoOverlayInfo
 
     @State private var clip: ClipLength = .thirty
     @State private var plan: FlyoverPlan
@@ -51,7 +51,8 @@ struct FlyoverView: View {
                                       startedAt: activity.startedAt, endedAt: activity.endedAt)
         timeline = snapshot
         symbol = activity.sportType.symbolName
-        savedDistance = Formatters.distance(meters: activity.distanceMeters.map(Double.init))
+        overlayInfo = VideoOverlayInfo.make(activity: activity,
+                                            athleteName: UserDefaults.standard.string(forKey: "displayName") ?? "MURY User")
         let first = FlyoverPlan(timeline: snapshot, clipSeconds: Double(ClipLength.thirty.rawValue))
         _plan = State(initialValue: first)
         let opening = first.state(at: 0)
@@ -198,19 +199,17 @@ struct FlyoverView: View {
     @ViewBuilder
     private func controlsOverlay(state: FlyoverPlan.State, frame: ReplayFrame) -> some View {
         VStack(spacing: 12) {
-            HStack {
-                if mode == .idle || mode == .done { closeButton }
-                Spacer()
+            ZStack {
+                // Brand logo across the top, part of the recorded screen.
+                if isRunning && mode != .preparing && mode != .preloading { VideoLogoMark() }
+                HStack {
+                    if mode == .idle || mode == .done { closeButton }
+                    Spacer()
+                }
             }
             Spacer()
             if isRunning && mode != .preparing && mode != .preloading {
-                statsCard(state: state, frame: frame)
-                // Brand mark, part of the recorded screen.
-                HStack {
-                    Spacer()
-                    Text("MURY").font(MuryTypography.font(.headline, size: 15, weight: .bold)).tracking(2)
-                        .foregroundStyle(.white).shadow(radius: 3)
-                }
+                VideoInfoCard(info: overlayInfo, progress: state.routeProgress)
             }
             if mode == .preparing || mode == .preloading {
                 Text(mode == .preloading ? "Preparing map…" : "Starting recording…")
@@ -328,26 +327,6 @@ struct FlyoverView: View {
         }
         .accessibilityLabel("Close flyover")
         .accessibilityIdentifier("flyover-close")
-    }
-
-    private func statsCard(state: FlyoverPlan.State, frame: ReplayFrame) -> some View {
-        HStack {
-            stat("Total distance", savedDistance)
-            Spacer()
-            stat("Time", Formatters.duration(seconds: Int(min(state.routeElapsedSeconds, Double(Int.max / 2)))))
-            Spacer()
-            stat("Speed", Formatters.speed(metersPerSecond: frame.speedMps))
-        }
-        .padding(.horizontal, 20).padding(.vertical, 14)
-        .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 16))
-        .foregroundStyle(.white)
-    }
-
-    private func stat(_ title: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(MuryTypography.font(.caption, size: 12)).opacity(0.75)
-            Text(value).font(MuryTypography.font(.headline, size: 20, weight: .semibold)).monospacedDigit()
-        }
     }
 
     private var panel: some View {
@@ -490,7 +469,7 @@ struct FlyoverView: View {
             do {
                 let output = try await FlyoverRenderer.render(
                     plan: renderPlan, timeline: timeline, routeColor: UIColor(theme.route), symbolName: symbol,
-                    savedDistance: savedDistance, reduceMotion: reduceMotion
+                    overlayInfo: overlayInfo, reduceMotion: reduceMotion
                 ) { progress in
                     renderProgress = progress
                     if let picture = progress.preview { renderPreview = picture }

@@ -458,3 +458,8 @@ xcodebuild -project larping.xcodeproj -scheme larping \
 Render in app screen (build 13): while rendering, the live map is not drawn at all; the frame being rendered fills the screen (`renderScreen`, aspect fit on black) and a translucent bottom bar (`renderBar`: material + dark tint, no box) shows title, progress, the stage in words (`renderStageText`, from `plan.state(at:)`), frame / seconds per frame / time left, the keep-open hint and Cancel.
 
 Route position in rendered frames: `FlyoverProjection` (assumed 30 degree field of view). A MapKit-based projector (hidden `MKMapView`, build 14) was tried and removed: the app crashed while rendering on a device (cause not confirmed, no crash log available).
+
+
+### Flyover / cinema video overlay (build 30)
+
+`Core/VideoOverlayInfo.swift` holds the text of the bottom card (built from `CDActivity` plus the `displayName` setting). `Features/Activities/VideoOverlayViews.swift` has `VideoLogoMark` (white `LogoWhite` asset, 190 pt, soft shadow, top centre, no band) and `VideoInfoCard` (glass card with avatar initials, name, sport icon + activity title, distance / pace-or-speed / elevation, thin progress bar from `routeProgress`). Used by `FlyoverView`, `MapCinemaView` (while playing/recording/finishing) and, drawn with Core Graphics in `FlyoverRenderer.drawLogo` / `drawCard`, by the in-app render. The old small "MURY" text and the Total distance / Time / Speed card are gone.

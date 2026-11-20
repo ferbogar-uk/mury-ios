@@ -32,6 +32,7 @@ struct MapCinemaView: View {
     private let routeGeoJSON: String
     private let trailGeoJSON: String
     private let symbolName: String
+    private let overlayInfo: VideoOverlayInfo
 
     @State private var plan: FlyoverPlan
     @State private var mapView: MTMapView?
@@ -58,6 +59,8 @@ struct MapCinemaView: View {
         routeGeoJSON = MapCinemaMath.geoJSON(segments: snapshot.segments)
         trailGeoJSON = MapCinemaMath.trailGeoJSON(segments: snapshot.segments)
         symbolName = activity.sportType.symbolName
+        overlayInfo = VideoOverlayInfo.make(activity: activity,
+                                            athleteName: UserDefaults.standard.string(forKey: "displayName") ?? "MURY User")
         _plan = State(initialValue: FlyoverPlan(timeline: snapshot, clipSeconds: 30))
     }
 
@@ -262,24 +265,23 @@ struct MapCinemaView: View {
 
     private var overlay: some View {
         VStack(spacing: 12) {
-            HStack {
-                if mode == .ready || mode == .loading {
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark").font(.headline).padding(12)
-                            .background(.black.opacity(0.55), in: Circle()).foregroundStyle(.white)
+            ZStack {
+                // Brand logo across the top, part of the recorded screen.
+                if mode == .playing || mode == .recording || mode == .finishing { VideoLogoMark() }
+                HStack {
+                    if mode == .ready || mode == .loading {
+                        Button { dismiss() } label: {
+                            Image(systemName: "xmark").font(.headline).padding(12)
+                                .background(.black.opacity(0.55), in: Circle()).foregroundStyle(.white)
+                        }
+                        .accessibilityLabel("Close")
                     }
-                    .accessibilityLabel("Close")
+                    Spacer()
                 }
-                Spacer()
             }
             Spacer()
             if mode == .playing || mode == .recording || mode == .finishing {
-                HStack {
-                    Spacer()
-                    Text("MURY").font(MuryTypography.font(.headline, size: 16, weight: .bold)).tracking(2)
-                        .foregroundStyle(.white).shadow(radius: 3)
-                        .padding(.bottom, 18)
-                }
+                VideoInfoCard(info: overlayInfo, progress: plan.state(at: flyTime).routeProgress)
             }
             if mode == .loading {
                 pill("Loading MapTiler map…")
