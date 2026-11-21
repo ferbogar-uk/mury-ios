@@ -12,12 +12,12 @@ final class ReplayTests: XCTestCase {
         }
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
         app.tabBars.buttons["Activities"].tap()
-        let activity = app.cells.firstMatch
+        let activity = app.activityCard()
         guard activity.waitForExistence(timeout: 5) else {
             throw XCTSkip("Requires an existing activity, such as the first-launch samples. No data is inserted or deleted.")
         }
         // Select an existing Run row; sample data is never recreated or deleted.
-        let link = app.cells.containing(.staticText, identifier: "Run").firstMatch
+        let link = app.activityCard("run")
         guard link.exists else {
             throw XCTSkip("No existing Run sample is visible; this test never resets owner data.")
         }
@@ -58,7 +58,7 @@ final class ReplayTests: XCTestCase {
         }
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
         app.tabBars.buttons["Activities"].tap()
-        let link = app.cells.containing(.staticText, identifier: "Run").firstMatch
+        let link = app.activityCard("run")
         guard link.waitForExistence(timeout: 5) else {
             throw XCTSkip("No existing Run sample is visible; this test never resets owner data.")
         }

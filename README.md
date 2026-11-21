@@ -48,22 +48,7 @@ touches the network.
   bar is tinted; other tabs keep the default liquid-glass). The card floats
   above the map as a translucent black overlay in dark mode (form
   content stays legible, map shows through faintly).
-- **Activities** — list header is the horizontal wordmark (no title text, no
-  separate leading toolbar icon — avoids the "glass" chip iOS puts behind
-  bare toolbar images); auto-refreshes via `@Query`. A "This week"
-  distance/time/count strip sits above the list, and activities are grouped
-  into month sections instead of one flat list; each row shows the event
-  title (falls back to the sport label). Detail (premium redesign, build 35)
-  opens with a full-width map (route draws itself with a bouncing
-  sport-symbol rider), then sport, date and source (Apple Health, Apple Watch,
-  iPhone, GPX), the title, the distance in large type and a grid of the other
-  numbers (time, pace or speed, elevation, best pace or top speed, heart rate,
-  estimated calories — each only when known), Replay and Flyover buttons,
-  per-kilometre splits with the fastest in brand red, an elevation profile
-  (only when the GPS points carry altitude that varies), a heart-rate
-  graph with the five zones behind it (drag across it to read any moment) and
-  a time-in-zones card — both only when the activity has enough HR readings — and
-  an overflow (`•••`) menu for Share / **Rename event** / Delete.
+- **Activities** — premium redesign (build 38): horizontal wordmark header with the Import menu (GPX, Apple Health); sport filter chips (only sports present, most used first, shown when there are two or more); months as pinned headers with the month's distance, count and time ("November", or "October 2025" for other years); activities with a route as map cards (same card as Home), activities without a route as compact cards with a sport tile and up to three numbers (distance, time and pace for a treadmill, otherwise time, average heart rate and calories). The "This week" strip moved out (Home has it).
 - **Share** — three swipeable 1080x1920 (Instagram Story ratio) templates:
   a classic card (sport icon + wordmark up top, a big route path line +
   stats, and the date in the footer — no event title, over a photo or a

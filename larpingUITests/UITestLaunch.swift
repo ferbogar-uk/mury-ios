@@ -10,4 +10,12 @@ extension XCUIApplication {
         app.launchEnvironment["MURY_UI_TEST_SKIP_ONBOARDING"] = "1"
         return app
     }
+
+    /// An activity card in the Activities list (`activity-row-<sport>`), or any card when `sport` is nil.
+    @MainActor
+    func activityCard(_ sport: String? = nil) -> XCUIElement {
+        let predicate = sport.map { NSPredicate(format: "identifier == %@", "activity-row-" + $0) }
+            ?? NSPredicate(format: "identifier BEGINSWITH %@", "activity-row-")
+        return descendants(matching: .any).matching(predicate).firstMatch
+    }
 }
