@@ -6,12 +6,12 @@ final class SportTypeTests: XCTestCase {
         XCTAssertEqual(SportType.allCases.count, 22)
         XCTAssertEqual(Set(SportType.allCases.map(\.label)).count, 22)
         XCTAssertEqual(Set(SportType.allCases.map(\.rawValue)).count, 22)
-        XCTAssertTrue(SportType.allCases.allSatisfy { $0.symbolName.hasPrefix("figure.") || $0 == .strength })
+        XCTAssertTrue(SportType.allCases.allSatisfy { $0.symbolName.hasPrefix("figure.") })
     }
 
-    /// Strength has a custom icon (`SportIcon`), so its name is not an SF Symbol; the drawing code looks for exactly this text.
-    func testStrengthUsesTheCustomIconName() {
-        XCTAssertEqual(SportType.strength.symbolName, "mury.strength")
+    /// Strength uses Apple's own symbol, the same as Apple Watch.
+    func testStrengthUsesTheAppleSymbol() {
+        XCTAssertEqual(SportType.strength.symbolName, "figure.strengthtraining.traditional")
     }
 
     func testStoredRawValuesNeverChange() {
