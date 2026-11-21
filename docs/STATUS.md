@@ -760,3 +760,7 @@ Ricardo's build 40 render worked (30 s, 720x1280, about 10 minutes, no crash, go
 ## 2026-11-21 — Build 43: custom strength icon
 
 Ricardo did not like the first icon options (stick figures on a pull-up bar, a red-circle badge) and picked the thin red figure of the Pilates row with the barbell pose of Apple Health's strength icon. `SportType.strength.symbolName` is now `mury.strength`, drawn by the new `SportIcon` (SwiftUI shape and Core Graphics image) at every place a sport icon appears (lists, cards, Stats, video marker and card, share image). Protected file `Models/Activity.swift` changed (one line); its hash in `docs/mury-protected-files.json` was updated in the same PR, as agreed. Unverified on a device: the figure's size and weight next to SF Symbols at each size, and Picker/Menu rows (iOS may show text only there).
+
+## 2026-11-21 — Build 44: Apple strength icon back
+
+Build 43's custom strength figure looked too thin next to the other icons on Ricardo's phone, so strength is back to Apple's `figure.strengthtraining.traditional` (the Apple Watch icon). `SportIcon` keeps only the thin wrappers (`SportSymbol`, `SportLabel`, `uiImage`) so call sites did not change. Protected file `Models/Activity.swift` changed (one line); its hash was updated in the same PR. Test `testStrengthUsesTheAppleSymbol` replaces the custom-name test.
