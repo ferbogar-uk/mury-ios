@@ -30,7 +30,7 @@ struct ImportGPXView: View {
                     Section("Details") {
                         Picker("Sport", selection: $sportType) {
                             ForEach(SportType.allCases) { sport in
-                                Label(sport.label, systemImage: sport.symbolName).tag(sport)
+                                SportLabel(sport.label, symbol: sport.symbolName).tag(sport)
                             }
                         }
                     }

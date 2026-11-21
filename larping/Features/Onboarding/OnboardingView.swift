@@ -310,7 +310,7 @@ private struct SelectCard: View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top) {
-                    Image(systemName: symbol)
+                    SportSymbol(symbol, size: 24)
                         .font(.system(size: 24, weight: .medium))
                         .foregroundStyle(isOn ? theme.accent : theme.ink)
                         .frame(height: 28)

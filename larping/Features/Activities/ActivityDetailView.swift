@@ -175,7 +175,7 @@ extension ActivityDetailView {
     fileprivate var header: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                Image(systemName: activity.sportType.symbolName)
+                SportSymbol(activity.sportType.symbolName)
                     .foregroundStyle(theme.accent)
                     .accessibilityHidden(true)
                 Text(metaLine)
@@ -412,7 +412,7 @@ private struct RouteMap: View {
                 // the route while it draws, bouncing gently — it comes to rest
                 // at the finish when the draw completes.
                 Annotation("", coordinate: coordinates[revealedCount - 1]) {
-                    Image(systemName: sportType.symbolName)
+                    SportSymbol(sportType.symbolName, size: 15)
                         .font(.subheadline.bold())
                         .foregroundStyle(theme.routeCasing)
                         .padding(7)

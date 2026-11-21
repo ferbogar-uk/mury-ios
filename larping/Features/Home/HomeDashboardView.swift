@@ -103,7 +103,7 @@ struct HomeDashboardView: View {
                 HStack(spacing: 10) {
                     ForEach(SportType.recordable) { sport in
                         Button { onRecord(sport) } label: {
-                            Label(sport.label, systemImage: sport.symbolName)
+                            SportLabel(sport.label, symbol: sport.symbolName)
                                 .font(MuryTypography.font(.body, size: 15, weight: .semibold))
                                 .padding(.horizontal, 16)
                                 .frame(minHeight: 46)

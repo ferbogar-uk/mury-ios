@@ -111,7 +111,7 @@ struct ActivityReplayView: View {
             }
             if let position = frame.position {
                 Annotation("Replay position", coordinate: coordinate(position)) {
-                    Image(systemName: symbol)
+                    SportSymbol(symbol, size: 17)
                         .font(.headline)
                         .foregroundStyle(theme.routeCasing)
                         .padding(8)

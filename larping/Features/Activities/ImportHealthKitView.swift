@@ -55,7 +55,7 @@ struct ImportHealthKitView: View {
                             Section("Import as") {
                                 Picker("Sport", selection: $sportType) {
                                     ForEach(SportType.allCases) { sport in
-                                        Label(sport.label, systemImage: sport.symbolName).tag(sport)
+                                        SportLabel(sport.label, symbol: sport.symbolName).tag(sport)
                                     }
                                 }
                             }
@@ -137,7 +137,7 @@ struct ImportHealthKitView: View {
             sportType = SportType(workout: workout)
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: SportType(workout: workout).symbolName)
+                SportSymbol(SportType(workout: workout).symbolName, size: 24)
                     .font(.title2)
                     .foregroundStyle(.tint)
                     .frame(width: 36)

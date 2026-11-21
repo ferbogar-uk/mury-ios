@@ -138,7 +138,7 @@ struct ShareImageComposer {
     }
 
     private func drawSport(_ stats: Stats, in box: CGRect, color: UIColor, soft: Bool = false) {
-        guard let glyph = UIImage(systemName: stats.symbolName, withConfiguration: UIImage.SymbolConfiguration(pointSize: box.height, weight: .bold)) else { return }
+        guard let glyph = SportIcon.uiImage(named: stats.symbolName, pointSize: box.height, weight: .bold) else { return }
         let scale = min(box.width / glyph.size.width, box.height / glyph.size.height)
         let size = CGSize(width: glyph.size.width * scale, height: glyph.size.height * scale)
         let rect = CGRect(x: box.midX - size.width / 2, y: box.minY, width: size.width, height: size.height)
@@ -488,7 +488,7 @@ struct ShareImageComposer {
     /// top-right placement — keeps the info card's title/date flush left
     /// instead of indented past an icon.
     private func drawTopLeftIcon(_ stats: Stats) {
-        guard let glyph = UIImage(systemName: stats.symbolName, withConfiguration: UIImage.SymbolConfiguration(pointSize: 44, weight: .bold)) else { return }
+        guard let glyph = SportIcon.uiImage(named: stats.symbolName, pointSize: 44, weight: .bold) else { return }
         let rect = CGRect(x: 54, y: 170, width: glyph.size.width, height: glyph.size.height)
         glyph.withTintColor(UIColor.black.withAlphaComponent(0.75)).draw(in: rect.offsetBy(dx: 0, dy: 5))
         glyph.withTintColor(white).draw(in: rect)

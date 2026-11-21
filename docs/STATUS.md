@@ -756,3 +756,7 @@ Mockup approved. Stats rebuilt: Week / Month / Year / All picker, big distance w
 ## 2026-11-21 — Build 42: route line follows the real map projection
 
 Ricardo's build 40 render worked (30 s, 720x1280, about 10 minutes, no crash, good quality) but the route line left the streets in places. Frames from his video also show grey blocks where 3D tiles had not loaded (the 0.7 s wait from build 40, not fixed here). The line is now positioned with `DirectMapCapture.project`, the live map view's own `convert`, instead of the hand-made 30 degree projection. Unverified on a device: whether the line now matches the streets, and that this does not repeat the build 14 crash. `convert` is flat-ground, so steep terrain can still show a small offset. Speed (about 1 s a frame) not addressed.
+
+## 2026-11-21 — Build 43: custom strength icon
+
+Ricardo did not like the first icon options (stick figures on a pull-up bar, a red-circle badge) and picked the thin red figure of the Pilates row with the barbell pose of Apple Health's strength icon. `SportType.strength.symbolName` is now `mury.strength`, drawn by the new `SportIcon` (SwiftUI shape and Core Graphics image) at every place a sport icon appears (lists, cards, Stats, video marker and card, share image). Protected file `Models/Activity.swift` changed (one line); its hash in `docs/mury-protected-files.json` was updated in the same PR, as agreed. Unverified on a device: the figure's size and weight next to SF Symbols at each size, and Picker/Menu rows (iOS may show text only there).

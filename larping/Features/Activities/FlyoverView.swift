@@ -153,7 +153,7 @@ struct FlyoverView: View {
     // MARK: - Map
 
     private var runnerBadge: some View {
-        Image(systemName: symbol)
+        SportSymbol(symbol, size: 17)
             .font(.headline)
             .foregroundStyle(theme.routeCasing)
             .padding(8)

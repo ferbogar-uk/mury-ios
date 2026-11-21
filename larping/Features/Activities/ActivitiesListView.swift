@@ -128,7 +128,7 @@ struct ActivitiesListView: View {
     private func chip(_ label: String, symbol: String?, selected: Bool, id: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                if let symbol { Image(systemName: symbol).accessibilityHidden(true) }
+                if let symbol { SportSymbol(symbol, size: 14).accessibilityHidden(true) }
                 Text(label)
             }
             .font(MuryTypography.font(.subheadline, size: 14, weight: .semibold))
@@ -197,7 +197,7 @@ private struct CompactActivityCard: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            Image(systemName: activity.sportType.symbolName)
+            SportSymbol(activity.sportType.symbolName, size: 24)
                 .font(.system(size: 24, weight: .semibold))
                 .foregroundStyle(theme.accent)
                 .frame(width: 52, height: 52)

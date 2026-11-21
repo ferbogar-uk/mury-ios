@@ -48,7 +48,7 @@ nonisolated enum SportType: String, Codable, CaseIterable, Identifiable {
         case .rowing: "figure.outdoor.rowing"
         case .tennis: "figure.tennis"
         case .football: "figure.soccer"
-        case .strength: "figure.strengthtraining.traditional"
+        case .strength: "mury.strength" // custom icon, drawn by SportIcon (not an SF Symbol)
         case .treadmill: "figure.run.treadmill"
         case .indoorCycle: "figure.indoor.cycle"
         case .stairs: "figure.stair.stepper"

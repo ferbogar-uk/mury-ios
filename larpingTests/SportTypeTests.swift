@@ -6,7 +6,12 @@ final class SportTypeTests: XCTestCase {
         XCTAssertEqual(SportType.allCases.count, 22)
         XCTAssertEqual(Set(SportType.allCases.map(\.label)).count, 22)
         XCTAssertEqual(Set(SportType.allCases.map(\.rawValue)).count, 22)
-        XCTAssertTrue(SportType.allCases.allSatisfy { $0.symbolName.hasPrefix("figure.") })
+        XCTAssertTrue(SportType.allCases.allSatisfy { $0.symbolName.hasPrefix("figure.") || $0 == .strength })
+    }
+
+    /// Strength has a custom icon (`SportIcon`), so its name is not an SF Symbol; the drawing code looks for exactly this text.
+    func testStrengthUsesTheCustomIconName() {
+        XCTAssertEqual(SportType.strength.symbolName, "mury.strength")
     }
 
     func testStoredRawValuesNeverChange() {
