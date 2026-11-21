@@ -205,37 +205,20 @@ Device numbers (builds 19-21, iPhone, iOS 27): the memory guard stopped a 30 s r
 Build 22 on a phone: *Record video* showed "Flyover stopped because MURY left the screen" (the system screen-recording permission alert makes the scene `.inactive`, and the scene-phase handler stopped on anything but `.active`), and the next try showed "Failed due to attempting to stop a recording that wasn't in recording state" (the earlier cancelled attempt finished starting later and its cleanup stopped the new recording). Now only `.background` stops a run, and `finishRun` checks `isRecording` first with a plain message. Unverified on a device.
 
 
-## Map cinema (test, build 24): MapTiler needs internet, a key and written terms
+## Video and Health notes (builds 26 to 36)
 
-- **Privacy change, only on this screen**: *Map cinema (test)* loads map tiles and the satellite/terrain style from MapTiler over the internet (the app is otherwise fully offline). Nothing of the activity is uploaded except the map areas the camera looks at, which MapTiler can see as tile requests. Everything else in the app is unchanged.
-- **Key**: the repository is public, so the key is not in the source. The workflows (`ci.yml`, `ios-testflight.yml`) write `larping/MapTilerKey.txt` from the GitHub secret `MAPTILER_API_KEY` before building; the file is gitignored. No secret (a fork, or before it is added) means no file and the screen says "This build has no MapTiler key". A mobile key is visible inside the installed app, so keep it restricted in the MapTiler account (do NOT set HTTP-origin restrictions: the SDK sends none and the map would not load).
-- **Terms**: the MapTiler free plan is for testing and non-commercial use (commercial needs a paid plan). Their terms on recording or sharing videos of the map are unclear; get written confirmation before a public release.
-- **Not verified**: capture of the web view by the screen recorder (black frames are possible), the camera/zoom conversion, and the fixed 4 s load wait. The SDK has no "ready" hook the container leaves free and no snapshot API.
-
-
-## Map cinema build 25: building layer names and idle waits are assumptions
-
-The 3D buildings use the `maptiler_planet` source and `building` layer with `render_height` / `render_min_height`, as in MapTiler vector styles; the SDK reports no error if they do not exist, the map just shows no buildings. Each wait for the map `idle` event has a timeout (10-12 s), so a map that never goes idle still starts after the cap. The warm-up cache is the browser tile cache, which can still drop tiles on a long route.
-
-
-## Map cinema build 26: still screen recording; Apple flyover requests not done yet
-
-Map cinema still films with the system screen recorder (the permission prompt and the second tap he dislikes). There is no alternative with MapTiler: its SDK has no capture function and a WebGL page gives black snapshots. Not done in build 26: sky/lower camera/MURY logo on the Apple flyover and bringing back Render in app (it stopped on MapKit snapshot memory, see "Render in app is switched off"); these need a decision first.
 
 - **Render in app is on again, for 8 s clips only (build 26)**: see the entry "Render in app is switched off (build 22)": the cause is unchanged (MapKit keeps ~10 MB per snapshot), so longer clips would be stopped by the memory guard. The 15/30/60 s picker applies to Preview and Record video, not to Render in app. The Apple map has no sky setting.
 
 
-- MapTiler web view cannot read `file://` URLs: never feed a source with `setData(data: <file URL>)`. Reveal data with a layer filter or send a `data:` URL instead.
 
 - Render in app waiting screen plays `larping/RenderSample.mp4` (muted loop, made-up sample, not a real run) when that file is in the bundle; without it the screen is the plain black "Making your flyover video…". The file is supplied by Ricardo (generated outside the app) and bundled automatically (synchronized group). Unverified: memory use of the playing video alongside the 2800 MB render guard.
 
 - Build 28 reopened Render in app for 15 / 30 / 60 s on purpose, to test. Expect the 2800 MB guard to stop long clips; the stop message starts with "start N MB": if N is already around 2000, the memory is taken before the render begins (the build 26 print showed 2,679 MB at frame 60 of an 8 s render), if it is a few hundred MB the growth is the snapshots themselves. Not known yet which. The old (build 9/10) renders used the same MKMapSnapshotter code; the earlier clip length they finished at is not recorded.
-- Map cinema has no runner dot in the orbit or the final pull-back (the dot is a fixed overlay on the screen centre, which only matches the runner while the camera follows it, i.e. the follow phase).
 - HealthKit cannot tell an app whether a read was denied. An empty Health looks the same as "no workouts", so Profile points to Settings → Health → Data Access & Devices → MURY. The code never checks read status.
 - Background import (Health waking MURY when a workout is saved) depends on the HealthKit background-delivery entitlement being accepted at signing and on iOS choosing to deliver; treat it as unproven until seen on a phone. New workouts always appear when MURY is opened.
 - Workouts imported before build 31 have no Health id; they are matched by start time (within 60 s) so the backfill does not duplicate them.
 - First launch needs all four body fields (birth date, sex, height, weight); units are metric only until the Settings phase.
-- Health sports other than run, ride, walk, hike and swim import as "Other" until the activity-types phase.
 - Tab bar item colours are set through `UITabBarAppearance` in `RootTabView.init`, while the bar background also comes from SwiftUI `.toolbarBackground`. If a future change makes SwiftUI rebuild the tab bar appearance, unselected icons can fall back to iOS grey; check on a phone after tab bar changes.
 - Since build 33 MURY asks Health for 23 types, but only workouts, routes, heart rate, energy and body details are shown so far; the rest (VO2 max, HRV, resting heart rate, steps, cycling and running power and the like) get screens in the progress phase. App Store review expects requested data to be used, so those screens must ship before an App Store submission.
 

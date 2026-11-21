@@ -11,7 +11,7 @@
   "larping/Features/Activities/ActivitiesStore.swift": "8b749191627aef563e8ecdfb79a7f117f9b8997b1722f80dc9b7ed2fdc861f69",
   "larping/Info.plist": "17ddffab055265e5562d1fab6830f1adb95f41ded0cff88b22eb9551b6891d4f",
   "larping/larping.entitlements": "7cc1845a61bcc59719b36ea5415d999e44523ef628befd6638459d5ff60f1ba1",
-  ".github/workflows/ci.yml": "01a045506efc4650f5b8dcede6f7901e140638f13c7097fb695e547f43146df8",
-  ".github/workflows/ios-testflight.yml": "95f7622bc6615b797a3f49c9b0d720bd5eaa9415f874d4c817778f7cf13a51fe",
+  ".github/workflows/ci.yml": "548fbd4348daa922a12b19ad3fe7e46dce4c7db1586c6812b3c51a09f570b2a0",
+  ".github/workflows/ios-testflight.yml": "1f423d2db14cd10c3501af04a82f98c81b21a6a69bdaec3fe4735363664bc589",
   "LICENSE": "137156ea54ca200b7efe1c389479cee78e06a796ea3650a94a3631cc2fee54f2"
 }

@@ -12,7 +12,6 @@ struct ActivityDetailView: View {
     @State private var showShareSheet = false
     @State private var showReplay = false
     @State private var showFlyover = false
-    @State private var showMapCinema = false
     @State private var showRename = false
     @State private var renameText = ""
     @State private var actionErrorMessage: String?
@@ -71,12 +70,6 @@ struct ActivityDetailView: View {
                     }
                     .accessibilityIdentifier("activity-share")
                     Button {
-                        showMapCinema = true
-                    } label: {
-                        Label("Map cinema (test)", systemImage: "film")
-                    }
-                    .accessibilityIdentifier("activity-map-cinema")
-                    Button {
                         renameText = title
                         showRename = true
                     } label: {
@@ -103,9 +96,6 @@ struct ActivityDetailView: View {
         }
         .fullScreenCover(isPresented: $showFlyover) {
             FlyoverView(activity: activity)
-        }
-        .fullScreenCover(isPresented: $showMapCinema) {
-            MapCinemaView(activity: activity)
         }
         .alert("Rename event", isPresented: $showRename) {
             TextField("Event name", text: $renameText)

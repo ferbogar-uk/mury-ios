@@ -101,20 +101,13 @@ jobs:
 
           security find-identity -v -p codesigning build.keychain
 
-      - name: Write MapTiler key
-        env:
-          MAPTILER_API_KEY: ${{ secrets.MAPTILER_API_KEY }}
-        run: |
-          # Public repo: the key lives only in the GitHub secret. No secret (a fork) means no file and no map.
-          if [ -n "$MAPTILER_API_KEY" ]; then printf '%s' "$MAPTILER_API_KEY" > larping/MapTilerKey.txt; fi
-
       - name: Archive iOS app
         run: |
           set -o pipefail
 
           # Each app is signed with its own profile (iPhone app and embedded watch app). The profile names are
-          # set per target in the project (Release); a global setting here also hit the MapTiler package's
-          # resource bundle, which cannot take a profile and failed the archive in build 24.
+          # set per target in the project (Release); a global setting would also hit any Swift package's
+          # resource bundle, which cannot take a profile (it failed the archive in build 24).
           xcodebuild archive \
             -project larping.xcodeproj \
             -scheme larping \
