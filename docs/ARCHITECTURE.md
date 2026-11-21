@@ -87,7 +87,7 @@ Features/
                   Replay/Flyover buttons, splits card, elevation card via Core/ActivityAnalysis — Foundation-only, Linux-tested),
                   HeartRateSection (graph + zones card, Swift Charts),
                   ImportGPXView, ImportHealthKitView, ShareActivityView, ActivitiesStore
-  Stats/         StatsView — Swift Charts last-7-days + all-time + per-sport + personal bests
+  Stats/         StatsView — period picker (Week/Month/Year/All), hero distance with change vs previous period, metric cards, Swift Charts bar chart with touch selection, per-sport card, all-time personal bests; StatsReport (period maths, Foundation-only, Linux-tested); StatsSummary (all-time and bests)
   Profile/       ProfileView — cover card (fixed gradient, no photo upload) + name/bio, backup export/import; SettingsView — theme and appearance
 ```
 
@@ -343,12 +343,7 @@ Core Graphics.
 
 `ActivitiesListView` (build 38) is a `ScrollView` + `LazyVStack` with pinned month headers (`MonthGrouping.sections`). Filters, month totals, titles and the count label come from the Foundation-only `Features/Activities/ActivityListRules.swift` (Linux-tested in `ActivityListRulesTests`). Cards: `ActivityRouteCard` when the activity has more than one track point, otherwise the private `CompactActivityCard`. Each card link carries `activity-row-<sport raw value>` (UI tests find them with `XCUIApplication.activityCard(_:)` in `UITestLaunch.swift`); chips are `activity-filter-all` / `activity-filter-<sport>`.
 
-`StatsView` keeps the last-7-days chart + per-sport section (now also shows
-total time, activity count, and max heart rate per sport when any activity
-carries one) and adds two all-time sections: raw totals
-(distance/time/activity count across everything ever recorded) and "Personal
-bests" (longest single-activity distance, longest single-activity duration,
-and highest max heart rate, each with their sport icon).
+`StatsView` (rebuilt in build 41) shows one `StatsReport` for the picked `StatsPeriod` (`Features/Stats/StatsReport.swift`, Foundation-only, Linux-tested in `StatsReportTests`). Periods: week = last 7 days, month = last 30 days, year = last 12 calendar months, all = everything. The change percentage compares distance with the period of the same length just before (nil for All and when the earlier period had no distance). Bars are days (week, month), months (year; All under 12 months) or years (All beyond that). Average pace counts run, walk, hike and treadmill activities only. The same rule as `StatsSummary` applies first: sample activities and activities that start after "now" never count. The chart highlights the biggest bar in the accent colour and moves the highlight to the bar under the finger (`chartXSelection`); the "Personal bests" cards come from `StatsSummary` and are always all-time, whatever period is picked. Identifiers: `stats-period` (picker), `stats-total` (big number).
 
 ## Backup / restore
 
