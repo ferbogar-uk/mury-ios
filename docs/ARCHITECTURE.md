@@ -341,13 +341,7 @@ Core Graphics.
 
 ## Activities list & Stats enrichment
 
-`ActivitiesListView` is no longer a flat list: a "This week" stat strip
-(distance/time/count, same shape as `StatColumn`) sits above the rows, and
-activities are grouped into `Section`s by month (`Dictionary(grouping:)` on
-a `"MMMM yyyy"`-formatted key, sections sorted newest-first). Each row's
-title is the event name (falls back to the sport label) instead of the
-generic sport label, matching how Detail/Share already prioritize the event
-title.
+`ActivitiesListView` (build 38) is a `ScrollView` + `LazyVStack` with pinned month headers (`MonthGrouping.sections`). Filters, month totals, titles and the count label come from the Foundation-only `Features/Activities/ActivityListRules.swift` (Linux-tested in `ActivityListRulesTests`). Cards: `ActivityRouteCard` when the activity has more than one track point, otherwise the private `CompactActivityCard`. Each card link carries `activity-row-<sport raw value>` (UI tests find them with `XCUIApplication.activityCard(_:)` in `UITestLaunch.swift`); chips are `activity-filter-all` / `activity-filter-<sport>`.
 
 `StatsView` keeps the last-7-days chart + per-sport section (now also shows
 total time, activity count, and max heart rate per sport when any activity

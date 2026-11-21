@@ -12,7 +12,7 @@ final class ShareActivityTests: XCTestCase {
         }
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
         app.tabBars.buttons["Activities"].tap()
-        let activity = app.cells.containing(.staticText, identifier: "Run").firstMatch
+        let activity = app.activityCard("run")
         XCTAssertTrue(activity.waitForExistence(timeout: 5), "Requires existing seeded Run activity; never recreates or deletes data.")
         activity.tap()
         app.buttons["activity-actions"].tap()

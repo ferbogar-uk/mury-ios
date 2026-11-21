@@ -736,3 +736,7 @@ Ricardo approved the 22-type list. New `SportType` cases with SF Symbols and Por
 ## 2026-11-21 — Build 37: Map cinema removed, CI trimmed
 
 Ricardo decided (voice call) to drop Map cinema and MapTiler: the Apple flyover stays, and a new Render in app comes next. Removed `MapCinemaView`, `MapCinemaMath` (and its tests), `MapTilerConfig`, the `MapTilerSDK` Swift package, the key steps in both workflows and the `.gitignore` entry. The MapTiler secret in GitHub is no longer read and can be deleted by him. CI: the macOS test step stops after 40 minutes and the job after 75 (build 34 hung for over 3 hours); tests already run on Linux are skipped on macOS (list read from `scripts/test-core-logic.sh`), except `GeoDistanceTests`, whose CoreLocation comparison only runs on Apple platforms. Process change: the full CI is no longer run by hand on feature branches; the push to main runs it before any TestFlight upload.
+
+## 2026-11-21 — Build 38: Activities list in the premium style (phase 1.5)
+
+Mockup approved. List rebuilt as cards with sport filter chips and month headers with totals; indoor activities get compact cards (time, heart rate, calories). Logic in `ActivityListRules` (Linux). UI tests that opened activities through list cells now use the card identifiers; new `ActivitiesListTests` checks a filter chip narrows the list. Unverified on a device: scrolling smoothness with many map cards (each card is a live `Map`), pinned headers over the cards.
