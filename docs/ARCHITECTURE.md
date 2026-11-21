@@ -87,7 +87,7 @@ Features/
                   Replay/Flyover buttons, splits card, elevation card via Core/ActivityAnalysis — Foundation-only, Linux-tested),
                   HeartRateSection (graph + zones card, Swift Charts),
                   ImportGPXView, ImportHealthKitView, ShareActivityView, ActivitiesStore
-  Core/SportIcon.swift — custom sport icons that are not SF Symbols (only strength, `mury.strength`: thin figure holding a barbell, Ricardo's design). `SportSymbol` / `SportLabel` (SwiftUI) and `SportIcon.uiImage(named:pointSize:weight:)` (Core Graphics) draw it; every sport icon site must use them instead of `Image(systemName:)` or `Label(systemImage:)`.
+  Core/SportIcon.swift — single entry point for sport icons: `SportSymbol` / `SportLabel` (SwiftUI) and `SportIcon.uiImage(named:pointSize:weight:)` (Core Graphics). Every sport is an SF Symbol from `SportType.symbolName`; strength is Apple's `figure.strengthtraining.traditional` (build 43's custom figure was removed in build 44). Sport icon sites use these wrappers instead of `Image(systemName:)` so a custom icon can be added in one place.
   Stats/         StatsView — period picker (Week/Month/Year/All), hero distance with change vs previous period, metric cards, Swift Charts bar chart with touch selection, per-sport card, all-time personal bests; StatsReport (period maths, Foundation-only, Linux-tested); StatsSummary (all-time and bests)
   Profile/       ProfileView — cover card (fixed gradient, no photo upload) + name/bio, backup export/import; SettingsView — theme and appearance
 ```
