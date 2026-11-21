@@ -748,3 +748,7 @@ Ricardo's idea in the voice call: cover the screen and copy the map behind it. T
 ## 2026-11-21 — Build 40: Render in app no longer looks hung
 
 Ricardo tried build 39 on his phone: the render sat stuck. No numbers yet (screenshot of the render screen asked for). Likely cause: each frame waited up to 3 s for the map to report it had finished drawing, and if that callback does not fire on this phone a 30 s clip is hundreds of frames times 3 s. Now only the first 3 frames wait 3 s, later frames wait 0.7 s; at frame 12 the render stops with a clear `tooSlow` message if it averages over 1.5 s per frame. Unverified on a device: the cause itself (it is a hypothesis) and whether 0.7 s leaves blurry frames while tiles load.
+
+## 2026-11-21 — Build 41: premium Stats
+
+Mockup approved. Stats rebuilt: Week / Month / Year / All picker, big distance with change against the previous period, metric cards, bar chart with a touch-selected bar, per-sport proportion bars, all-time personal bests as cards. Period maths in `StatsReport` (Linux-tested; written without a Swift compiler on this machine, so the Linux CI was its first run). No goals or targets on purpose: the app has no such feature, and a visual-only one would be dishonest. Zero-distance days show no bar (no grey stub as in the mockup). Unverified on a device: layout at large text sizes, touch selection feel, the Year/All axes with real data.

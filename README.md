@@ -88,9 +88,13 @@ touches the network.
   "Health"), pick sports from 16 Apple Exercise types in large cards, pick a goal,
   then a welcome that shows how many workouts came in and the newest one on a
   map. Stored on the device only (`ProfileStorage`, key `userProfile`).
-- **Stats** — last-7-days distance chart + per-sport totals (distance, time,
-  activity count, max heart rate when present), plus all-time totals and
-  personal bests (longest distance, longest duration, highest heart rate).
+- **Stats** (premium rebuild, build 41) — a Week / Month / Year / All picker.
+  Big distance for the period with the change against the period just before
+  ("+18% vs previous 7 days", not shown for All), time, activity count and
+  average pace (run, walk, hike, treadmill only), a bar chart (days, months or
+  years; the biggest bar is red until you touch another one), per-sport rows
+  with a proportion bar, and all-time personal bests (longest distance, longest
+  time, highest heart rate, each with the sport and date).
 - **Sample data** — one-time seed (7 activities, all sports, last 7 days,
   organic random-walk paths) on first install so the app isn't empty. Users
   can delete everything; it never re-seeds (`seedSampleDataV1` flag).
