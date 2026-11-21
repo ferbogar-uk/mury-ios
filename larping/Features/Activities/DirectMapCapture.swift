@@ -17,6 +17,9 @@ final class DirectMapCapture: NSObject, MKMapViewDelegate {
     /// close to an hour and looked like a hang (build 39).
     static let frameWaitSeconds: Double = 0.7
     private var framesCaptured = 0
+    /// Camera of the frame just captured; `project` uses it to drop points that are behind the camera or past the horizon.
+    private var capturedCenter = CLLocationCoordinate2D()
+    private var capturedDistance: CLLocationDistance = 1000
 
     init(size: CGSize) {
         mapView = MKMapView(frame: CGRect(origin: .zero, size: size))
@@ -40,6 +43,8 @@ final class DirectMapCapture: NSObject, MKMapViewDelegate {
             fromDistance: state.distanceMeters,
             pitch: reduceMotion ? 0 : state.pitchDegrees,
             heading: reduceMotion ? 0 : state.headingDegrees)
+        capturedCenter = camera.centerCoordinate
+        capturedDistance = state.distanceMeters
         frameToken += 1
         let token = frameToken
         let wait = framesCaptured < 3 ? Self.firstFrameWaitSeconds : Self.frameWaitSeconds
@@ -60,6 +65,19 @@ final class DirectMapCapture: NSObject, MKMapViewDelegate {
         return UIGraphicsImageRenderer(bounds: mapView.bounds, format: format).image { _ in
             _ = mapView.drawHierarchy(in: mapView.bounds, afterScreenUpdates: true)
         }
+    }
+
+    /// Where a coordinate sits on the frame just captured, in the same points as the copied picture. Uses the map
+    /// view's own projection (real field of view and tilt), so the route lands where the map shows it. Nil when the
+    /// point is far behind the camera or past the horizon, where the projection is meaningless.
+    func project(latitude: Double, longitude: Double) -> CGPoint? {
+        let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+        guard CLLocationCoordinate2DIsValid(coordinate) else { return nil }
+        let reach = max(capturedDistance * 6, 3000)
+        guard MKMapPoint(coordinate).distance(to: MKMapPoint(capturedCenter)) <= reach else { return nil }
+        let point = mapView.convert(coordinate, toPointTo: mapView)
+        guard point.x.isFinite, point.y.isFinite, abs(point.x) < 6000, abs(point.y) < 6000 else { return nil }
+        return point
     }
 
     private func finishWaiting() {

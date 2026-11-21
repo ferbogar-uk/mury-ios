@@ -752,3 +752,7 @@ Ricardo tried build 39 on his phone: the render sat stuck. No numbers yet (scree
 ## 2026-11-21 — Build 41: premium Stats
 
 Mockup approved. Stats rebuilt: Week / Month / Year / All picker, big distance with change against the previous period, metric cards, bar chart with a touch-selected bar, per-sport proportion bars, all-time personal bests as cards. Period maths in `StatsReport` (Linux-tested; written without a Swift compiler on this machine, so the Linux CI was its first run). No goals or targets on purpose: the app has no such feature, and a visual-only one would be dishonest. Zero-distance days show no bar (no grey stub as in the mockup). Unverified on a device: layout at large text sizes, touch selection feel, the Year/All axes with real data.
+
+## 2026-11-21 — Build 42: route line follows the real map projection
+
+Ricardo's build 40 render worked (30 s, 720x1280, about 10 minutes, no crash, good quality) but the route line left the streets in places. Frames from his video also show grey blocks where 3D tiles had not loaded (the 0.7 s wait from build 40, not fixed here). The line is now positioned with `DirectMapCapture.project`, the live map view's own `convert`, instead of the hand-made 30 degree projection. Unverified on a device: whether the line now matches the streets, and that this does not repeat the build 14 crash. `convert` is flat-ground, so steep terrain can still show a small offset. Speed (about 1 s a frame) not addressed.

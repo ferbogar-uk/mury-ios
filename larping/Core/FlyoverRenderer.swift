@@ -148,7 +148,7 @@ enum FlyoverRenderer {
             try autoreleasepool {
                 let image = draw(mapImage: mapImage, state: state, frame: frame, timeline: timeline,
                                  routeColor: routeColor, symbolName: symbolName, overlayInfo: overlayInfo,
-                                 reduceMotion: reduceMotion)
+                                 reduceMotion: reduceMotion, capture: capture)
                 // A full-size picture goes to the screen only every 4th frame, so the screen never holds many.
                 preview = index % 4 == 0 ? image : nil
                 memoryAfterDraw = currentMemoryMegabytes()
@@ -210,36 +210,35 @@ enum FlyoverRenderer {
         routeColor: UIColor,
         symbolName: String,
         overlayInfo: VideoOverlayInfo,
-        reduceMotion: Bool
+        reduceMotion: Bool,
+        capture: DirectMapCapture
     ) -> UIImage {
         let format = UIGraphicsImageRendererFormat()
         format.scale = scale
         format.opaque = true
         let renderer = UIGraphicsImageRenderer(size: pointSize, format: format)
+        // Projected here, on the main actor, with the live map view's own projection for the frame just captured
+        // (build 42). The earlier hand-made one assumed a 30 degree field of view over flat ground and the route
+        // drifted off the streets. The drawing closure below only uses these ready-made points.
+        func projectAll(_ segments: [[ReplayCoordinate]]) -> [[CGPoint?]] {
+            segments.map { segment in segment.map { capture.project(latitude: $0.latitude, longitude: $0.longitude) } }
+        }
+        let fullRoute = projectAll(timeline.segments)
+        let revealedRoute = projectAll(frame.revealedSegments)
+        let startPoint = timeline.segments.first?.first.flatMap { capture.project(latitude: $0.latitude, longitude: $0.longitude) }
+        let markerPoint = frame.position.flatMap { capture.project(latitude: $0.latitude, longitude: $0.longitude) }
         return renderer.image { context in
             mapImage.draw(in: CGRect(origin: .zero, size: pointSize))
             let cg = context.cgContext
-            // Own projection with the same camera the map was moved to.
-            let camera = FlyoverProjection.Camera(
-                centerLatitude: state.centerLatitude, centerLongitude: state.centerLongitude,
-                distanceMeters: state.distanceMeters,
-                headingDegrees: reduceMotion ? 0 : state.headingDegrees,
-                pitchDegrees: reduceMotion ? 0 : state.pitchDegrees)
-            func project(_ latitude: Double, _ longitude: Double) -> CGPoint? {
-                guard let p = FlyoverProjection.project(latitude: latitude, longitude: longitude, camera: camera,
-                                                        width: Double(pointSize.width), height: Double(pointSize.height)) else { return nil }
-                return CGPoint(x: p.x, y: p.y)
-            }
-
-            func strokeRoute(_ segments: [[ReplayCoordinate]], alpha: CGFloat) {
+            func strokeRoute(_ segments: [[CGPoint?]], alpha: CGFloat) {
                 cg.setStrokeColor(routeColor.withAlphaComponent(alpha).cgColor)
                 cg.setLineWidth(4)
                 cg.setLineCap(.round)
                 cg.setLineJoin(.round)
                 for segment in segments where segment.count > 1 {
                     var drawing = false
-                    for point in segment {
-                        guard let p = project(point.latitude, point.longitude) else {
+                    for projected in segment {
+                        guard let p = projected else {
                             if drawing { cg.strokePath() }
                             drawing = false
                             continue
@@ -249,10 +248,10 @@ enum FlyoverRenderer {
                     if drawing { cg.strokePath() }
                 }
             }
-            strokeRoute(timeline.segments, alpha: 0.3)
-            strokeRoute(frame.revealedSegments, alpha: 1)
+            strokeRoute(fullRoute, alpha: 0.3)
+            strokeRoute(revealedRoute, alpha: 1)
 
-            if let first = timeline.segments.first?.first, let p = project(first.latitude, first.longitude) {
+            if let p = startPoint {
                 cg.setFillColor(UIColor.systemGreen.cgColor)
                 cg.fillEllipse(in: CGRect(x: p.x - 7, y: p.y - 7, width: 14, height: 14))
                 cg.setStrokeColor(UIColor.white.cgColor)
@@ -260,8 +259,7 @@ enum FlyoverRenderer {
                 cg.strokeEllipse(in: CGRect(x: p.x - 7, y: p.y - 7, width: 14, height: 14))
             }
 
-            if state.phase != .overview, state.markerDrop < 1, let position = frame.position,
-               var p = project(position.latitude, position.longitude) {
+            if state.phase != .overview, state.markerDrop < 1, var p = markerPoint {
                 p.y -= CGFloat(state.markerDrop) * 360
                 let alpha = CGFloat(min(1, (1 - state.markerDrop) * 6))
                 let rect = CGRect(x: p.x - 16, y: p.y - 16, width: 32, height: 32)
