@@ -740,3 +740,7 @@ Ricardo decided (voice call) to drop Map cinema and MapTiler: the Apple flyover 
 ## 2026-11-21 — Build 38: Activities list in the premium style (phase 1.5)
 
 Mockup approved. List rebuilt as cards with sport filter chips and month headers with totals; indoor activities get compact cards (time, heart rate, calories). Logic in `ActivityListRules` (Linux). UI tests that opened activities through list cells now use the card identifiers; new `ActivitiesListTests` checks a filter chip narrows the list. Unverified on a device: scrolling smoothness with many map cards (each card is a live `Map`), pinned headers over the cards.
+
+## 2026-11-21 — Build 39: new Render in app (direct map copy)
+
+Ricardo's idea in the voice call: cover the screen and copy the map behind it. The in-app render no longer asks `MKMapSnapshotter` for a new picture per frame (each kept memory the map engine never released, so long clips hit the 2800 MB guard); it moves one live Apple 3D map view, kept on screen under the render cover, to each frame's camera and copies it with `drawHierarchy` (`DirectMapCapture`). The old method is gone (it is in git history if this fails). Risk said up front: Apple's Metal-drawn 3D map can come out black when copied; the render checks frame 5 and stops with a clear message instead of making a black video. Unverified until tried on his phone: whether the copy shows the 3D map, speed per frame, and memory over 30 and 60 s clips (the memory line on the render screen still reports it).

@@ -225,3 +225,7 @@ Build 22 on a phone: *Record video* showed "Flyover stopped because MURY left th
 ## Indoor types can't be recorded yet — not a bug
 
 Strength, Treadmill, Yoga and the other indoor types (build 36) only arrive from Apple Health. The Record menu and Home shortcuts list just the outdoor types, because the recorder is GPS-only. Timer-only indoor recording is phase 7.
+
+## Render in app copies the live map (build 39) — may come out black
+
+The new Render in app copies a live Apple 3D map view each frame. Apple draws that map with Metal, and on some devices such copies are black. If frame 5 is nearly all black the render stops with "The 3D map came out black when copied on this phone…" and Record video is the way to make the video. The map view must be on screen to draw, so it sits under the black render cover.
