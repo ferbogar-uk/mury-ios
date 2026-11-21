@@ -11,8 +11,12 @@ final class DirectMapCapture: NSObject, MKMapViewDelegate {
     /// Counts frames, so a late timeout from one frame can never end the wait for the next.
     private var frameToken = 0
 
-    /// How long one frame may wait for the map to finish drawing before it is copied as it is.
-    static let frameWaitSeconds: Double = 3
+    /// How long the first frames may wait for the map to finish drawing before they are copied as they are.
+    static let firstFrameWaitSeconds: Double = 3
+    /// Later frames wait less: if the map never reports "finished" on this phone, 3 s a frame made a 30 s clip take
+    /// close to an hour and looked like a hang (build 39).
+    static let frameWaitSeconds: Double = 0.7
+    private var framesCaptured = 0
 
     init(size: CGSize) {
         mapView = MKMapView(frame: CGRect(origin: .zero, size: size))
@@ -38,12 +42,14 @@ final class DirectMapCapture: NSObject, MKMapViewDelegate {
             heading: reduceMotion ? 0 : state.headingDegrees)
         frameToken += 1
         let token = frameToken
+        let wait = framesCaptured < 3 ? Self.firstFrameWaitSeconds : Self.frameWaitSeconds
+        framesCaptured += 1
         await withCheckedContinuation { continuation in
             rendered?.resume()
             rendered = continuation
             mapView.setCamera(camera, animated: false)
             Task { [weak self] in
-                try? await Task.sleep(for: .seconds(Self.frameWaitSeconds))
+                try? await Task.sleep(for: .seconds(wait))
                 guard let self, self.frameToken == token else { return }
                 self.finishWaiting()
             }

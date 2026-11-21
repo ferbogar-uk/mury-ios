@@ -40,9 +40,12 @@ enum FlyoverRenderer {
     /// The render stops cleanly above this footprint instead of waiting for the system to close the app (it did
     /// at about 3.3 GB on an iPhone in build 18).
     static let memoryLimitMegabytes = 2800
+    /// Checked at frame 12: slower than this and a 30 s clip would take more than about 20 minutes.
+    static let maxSecondsPerFrame = 1.5
 
     enum RenderError: LocalizedError {
         case blackMap
+        case tooSlow(Int, Double)
         case outOfMemory(Int, Int, String)
 
         var errorDescription: String? {
@@ -50,6 +53,8 @@ enum FlyoverRenderer {
             case .outOfMemory(let frame, let megabytes, let stages):
                 return "The render stopped at frame \(frame) because it was using \(megabytes) MB of memory and iOS would have closed MURY. Growth: \(stages). Try a shorter clip."
 
+            case .tooSlow(let frame, let seconds):
+                return "The render stopped at frame \(frame): the 3D map needs \(String(format: "%.1f", seconds)) s per frame on this phone, so the clip would take far too long. Use Record video instead."
             case .blackMap:
                 return "The 3D map came out black when copied on this phone, so Render in app can't work here. Use Record video instead."
             }
@@ -161,6 +166,7 @@ enum FlyoverRenderer {
             if memoryNow > memoryLimitMegabytes { throw RenderError.outOfMemory(done, memoryNow, stages) }
             let parts = begin.duration(to: clock.now).components
             let elapsed = Double(parts.seconds) + Double(parts.attoseconds) / 1e18
+            if index + 1 == 12, elapsed / 12 > maxSecondsPerFrame { throw RenderError.tooSlow(index + 1, elapsed / 12) }
             onProgress?(Progress(frame: index + 1, total: times.count, averageSecondsPerFrame: elapsed / Double(index + 1), preview: preview,
                                        memoryMegabytes: memoryNow, stageText: stages))
             if preview != nil {
