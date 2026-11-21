@@ -3,9 +3,10 @@ import MapKit
 import UIKit
 
 /// EXPERIMENTAL: renders the route flyover to an MP4 inside the app, with no screen recording and no system
-/// permission prompt. Every frame is a separate `MKMapSnapshotter` request for that frame's camera
-/// (`FlyoverPlan.state(at:)`), the route, marker and stats are drawn on top, and `AVAssetWriter` encodes the
-/// result. Frames are rendered one at a time (nothing is kept in memory across frames), each with a bounded wait.
+/// permission prompt. Since build 39 every frame is copied from one live Apple 3D map view (`DirectMapCapture`)
+/// moved to that frame's camera (`FlyoverPlan.state(at:)`); the route, marker and stats are drawn on top, and
+/// `AVAssetWriter` encodes the result. The old method (a new `MKMapSnapshotter` per frame) was removed: each
+/// snapshot kept memory the map engine never gave back.
 ///
 /// Not proven yet (see docs/mury-3d-video-export-feasibility.md): whether snapshots show real 3D geometry at
 /// high pitch, how fast frames render on a device, whether the route lines up at high pitch, and whether
@@ -16,13 +17,6 @@ enum FlyoverRenderer {
     /// Output size in pixels (snapshot points x scale 2).
     static let pointSize = CGSize(width: 360, height: 640)
     static let scale: CGFloat = 2
-    /// The map pictures are requested at fewer pixels than the video (540x960 against 720x1280) and drawn
-    /// slightly enlarged: every picture the map engine makes keeps about 9 MB that it does not give back.
-    static let snapshotScale: CGFloat = 1.5
-    /// How long one frame may take before it is retried once and then reported as failed.
-    static let frameTimeoutSeconds: TimeInterval = 15
-    /// How many map images are requested ahead of the one being encoded (they are still encoded in order).
-    static let prefetchWindow = 1
 
     struct Progress {
         let frame: Int
@@ -48,7 +42,7 @@ enum FlyoverRenderer {
     static let memoryLimitMegabytes = 2800
 
     enum RenderError: LocalizedError {
-        case frameFailed(Int, String)
+        case blackMap
         case outOfMemory(Int, Int, String)
 
         var errorDescription: String? {
@@ -56,8 +50,8 @@ enum FlyoverRenderer {
             case .outOfMemory(let frame, let megabytes, let stages):
                 return "The render stopped at frame \(frame) because it was using \(megabytes) MB of memory and iOS would have closed MURY. Growth: \(stages). Try a shorter clip."
 
-            case .frameFailed(let frame, let reason):
-                return "The map image for frame \(frame) could not be fetched (\(reason)). Check the connection and try again, or record the screen instead."
+            case .blackMap:
+                return "The 3D map came out black when copied on this phone, so Render in app can't work here. Use Record video instead."
             }
         }
     }
@@ -69,6 +63,7 @@ enum FlyoverRenderer {
         symbolName: String,
         overlayInfo: VideoOverlayInfo,
         reduceMotion: Bool,
+        capture: DirectMapCapture,
         onProgress: (@MainActor (Progress) -> Void)? = nil
     ) async throws -> Output {
         try Task.checkCancellation()
@@ -122,23 +117,18 @@ enum FlyoverRenderer {
         // Memory the app already holds before the first picture: tells whether the growth starts in the render or before it.
         let startMegabytes = currentMemoryMegabytes()
         var grewBySnapshot = 0, grewByDraw = 0, grewByEncode = 0, grewByScreen = 0, screenFrames = 0
-        var pending: [Int: Task<MKMapSnapshotter.Snapshot, Error>] = [:]
-        defer {
-            for task in pending.values { task.cancel() }
-        }
         for (index, time) in times.enumerated() {
             try Task.checkCancellation()
             _ = time
-            for ahead in index..<min(index + prefetchWindow, times.count) where pending[ahead] == nil {
-                let aheadState = states[ahead]
-                pending[ahead] = Task { try await fetchSnapshot(for: aheadState, reduceMotion: reduceMotion, frameIndex: ahead) }
-            }
             let state = states[index]
             let frame = timeline.sample(at: state.routeElapsedSeconds)
-            guard let fetch = pending.removeValue(forKey: index) else { throw ShareVideoComposer.ComposeError.writerFailed("planning the frames") }
             let memoryBefore = currentMemoryMegabytes()
-            let snapshot = try await fetch.value
+            let mapImage = await capture.capture(state: state, reduceMotion: reduceMotion)
             try Task.checkCancellation()
+            // A few frames in (the very first can still be loading): a black copy means this phone can't do it.
+            if index == min(5, times.count - 1), DirectMapCapture.looksBlack(mapImage) {
+                throw RenderError.blackMap
+            }
             let memoryAfterSnapshot = currentMemoryMegabytes()
             grewBySnapshot += memoryAfterSnapshot - memoryBefore
 
@@ -151,7 +141,7 @@ enum FlyoverRenderer {
             var preview: UIImage?
             var memoryAfterDraw = memoryAfterSnapshot
             try autoreleasepool {
-                let image = draw(snapshot: snapshot, state: state, frame: frame, timeline: timeline,
+                let image = draw(mapImage: mapImage, state: state, frame: frame, timeline: timeline,
                                  routeColor: routeColor, symbolName: symbolName, overlayInfo: overlayInfo,
                                  reduceMotion: reduceMotion)
                 // A full-size picture goes to the screen only every 4th frame, so the screen never holds many.
@@ -166,7 +156,7 @@ enum FlyoverRenderer {
             grewByDraw += memoryAfterDraw - memoryAfterSnapshot
             grewByEncode += memoryNow - memoryAfterDraw
             let done = index + 1
-            let stages = "start \(startMegabytes) MB, snapshot \(grewBySnapshot / done), draw \(grewByDraw / done), encode \(grewByEncode / done) MB per frame, screen \(grewByScreen / max(screenFrames, 1)) MB per picture shown"
+            let stages = "start \(startMegabytes) MB, map \(grewBySnapshot / done), draw \(grewByDraw / done), encode \(grewByEncode / done) MB per frame, screen \(grewByScreen / max(screenFrames, 1)) MB per picture shown"
             crashLog.update(frame: done, phase: String(describing: state.phase), megabytes: memoryNow, note: stages)
             if memoryNow > memoryLimitMegabytes { throw RenderError.outOfMemory(done, memoryNow, stages) }
             let parts = begin.duration(to: clock.now).components
@@ -204,76 +194,10 @@ enum FlyoverRenderer {
         return result == KERN_SUCCESS ? Int(info.phys_footprint / 1_048_576) : 0
     }
 
-    // MARK: - Snapshots
-
-    private static func fetchSnapshot(for state: FlyoverPlan.State, reduceMotion: Bool, frameIndex: Int) async throws -> MKMapSnapshotter.Snapshot {
-        var lastError: Error = RenderError.frameFailed(frameIndex, "no answer")
-        // One retry per frame; after that the render stops instead of inventing a frame.
-        for _ in 0..<2 {
-            try Task.checkCancellation()
-            do {
-                return try await requestSnapshot(options: options(for: state, reduceMotion: reduceMotion))
-            } catch {
-                if Task.isCancelled { throw CancellationError() }
-                lastError = error
-            }
-        }
-        throw RenderError.frameFailed(frameIndex, lastError.localizedDescription)
-    }
-
-    private static func options(for state: FlyoverPlan.State, reduceMotion: Bool) -> MKMapSnapshotter.Options {
-        let options = MKMapSnapshotter.Options()
-        options.camera = MKMapCamera(
-            lookingAtCenter: CLLocationCoordinate2D(latitude: state.centerLatitude, longitude: state.centerLongitude),
-            fromDistance: state.distanceMeters,
-            pitch: reduceMotion ? 0 : state.pitchDegrees,
-            heading: reduceMotion ? 0 : state.headingDegrees)
-        options.size = pointSize
-        options.scale = snapshotScale
-        options.mapType = .hybridFlyover
-        options.showsBuildings = true
-        options.pointOfInterestFilter = .excludingAll
-        return options
-    }
-
-    private static func requestSnapshot(options: MKMapSnapshotter.Options) async throws -> MKMapSnapshotter.Snapshot {
-        let snapshotter = MKMapSnapshotter(options: options)
-        // Its own queue, so nothing the map engine creates piles up on the main thread's autorelease pool.
-        let queue = DispatchQueue(label: "mury.flyover.snapshot", qos: .userInitiated)
-        return try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { continuation in
-                let waiter = SnapshotWaiter(continuation)
-                // The timeout must not keep the snapshotter alive: a cancelled DispatchWorkItem stays queued until
-                // its deadline, so with a strong reference every snapshotter (and the 3D data it loaded) lived 15 s
-                // after its frame was done. At ten frames a second that ran the app out of memory near frame 230.
-                let timeout = Task { [weak snapshotter] in
-                    try? await Task.sleep(for: .seconds(frameTimeoutSeconds))
-                    guard !Task.isCancelled else { return }
-                    waiter.finish(.failure(URLError(.timedOut)))
-                    snapshotter?.cancel()
-                }
-                snapshotter.start(with: queue) { [weak snapshotter] snapshot, error in
-                    autoreleasepool {
-                        timeout.cancel()
-                        if let snapshot {
-                            waiter.finish(.success(snapshot))
-                        } else {
-                            waiter.finish(.failure(error ?? URLError(.unknown)))
-                        }
-                        // Done with this picture: tell the map engine to drop what it still holds for it.
-                        snapshotter?.cancel()
-                    }
-                }
-            }
-        } onCancel: {
-            snapshotter.cancel()
-        }
-    }
-
     // MARK: - Drawing
 
     private static func draw(
-        snapshot: MKMapSnapshotter.Snapshot,
+        mapImage: UIImage,
         state: FlyoverPlan.State,
         frame: ReplayFrame,
         timeline: ReplayTimeline,
@@ -287,10 +211,9 @@ enum FlyoverRenderer {
         format.opaque = true
         let renderer = UIGraphicsImageRenderer(size: pointSize, format: format)
         return renderer.image { context in
-            snapshot.image.draw(at: .zero)
+            mapImage.draw(in: CGRect(origin: .zero, size: pointSize))
             let cg = context.cgContext
-            // Own projection with the same camera the picture was requested with: Snapshot.point(for:) placed the
-            // route at random spots on tilted frames.
+            // Own projection with the same camera the map was moved to.
             let camera = FlyoverProjection.Camera(
                 centerLatitude: state.centerLatitude, centerLongitude: state.centerLongitude,
                 distanceMeters: state.distanceMeters,
@@ -425,23 +348,5 @@ enum FlyoverRenderer {
             .foregroundColor: UIColor.white.withAlphaComponent(alpha),
         ]
         (text as NSString).draw(at: point, withAttributes: attributes)
-    }
-}
-
-/// Resumes a continuation exactly once, whichever of the snapshot callback and the timeout gets there first.
-nonisolated private final class SnapshotWaiter: @unchecked Sendable {
-    private let lock = NSLock()
-    private var continuation: CheckedContinuation<MKMapSnapshotter.Snapshot, Error>?
-
-    init(_ continuation: CheckedContinuation<MKMapSnapshotter.Snapshot, Error>) {
-        self.continuation = continuation
-    }
-
-    func finish(_ result: Swift.Result<MKMapSnapshotter.Snapshot, Error>) {
-        lock.lock()
-        let pending = continuation
-        continuation = nil
-        lock.unlock()
-        pending?.resume(with: result)
     }
 }

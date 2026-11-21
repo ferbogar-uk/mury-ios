@@ -463,6 +463,8 @@ xcodebuild -project larping.xcodeproj -scheme larping \
 ```
 *Map cinema* (builds 24 to 36, MapTiler) was removed in build 37 with the `MapTilerSDK` package and the key steps in the workflows; see STATUS.
 
+Render in app source (build 39): `Features/Activities/DirectMapCapture.swift` owns one `MKMapView` (hybrid, realistic elevation, no POIs) hosted by `DirectMapHost` under the black render cover in `FlyoverView.renderScreen`. Per frame `capture(state:reduceMotion:)` sets the `MKMapCamera`, waits for `mapViewDidFinishRenderingMap(fullyRendered: true)` or 3 s, and copies the view with `drawHierarchy`. `FlyoverRenderer.render(..., capture:)` draws route, marker, logo and card on that image; the `MKMapSnapshotter` path, its prefetch and `SnapshotWaiter` were removed. A copy that is nearly all black at frame 5 stops the render with `RenderError.blackMap`.
+
 Render in app screen (build 13): while rendering, the live map is not drawn at all; the frame being rendered fills the screen (`renderScreen`, aspect fit on black) and a translucent bottom bar (`renderBar`: material + dark tint, no box) shows title, progress, the stage in words (`renderStageText`, from `plan.state(at:)`), frame / seconds per frame / time left, the keep-open hint and Cancel.
 
 Route position in rendered frames: `FlyoverProjection` (assumed 30 degree field of view). A MapKit-based projector (hidden `MKMapView`, build 14) was tried and removed: the app crashed while rendering on a device (cause not confirmed, no crash log available).

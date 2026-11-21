@@ -38,6 +38,8 @@ struct FlyoverView: View {
     /// The newest picture the renderer sent; kept here because only some frames carry one.
     @State private var renderPreview: UIImage?
     @State private var renderTask: Task<Void, Never>?
+    /// The live map the new Render in app copies from; on screen (under the cover) only while rendering.
+    @State private var mapCapture: DirectMapCapture?
     @State private var renderSummary: String?
     @State private var renderStartedAt = Date()
 
@@ -229,6 +231,12 @@ struct FlyoverView: View {
     /// come together. The progress sits in a translucent bar along the bottom edge.
     private var renderScreen: some View {
         ZStack(alignment: .bottom) {
+            if let mapCapture {
+                // Must be in the window to draw; the cover below hides it.
+                DirectMapHost(capture: mapCapture)
+                    .frame(width: FlyoverRenderer.pointSize.width, height: FlyoverRenderer.pointSize.height)
+                    .accessibilityHidden(true)
+            }
             Color.black.ignoresSafeArea()
             // The frames being made are not shown. With the bundled sample video it plays here like a short
             // advert; without it, a plain waiting screen.
@@ -464,12 +472,19 @@ struct FlyoverView: View {
         mode = .rendering
         UIApplication.shared.isIdleTimerDisabled = true
         let renderPlan = FlyoverPlan(timeline: timeline, clipSeconds: Double(clip.rawValue))
+        let capture = DirectMapCapture(size: FlyoverRenderer.pointSize)
+        mapCapture = capture
         renderTask = Task {
-            defer { UIApplication.shared.isIdleTimerDisabled = false }
+            defer {
+                UIApplication.shared.isIdleTimerDisabled = false
+                mapCapture = nil
+            }
             do {
+                // Wait (up to 3 s) for the map view to reach the window, or it never draws.
+                for _ in 0..<30 where !capture.isOnScreen { try await Task.sleep(for: .milliseconds(100)) }
                 let output = try await FlyoverRenderer.render(
                     plan: renderPlan, timeline: timeline, routeColor: UIColor(theme.route), symbolName: symbol,
-                    overlayInfo: overlayInfo, reduceMotion: reduceMotion
+                    overlayInfo: overlayInfo, reduceMotion: reduceMotion, capture: capture
                 ) { progress in
                     renderProgress = progress
                     if let picture = progress.preview { renderPreview = picture }
