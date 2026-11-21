@@ -76,10 +76,17 @@ final class DirectMapCapture: NSObject, MKMapViewDelegate {
                                       bytesPerRow: side * 4, space: CGColorSpaceCreateDeviceRGB(),
                                       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return true }
         context.draw(cg, in: CGRect(x: 0, y: 0, width: side, height: side))
-        let dark = stride(from: 0, to: pixels.count, by: 4).filter {
-            Int(pixels[$0]) + Int(pixels[$0 + 1]) + Int(pixels[$0 + 2]) < 30
-        }.count
-        return dark > side * side * 95 / 100
+        var dark = 0
+        var offset = 0
+        while offset < pixels.count {
+            let red = Int(pixels[offset])
+            let green = Int(pixels[offset + 1])
+            let blue = Int(pixels[offset + 2])
+            if red + green + blue < 30 { dark += 1 }
+            offset += 4
+        }
+        let threshold = side * side * 95 / 100
+        return dark > threshold
     }
 }
 
