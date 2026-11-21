@@ -4,7 +4,7 @@
   "larping/Core/GPXParser.swift": "d27703c04e30539b3097566b0481fc65fe1b6655517eb9b61aed60ee9bb6a72c",
   "larping/Core/Health/HealthKitService.swift": "8bbc18ba2fec68cf90f097936345478d89c5f52c6eadccf740586ee36ef21a28",
   "larping/Core/Location/LocationTracker.swift": "e9cfc79739bf7c1828afdeae0838d3a35f6f3345db0d7f42b712b17248cf2f36",
-  "larping/Core/Models/Activity.swift": "ac780f6d11cfca073f8393c612ae108da448741f050691c07902172919e6f902",
+  "larping/Core/Models/Activity.swift": "193e6bab020f6361db915a623011d068f2ae4bd6d900f2168988270d4b833086",
   "larping/Core/Models/CDActivity.swift": "29e56ca1034bf89f02179ab14313a533afadcc54ef443217c29c48c6329262b3",
   "larping/Core/Models/CDTrackPoint.swift": "acf82ced02bae25edde4bfc285e84075093a333a2786532db27633c50dd4c014",
   "larping/Core/SeedData.swift": "f8a36ebd2b2a30635234d18e0adb79ba2c83f3f40165cbe86658e4866b7398aa",

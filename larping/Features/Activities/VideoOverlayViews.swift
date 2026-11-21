@@ -62,7 +62,7 @@ struct VideoInfoCard: View {
                         .font(MuryTypography.font(.subheadline, size: 14, weight: .bold))
                         .lineLimit(1)
                     HStack(spacing: 5) {
-                        Image(systemName: info.symbolName).font(.system(size: 11, weight: .semibold))
+                        SportSymbol(info.symbolName, size: 11).font(.system(size: 11, weight: .semibold))
                         Text(info.activityTitle)
                             .font(MuryTypography.font(.caption, size: 12))
                             .lineLimit(1)

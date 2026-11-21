@@ -268,8 +268,7 @@ enum FlyoverRenderer {
                 cg.setStrokeColor(UIColor.white.withAlphaComponent(alpha).cgColor)
                 cg.setLineWidth(2)
                 cg.strokeEllipse(in: rect)
-                let config = UIImage.SymbolConfiguration(pointSize: 16, weight: .semibold)
-                if let icon = UIImage(systemName: symbolName, withConfiguration: config)?
+                if let icon = SportIcon.uiImage(named: symbolName, pointSize: 16, weight: .semibold)?
                     .withTintColor(UIColor.white.withAlphaComponent(alpha), renderingMode: .alwaysOriginal) {
                     icon.draw(at: CGPoint(x: p.x - icon.size.width / 2, y: p.y - icon.size.height / 2))
                 }
@@ -319,9 +318,8 @@ enum FlyoverRenderer {
 
         let textX = avatar.maxX + 10
         drawText(info.athleteName, at: CGPoint(x: textX, y: card.minY + 11), size: 14, weight: .bold, alpha: 1)
-        let config = UIImage.SymbolConfiguration(pointSize: 11, weight: .semibold)
         var titleX = textX
-        if let icon = UIImage(systemName: info.symbolName, withConfiguration: config)?
+        if let icon = SportIcon.uiImage(named: info.symbolName, pointSize: 11, weight: .semibold)?
             .withTintColor(UIColor.white.withAlphaComponent(0.85), renderingMode: .alwaysOriginal) {
             icon.draw(at: CGPoint(x: textX, y: card.minY + 31))
             titleX += icon.size.width + 5

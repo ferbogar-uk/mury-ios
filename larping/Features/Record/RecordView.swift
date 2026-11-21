@@ -54,7 +54,7 @@ struct RecordView: View {
 
                     if let tip = tracker.routeCoordinates.last, tracker.state != .idle {
                         Annotation("", coordinate: tip) {
-                            Image(systemName: selectedSport.symbolName)
+                            SportSymbol(selectedSport.symbolName, size: 15)
                                 .font(.subheadline.bold())
                                 .foregroundStyle(theme.routeCasing)
                                 .padding(7)
@@ -143,12 +143,12 @@ struct RecordView: View {
                                 Button {
                                     selectedSport = sport
                                 } label: {
-                                    Label(sport.label, systemImage: sport.symbolName)
+                                    SportLabel(sport.label, symbol: sport.symbolName)
                                 }
                             }
                         } label: {
                             HStack(spacing: 8) {
-                                Image(systemName: selectedSport.symbolName)
+                                SportSymbol(selectedSport.symbolName)
                                 Text(selectedSport.label)
                                 Image(systemName: "chevron.up.chevron.down")
                                     .font(.caption)
@@ -180,7 +180,7 @@ struct RecordView: View {
                 }
             } else {
                 HStack(spacing: 8) {
-                    Label(selectedSport.label, systemImage: selectedSport.symbolName)
+                    SportLabel(selectedSport.label, symbol: selectedSport.symbolName)
                         .font(.headline)
                         .foregroundStyle(tracker.state == .paused ? AnyShapeStyle(.secondary) : AnyShapeStyle(theme.tint))
                         .symbolEffect(.bounce, options: .repeating, isActive: tracker.state == .recording)

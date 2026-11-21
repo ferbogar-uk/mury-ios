@@ -47,7 +47,7 @@ struct ActivityRouteCard: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     if route.count <= 1 {
-                        Image(systemName: activity.sportType.symbolName)
+                        SportSymbol(activity.sportType.symbolName, size: 17)
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(theme.accent)
                             .accessibilityHidden(true)

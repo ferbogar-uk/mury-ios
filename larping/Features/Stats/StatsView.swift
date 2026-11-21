@@ -228,7 +228,7 @@ private struct StatsSportCard: View {
             ForEach(report.bySport) { entry in
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
-                        Label(entry.sport.label, systemImage: entry.sport.symbolName)
+                        SportLabel(entry.sport.label, symbol: entry.sport.symbolName)
                             .font(MuryTypography.font(.subheadline, size: 15, weight: .regular))
                         Spacer()
                         Text(entry.distanceMeters > 0 ? Formatters.distance(meters: entry.distanceMeters) : Formatters.duration(seconds: entry.durationSeconds))
