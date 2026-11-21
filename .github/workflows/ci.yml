@@ -13,6 +13,9 @@ name: CI
 #   after the merge, not before it. Run this workflow by hand on the branch if a pull
 #   request touches screens or the video composer.
 #
+# Linux-covered tests (the list in scripts/test-core-logic.sh) are skipped here.
+# The test step stops after 40 minutes and the whole job after 75.
+#
 # Rules:
 # 1. A pull request that only touches documentation, images or the Linux job
 #    skips macOS (paths-ignore). Anything else, including a change to this file,
@@ -52,15 +55,10 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: macos-latest
+    # A stuck simulator once held a run for over 3 hours (build 34). Fail instead.
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
-
-      - name: Write MapTiler key
-        env:
-          MAPTILER_API_KEY: ${{ secrets.MAPTILER_API_KEY }}
-        run: |
-          # Public repo: the key lives only in the GitHub secret. No secret (a fork) means no file and no map.
-          if [ -n "$MAPTILER_API_KEY" ]; then printf '%s' "$MAPTILER_API_KEY" > larping/MapTilerKey.txt; fi
 
       - name: Build
         run: |
@@ -76,14 +74,20 @@ jobs:
           xcrun simctl bootstatus "iPhone 17" -b
 
       - name: Test
+        timeout-minutes: 40
         env:
           # Pull requests run the unit tests only, minus the slow full video export.
           # Pushes to main and manual runs also run the video export and the UI tests.
           ONLY: ${{ github.event_name == 'pull_request' && '-only-testing:larpingTests -skip-testing:larpingTests/ShareVideoComposerTests/testCompleteExportProducesReadablePortraitMP4' || '' }}
         run: |
+          # Tests already run on Linux (core-tests.yml) are skipped here. The list is read from
+          # scripts/test-core-logic.sh, so the two never drift apart.
+          LINUX=$(grep -E '^for t in ' scripts/test-core-logic.sh | sed -E 's/^for t in (.*); do$/\1/')
+          # GeoDistanceTests stays here too: one of its tests compares with CoreLocation, which Linux lacks.
+          SKIP=""; for t in $LINUX; do [ "$t" = GeoDistanceTests ] || SKIP="$SKIP -skip-testing:larpingTests/$t"; done
           xcodebuild -project larping.xcodeproj -scheme larping \
             -destination 'platform=iOS Simulator,name=iPhone 17' -parallel-testing-enabled NO \
-            $ONLY test \
+            $ONLY $SKIP test \
             2>&1 | tee test.log | grep -Ei "error:|failed|TEST SUCCEEDED"
           ! grep -q "TEST FAILED" test.log
 
