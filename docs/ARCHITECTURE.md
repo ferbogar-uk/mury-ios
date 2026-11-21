@@ -462,7 +462,7 @@ Render in app source (build 39): `Features/Activities/DirectMapCapture.swift` ow
 
 Render in app screen (build 13): while rendering, the live map is not drawn at all; the frame being rendered fills the screen (`renderScreen`, aspect fit on black) and a translucent bottom bar (`renderBar`: material + dark tint, no box) shows title, progress, the stage in words (`renderStageText`, from `plan.state(at:)`), frame / seconds per frame / time left, the keep-open hint and Cancel.
 
-Route position in rendered frames: `FlyoverProjection` (assumed 30 degree field of view). A MapKit-based projector (hidden `MKMapView`, build 14) was tried and removed: the app crashed while rendering on a device (cause not confirmed, no crash log available).
+Route position in rendered frames (build 42): `DirectMapCapture.project(latitude:longitude:)` asks the live map view for the point (`MKMapView.convert`), so it uses Apple's real field of view and tilt; points beyond 6 camera distances (at least 3 km) from the frame centre are skipped as behind-the-camera or past the horizon. Before that, `FlyoverProjection` (assumed 30 degree field of view over flat ground) was used and the line drifted off the streets on Ricardo's build 40 video; it is no longer called by the renderer but stays, with its Linux tests. The build 14 attempt (a hidden `MKMapView` as projector) crashed on a device; the difference now is one persistent map view that is already on screen and `convert` calls only. `convert` projects onto flat ground, so on steep terrain or tall buildings the line can still sit a little off.
 
 
 ### Flyover / cinema video overlay (build 30)

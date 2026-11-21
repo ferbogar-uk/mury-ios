@@ -148,7 +148,7 @@ enum FlyoverRenderer {
             try autoreleasepool {
                 let image = draw(mapImage: mapImage, state: state, frame: frame, timeline: timeline,
                                  routeColor: routeColor, symbolName: symbolName, overlayInfo: overlayInfo,
-                                 reduceMotion: reduceMotion)
+                                 reduceMotion: reduceMotion, capture: capture)
                 // A full-size picture goes to the screen only every 4th frame, so the screen never holds many.
                 preview = index % 4 == 0 ? image : nil
                 memoryAfterDraw = currentMemoryMegabytes()
@@ -210,7 +210,8 @@ enum FlyoverRenderer {
         routeColor: UIColor,
         symbolName: String,
         overlayInfo: VideoOverlayInfo,
-        reduceMotion: Bool
+        reduceMotion: Bool,
+        capture: DirectMapCapture
     ) -> UIImage {
         let format = UIGraphicsImageRendererFormat()
         format.scale = scale
@@ -219,16 +220,10 @@ enum FlyoverRenderer {
         return renderer.image { context in
             mapImage.draw(in: CGRect(origin: .zero, size: pointSize))
             let cg = context.cgContext
-            // Own projection with the same camera the map was moved to.
-            let camera = FlyoverProjection.Camera(
-                centerLatitude: state.centerLatitude, centerLongitude: state.centerLongitude,
-                distanceMeters: state.distanceMeters,
-                headingDegrees: reduceMotion ? 0 : state.headingDegrees,
-                pitchDegrees: reduceMotion ? 0 : state.pitchDegrees)
+            // The live map view's own projection for the frame just captured (build 42). The earlier hand-made one
+            // assumed a 30 degree field of view over flat ground, and the route drifted off the streets.
             func project(_ latitude: Double, _ longitude: Double) -> CGPoint? {
-                guard let p = FlyoverProjection.project(latitude: latitude, longitude: longitude, camera: camera,
-                                                        width: Double(pointSize.width), height: Double(pointSize.height)) else { return nil }
-                return CGPoint(x: p.x, y: p.y)
+                capture.project(latitude: latitude, longitude: longitude)
             }
 
             func strokeRoute(_ segments: [[ReplayCoordinate]], alpha: CGFloat) {

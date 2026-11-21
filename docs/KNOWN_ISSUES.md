@@ -192,7 +192,7 @@ Written and unit-tested for the logic only; CI cannot run GPS, the heart sensor 
 
 ## Rendered route line may drift; MapKit-based projector crashed
 
-Build 14 positioned the line through a hidden `MKMapView` and the app crashed during rendering; it was removed (the cause is not confirmed). The line again uses the assumed-FOV `FlyoverProjection` and may slide against the map. Do not retry the hidden-map-view idea without a crash log.
+Build 14 positioned the line through a hidden `MKMapView` and the app crashed during rendering; it was removed (the cause is not confirmed). Since build 42 the line is positioned with the live map view's `convert` (one persistent view on screen), which retries the idea; if the render crashes again, read the render crash report first. `FlyoverProjection` (assumed FOV) was the line in builds 15-41.
 
 
 ### Render in app is switched off (build 22)
