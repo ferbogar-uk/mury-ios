@@ -230,24 +230,59 @@ struct FlyoverPlan {
     /// Stabilised travel direction for a camera that chases the route. GPS bearings jump around from
     /// point to point, so this averages the local bearing over roughly +-9% of the route (triangular
     /// weights, circular mean). Used by the flyover and by the live replay.
+    ///
+    /// While the athlete stands still the GPS only jitters, and the raw bearings of that jitter point everywhere:
+    /// the camera used to spin on the spot and the map kept loading tiles for every new direction (reported on
+    /// build 46). A step only counts when it covers real ground (see `isMovement`); when a whole window is
+    /// standing still the camera keeps the last heading the athlete really travelled (or the next one at the very start).
     static func smoothedHeading(timeline: ReplayTimeline, progress: Double) -> Double {
         guard timeline.duration > 0 else { return 0 }
         let p = min(max(progress, 0), 1)
+        if let moving = movingHeading(timeline: timeline, progress: p) { return moving }
+        for step in 1...50 {
+            if let before = movingHeading(timeline: timeline, progress: p - Double(step) * 0.02) { return before }
+        }
+        for step in 1...50 {
+            if let after = movingHeading(timeline: timeline, progress: p + Double(step) * 0.02) { return after }
+        }
+        return timeline.sample(at: p * timeline.duration).headingDegrees ?? 0
+    }
+
+    /// Distance in metres over which two nearby coordinates count as one step (flat-earth approximation).
+    static func distanceMeters(from a: ReplayCoordinate, to b: ReplayCoordinate) -> Double {
+        let metersPerDegree = 111_320.0
+        var deltaLon = b.longitude - a.longitude
+        if deltaLon > 180 { deltaLon -= 360 } else if deltaLon < -180 { deltaLon += 360 }
+        let north = (b.latitude - a.latitude) * metersPerDegree
+        let east = deltaLon * metersPerDegree * max(0.1, cos((a.latitude + b.latitude) / 2 * Double.pi / 180))
+        return (north * north + east * east).squareRoot()
+    }
+
+    /// A step of `seconds` is real movement when it covers at least 3 m and at least 0.3 m/s: slower than that is GPS jitter.
+    static func isMovement(meters: Double, seconds: TimeInterval) -> Bool {
+        meters >= max(3, 0.3 * seconds)
+    }
+
+    /// The smoothed heading around `progress`, or nil when no step in the window is real movement
+    /// (or the progress is outside the activity).
+    private static func movingHeading(timeline: ReplayTimeline, progress: Double) -> Double? {
+        guard progress >= 0, progress <= 1 else { return nil }
+        let windowSeconds = 0.02 * timeline.duration
         var sumX = 0.0, sumY = 0.0
         for k in -4...4 {
-            let q = p + Double(k) * 0.02
+            let q = progress + Double(k) * 0.02
             let from = position(timeline: timeline, progress: min(max(q - 0.01, 0), 1))
             let to = position(timeline: timeline, progress: min(max(q + 0.01, 0), 1))
-            guard let from, let to, let direction = bearing(from: from, to: to) else { continue }
+            guard let from, let to,
+                  isMovement(meters: distanceMeters(from: from, to: to), seconds: windowSeconds),
+                  let direction = bearing(from: from, to: to) else { continue }
             let weight = Double(5 - abs(k))
             let radians = direction * Double.pi / 180
             sumX += weight * sin(radians)
             sumY += weight * cos(radians)
         }
-        if sumX * sumX + sumY * sumY > 1e-9 {
-            return normalized(atan2(sumX, sumY) * 180 / Double.pi)
-        }
-        return timeline.sample(at: p * timeline.duration).headingDegrees ?? 0
+        guard sumX * sumX + sumY * sumY > 1e-9 else { return nil }
+        return normalized(atan2(sumX, sumY) * 180 / Double.pi)
     }
 
     static func bearing(from a: ReplayCoordinate, to b: ReplayCoordinate) -> Double? {
