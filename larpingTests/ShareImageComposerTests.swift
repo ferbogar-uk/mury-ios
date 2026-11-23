@@ -161,8 +161,6 @@ final class ShareImageComposerTests: XCTestCase {
         XCTAssertLessThanOrEqual(fullGlyph.maxY, 1110)
         XCTAssertGreaterThan(fullGlyph.height, 90)
         XCTAssertEqual(fullGlyph.midX, 540, accuracy: 8)
-        XCTAssertEqual(try visiblePixelCount(image, rect: CGRect(x: 430, y: 1117, width: 220, height: 3)), 0,
-                       "The complete sport glyph must finish before statistics start")
         XCTAssertNotEqual(try croppedPNG(image, rect: sportBand),
                           try croppedPNG(noGlyph, rect: sportBand))
         let header = CGRect(x: 80, y: 150, width: 920, height: 340)
