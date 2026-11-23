@@ -149,18 +149,19 @@ final class ShareImageComposerTests: XCTestCase {
             distance: stats.distance, duration: stats.duration, paceOrSpeed: stats.paceOrSpeed, date: stats.date)
         let image = composer.compose(photo: nil, coordinates: coordinates, stats: stats)
         let noGlyph = composer.compose(photo: nil, coordinates: coordinates, stats: withoutSport)
-        // Route ends at 970 (+12 casing); old statistics start at 1020.
+        // Route ends at 970 (+12 casing); statistics start at 1120. The glyph is brand red, 124 pt tall.
         // Compare glyph-on/off pixels here so old statistic pixels cannot satisfy this check.
+        let red = [178, 14, 28]
         let sportBand = CGRect(x: 430, y: 984, width: 220, height: 36)
-        let white = try XCTUnwrap(coloredBounds(image, rect: sportBand, color: [255, 255, 255]),
-            "A white sport glyph must begin below the route and above the statistics")
-        XCTAssertGreaterThan(white.width, 4)
-        let fullGlyph = try XCTUnwrap(coloredBounds(image, rect: CGRect(x: 430, y: 984, width: 220, height: 120), color: [255, 255, 255]))
-        XCTAssertGreaterThanOrEqual(fullGlyph.minY, 990)
-        XCTAssertLessThanOrEqual(fullGlyph.maxY, 1071)
-        XCTAssertGreaterThan(fullGlyph.height, 50)
+        let glyphTop = try XCTUnwrap(coloredBounds(image, rect: sportBand, color: red),
+            "A red sport glyph must begin below the route and above the statistics")
+        XCTAssertGreaterThan(glyphTop.width, 4)
+        let fullGlyph = try XCTUnwrap(coloredBounds(image, rect: CGRect(x: 430, y: 984, width: 220, height: 134), color: red))
+        XCTAssertGreaterThanOrEqual(fullGlyph.minY, 984)
+        XCTAssertLessThanOrEqual(fullGlyph.maxY, 1110)
+        XCTAssertGreaterThan(fullGlyph.height, 90)
         XCTAssertEqual(fullGlyph.midX, 540, accuracy: 8)
-        XCTAssertEqual(try visiblePixelCount(image, rect: CGRect(x: 430, y: 1088, width: 220, height: 22)), 0,
+        XCTAssertEqual(try visiblePixelCount(image, rect: CGRect(x: 430, y: 1117, width: 220, height: 3)), 0,
                        "The complete sport glyph must finish before statistics start")
         XCTAssertNotEqual(try croppedPNG(image, rect: sportBand),
                           try croppedPNG(noGlyph, rect: sportBand))
