@@ -36,9 +36,18 @@ struct ShareImageComposer {
         let date: String
         let weekday: String
         let usesPaceMetric: Bool
+        let averageHeartRate: String
+        let maxHeartRate: String
         var metricLabel: String { usesPaceMetric ? "PACE" : "SPEED" }
+        /// Rows for the Classic and Map cards: empty ones are dropped, heart rate fills in.
+        var rows: [ShareStatRows.Row] {
+            ShareStatRows.rows(distance: distance, duration: duration, metricLabel: metricLabel, paceOrSpeed: paceOrSpeed,
+                               averageHeartRate: averageHeartRate, maxHeartRate: maxHeartRate)
+        }
 
-        init(symbolName: String, sportLabel: String, distance: String, duration: String, paceOrSpeed: String, date: String, title: String = "", usesPaceMetric: Bool = true, weekday: String = "") {
+        init(symbolName: String, sportLabel: String, distance: String, duration: String, paceOrSpeed: String, date: String, title: String = "", usesPaceMetric: Bool = true, weekday: String = "", averageHeartRate: String = "–", maxHeartRate: String = "–") {
+            self.averageHeartRate = averageHeartRate
+            self.maxHeartRate = maxHeartRate
             self.weekday = weekday
             self.symbolName = symbolName
             self.sportLabel = sportLabel
@@ -358,7 +367,7 @@ struct ShareImageComposer {
             let width = logo.size.width * height / logo.size.height
             logo.draw(in: CGRect(x: (canvasWidth - width) / 2, y: 190, width: width, height: height))
         }
-        drawSport(stats, in: CGRect(x: canvasWidth / 2 - 40, y: 990, width: 80, height: 80), color: white, soft: soft)
+        drawSport(stats, in: CGRect(x: canvasWidth / 2 - 62, y: 984, width: 124, height: 124), color: routeColor, soft: soft)
     }
 
     /// Draws the recorded route as a stroked accent-color line, scaled to fit a
@@ -432,16 +441,12 @@ struct ShareImageComposer {
 
     /// Stats rendered as one centered column — three rows of label + value.
     private func drawStats(_ stats: Stats, canvasWidth: CGFloat, startY: CGFloat = 1120, soft: Bool) {
-        let rows: [(String, String)] = [
-            ("DISTANCE", stats.distance),
-            ("DURATION", stats.duration),
-            (stats.metricLabel, stats.paceOrSpeed),
-        ]
+        let rows = stats.rows
 
         var y: CGFloat = startY
         for row in rows {
-            drawCentered(NSAttributedString(string: row.0, attributes: textAttributes(white.withAlphaComponent(0.62), size: 34, weight: .semibold, soft: soft)), atY: y, canvasWidth: canvasWidth)
-            let value = NSAttributedString(string: row.1, attributes: valueAttributes(64, soft: soft))
+            drawCentered(NSAttributedString(string: row.label, attributes: textAttributes(white.withAlphaComponent(0.62), size: 34, weight: .semibold, soft: soft)), atY: y, canvasWidth: canvasWidth)
+            let value = NSAttributedString(string: row.value, attributes: valueAttributes(64, soft: soft))
             drawCentered(value, atY: y + 42, canvasWidth: canvasWidth)
             y += 42 + value.size().height + 46
         }
@@ -488,10 +493,10 @@ struct ShareImageComposer {
     /// top-right placement — keeps the info card's title/date flush left
     /// instead of indented past an icon.
     private func drawTopLeftIcon(_ stats: Stats) {
-        guard let glyph = SportIcon.uiImage(named: stats.symbolName, pointSize: 44, weight: .bold) else { return }
-        let rect = CGRect(x: 54, y: 170, width: glyph.size.width, height: glyph.size.height)
-        glyph.withTintColor(UIColor.black.withAlphaComponent(0.75)).draw(in: rect.offsetBy(dx: 0, dy: 5))
-        glyph.withTintColor(white).draw(in: rect)
+        guard let glyph = SportIcon.uiImage(named: stats.symbolName, pointSize: 88, weight: .bold) else { return }
+        let rect = CGRect(x: 54, y: 150, width: glyph.size.width, height: glyph.size.height)
+        glyph.withTintColor(UIColor.black.withAlphaComponent(0.75)).draw(in: rect.offsetBy(dx: 0, dy: 6))
+        glyph.withTintColor(routeColor).draw(in: rect)
     }
 
     private func drawScrim(in bounds: CGRect, using cgContext: CGContext) {
@@ -581,16 +586,12 @@ struct ShareImageComposer {
         date.draw(at: CGPoint(x: textX, y: y))
 
         // Three stats across one row.
-        let rows: [(String, String)] = [
-            ("DISTANCE", stats.distance),
-            ("DURATION", stats.duration),
-            (stats.metricLabel, stats.paceOrSpeed),
-        ]
-        let colWidth = (card.width - 88) / 3
+        let rows = stats.rows
+        let colWidth = (card.width - 88) / CGFloat(max(rows.count, 1))
         for (index, row) in rows.enumerated() {
             let centerX = card.minX + 44 + colWidth * CGFloat(index) + colWidth / 2
-            drawCentered(NSAttributedString(string: row.0, attributes: textAttributes(white.withAlphaComponent(0.6), size: 24, weight: .semibold, soft: false)), atY: card.minY + 224, centerX: centerX)
-            drawCentered(NSAttributedString(string: row.1, attributes: valueAttributes(50, soft: false)), atY: card.minY + 260, centerX: centerX)
+            drawCentered(NSAttributedString(string: row.label, attributes: textAttributes(white.withAlphaComponent(0.6), size: 24, weight: .semibold, soft: false)), atY: card.minY + 224, centerX: centerX)
+            drawCentered(NSAttributedString(string: row.value, attributes: valueAttributes(50, soft: false)), atY: card.minY + 260, centerX: centerX)
         }
     }
 

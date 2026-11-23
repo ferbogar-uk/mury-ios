@@ -267,9 +267,9 @@ Canvas 1080x1920.
    PNG the user can paste onto anything (`ShareLink` shares a PNG). White
    foreground gets dark drop shadows only in the transparent mode so it stays
    legible over light pastes.
-2. Small centered sport icon (box ~130pt, aspect-preserved) at top (starts
-   at y≈190, extra top clearance for Instagram Story's own UI), with an
-   offset dark backing when transparent.
+2. Sport icon (box 124pt, aspect-preserved, brand red like the Ticket
+   overlay) centred between the route and the stats (y≈984), with an offset
+   dark backing when transparent. (Build 48: was an 80pt white icon.)
 3. `LogoHorizontal` wordmark (110pt tall, white 92%) centered right beneath
    the icon — now the dominant element (was smaller than the icon before;
    flipped so the brand mark reads first). No event title/date in the header
@@ -278,7 +278,7 @@ Canvas 1080x1920.
 4. Route: palette-colour polyline (16pt, round joins), using the resolved
    selected theme and app appearance captured by ShareStyle. Fits into an aspect-matched, centered region
    (y≈504..970) → symmetric margins for any route size.
-5. Stats: one centered column, 3 rows (DISTANCE / DURATION / PACE).
+5. Stats: one centered column of up to 3 rows from `ShareStatRows` (Foundation-only, Linux-tested): DISTANCE / DURATION / PACE-or-SPEED, with rows that have no value dropped and AVG / MAX HEART RATE filling the space, so a strength session shows DURATION / AVG HEART RATE / MAX HEART RATE instead of dashes. `ShareImageComposer.Stats` carries `averageHeartRate` / `maxHeartRate` strings (default "–") and the computed `rows`.
 6. Footer: the activity **date** (30 semibold, 72% white) — replaces the old
    repo URL text at the same position/size (y≈1610); the URL itself was
    dropped.
@@ -303,8 +303,7 @@ and so the card's title/date can start flush left instead of being indented
 past an icon. Both sit lower than a naive top corner (y≈170, not 90) so
 Instagram Story's own profile-chip/close-button overlay doesn't cover them.
 The **bottom card** (y≈1180..1560, sized to its content instead of a fixed
-oversized box that left empty space) holds event title + date and the three
-stats — no icon, no repo URL, no separator line (removed for a cleaner
+oversized box that left empty space) holds event title + date and the same `Stats.rows` (up to three columns) — no icon, no repo URL, no separator line (removed for a cleaner
 look; date text shrunk to 30pt/72% white to match the classic template's
 footer date). Card background dropped from 72% to 50% black opacity (was
 reading too dark/opaque) and corner radius bumped 32→48 to match the

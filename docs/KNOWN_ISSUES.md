@@ -229,3 +229,5 @@ Strength, Treadmill, Yoga and the other indoor types (build 36) only arrive from
 ## Render in app copies the live map (build 39) — may come out black
 
 The new Render in app copies a live Apple 3D map view each frame. Apple draws that map with Metal, and on some devices such copies are black. If frame 5 is nearly all black the render stops with "The 3D map came out black when copied on this phone…" and Record video is the way to make the video. The map view must be on screen to draw, so it sits under the black render cover.
+
+- **Video overlay still shows distance for indoor sports** (`VideoOverlayInfo` / `VideoOverlayViews`, build 48): the Classic and Map share cards drop empty rows and show heart rate instead, but the video overlays still print Distance / Pace / Elevation, so a strength session shows dashes there. Open gap, not fixed yet.
