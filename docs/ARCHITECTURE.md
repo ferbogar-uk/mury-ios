@@ -89,7 +89,7 @@ Features/
                   ImportGPXView, ImportHealthKitView, ShareActivityView, ActivitiesStore
   Core/SportIcon.swift — single entry point for sport icons: `SportSymbol` / `SportLabel` (SwiftUI) and `SportIcon.uiImage(named:pointSize:weight:)` (Core Graphics). Every sport is an SF Symbol from `SportType.symbolName`; strength is Apple's `figure.strengthtraining.traditional` (build 43's custom figure was removed in build 44). Sport icon sites use these wrappers instead of `Image(systemName:)` so a custom icon can be added in one place.
   Stats/         StatsView — period picker (Week/Month/Year/All), hero distance with change vs previous period, metric cards, Swift Charts bar chart with touch selection, per-sport card, all-time personal bests; StatsReport (period maths, Foundation-only, Linux-tested); StatsSummary (all-time and bests)
-  Profile/       ProfileView — cover card (fixed gradient, no photo upload) + name/bio, backup export/import; SettingsView — theme and appearance
+  Profile/       ProfileView — build 45 layout: initials header, all-time totals (StatsSummary), Body card (stored UserProfile, edited through ProfileFormView in a sheet), Your data card (Health sync, backup export/import with last-backup status), Settings link; ProfileSummary (Foundation-only, Linux-tested: initials, total texts, backup state, stale after 30 days); SettingsView — theme and appearance
 ```
 
 ## Route flyover (`Features/Activities/FlyoverPlan.swift`, `FlyoverView.swift`)
@@ -141,10 +141,7 @@ with `eventName == nil` fall back to the base name at display time.
 delete back out of the context instead of reporting success that never
 persisted, and `ActivityDetailView` surfaces both as an error alert.
 
-No visibility, no cover photo — single-user offline app. The Profile cover
-card cannot be customized with a photo (no `PhotosPicker`, no
-`Documents/profile-cover.jpg`) — it's always the fixed accent→black gradient
-with a darkening scrim.
+No visibility, no cover photo — single-user offline app. Since build 45 the Profile has no cover card at all (the old fixed gradient with a scrim is gone); the avatar is the name's initials.
 
 ## Startup & seeding
 

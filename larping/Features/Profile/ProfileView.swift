@@ -18,151 +18,61 @@ struct ProfileView: View {
     @State private var backupMessage: String?
     @State private var isSyncing = false
     @State private var syncMessage: String?
+    @State private var userProfile = ProfileStorage.load()
+    @State private var showBody = false
+
+    private var entries: [StatsEntry] {
+        activitiesStore.activities.map {
+            StatsEntry(
+                startedAt: $0.startedAt, sport: $0.sportType,
+                distanceMeters: $0.distanceMeters, durationSeconds: $0.durationSeconds,
+                maxHeartRateBpm: $0.maxHeartRateBpm, source: $0.source
+            )
+        }
+    }
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    ZStack(alignment: .bottomLeading) {
-                        LinearGradient(
-                            colors: [theme.accent, .black],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                        .frame(maxWidth: .infinity)
-                        .clipped()
-
-                        // Readability scrim: darkens the whole cover (not just
-                        // the bottom) so a bright accent-gradient fallback never
-                        // reads as raw lime/blue, while staying darkest at the
-                        // bottom for the info block.
-                        LinearGradient(
-                            colors: [.black.opacity(0.32), .black.opacity(0.45), .black.opacity(0.8)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-
-                        VStack(spacing: 6) {
-                            Spacer(minLength: 0)
-
-                            Image(systemName: "figure.run.circle.fill")
-                                .font(.system(size: 46))
-                                .foregroundStyle(.white)
-                            Text(displayName)
-                                .font(MuryTypography.font(.headline, size: 17, weight: .bold))
-                                .foregroundStyle(.white)
-                            if !bio.isEmpty {
-                                Text(bio)
-                                    .font(MuryTypography.font(.caption, size: 12, weight: .regular))
-                                    .foregroundStyle(.white.opacity(0.9))
-                                    .multilineTextAlignment(.center)
-                                    .lineLimit(1)
-                            }
-
-                            Spacer(minLength: 0)
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding(.horizontal, 14)
-                        .padding(.top, 14)
-
-                        Image("LogoBlueWhite")
-                            .renderingMode(.original)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: 24)
-                            .accessibilityLabel("MURY")
-                            .foregroundStyle(.white)
-                            .padding(15)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                    }
-                    .frame(height: 170)
-                    .frame(maxWidth: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: 20))
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-                }
-
-                Section {
-                    Button("Edit profile") {
-                        showEdit = true
-                    }
-                }
-
-                Section {
+        let summary = StatsSummary(entries: entries, now: Date(), calendar: Calendar.current)
+        let backup = ProfileSummary.backupState(
+            lastBackup: ISO8601DateFormatter.parse(lastBackupDate), now: Date(), calendar: Calendar.current)
+        return NavigationStack {
+            ScrollView {
+                VStack(spacing: 14) {
+                    header
+                    totals(summary)
+                    bodyCard
+                    dataCard(backup)
                     NavigationLink {
                         SettingsView()
                     } label: {
-                        Label("Settings", systemImage: "gearshape")
+                        ProfileRowLabel(icon: "gearshape", title: "Settings", subtitle: nil, trailing: .chevron)
                     }
+                    .buttonStyle(PressableStyle())
+                    .background(theme.surface, in: RoundedRectangle(cornerRadius: 20))
                     .accessibilityIdentifier("profile-settings")
-                }
 
-                Section("Backup") {
-                    Button {
-                        exportBackup()
-                    } label: {
-                        Label("Export all activities", systemImage: "square.and.arrow.up")
-                    }
-                    Button {
-                        showImporter = true
-                    } label: {
-                        Label("Import backup", systemImage: "square.and.arrow.down")
-                    }
-                    Label("Export a backup JSON and save it to iCloud Drive or Files to keep your data safe across devices and reinstalls.", systemImage: "icloud")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    if let lastBackupDate = ISO8601DateFormatter.parse(lastBackupDate) {
-                        Label("Last backup: \(Formatters.displayDate(date: lastBackupDate))", systemImage: "clock")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                if HealthKitService.isAvailable {
-                    Section("Health") {
-                        Button {
-                            Task {
-                                isSyncing = true
-                                await HealthKitService.requestAuthorization()
-                                let result = await HealthSync.run(store: activitiesStore)
-                                syncMessage = result.imported == 0
-                                    ? "Nothing new to import (\(result.skipped) already in MURY)."
-                                    : "Imported \(result.imported), skipped \(result.skipped)."
-                                isSyncing = false
-                            }
-                        } label: {
-                            Label("Sync Health now", systemImage: "arrow.triangle.2.circlepath")
-                        }
-                        .disabled(isSyncing)
-                        .accessibilityIdentifier("profile-sync-health")
-                        if isSyncing { ProgressView() }
-                        if let syncMessage {
-                            Text(syncMessage).font(.footnote).foregroundStyle(.secondary)
-                        }
-                        Label("MURY reads your workouts from the last 90 days and imports new ones whenever it opens. Finished activities are also written to Health. If nothing appears, check Settings → Health → Data Access & Devices → MURY.", systemImage: "heart")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Section {
                     Text("MURY v\(appVersion) (\(appBuild))")
                         .font(MuryTypography.font(.caption2, size: 11, weight: .regular))
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
+                        .foregroundStyle(theme.muted)
+                        .padding(.top, 6)
                 }
-                .listRowBackground(Color.clear)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
-            .scrollContentBackground(.hidden)
             .background(theme.canvas)
             .toolbarBackground(theme.navigation, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .navigationTitle("Profile")
+            .navigationBarTitleDisplayMode(.inline)
+            .onAppear { userProfile = ProfileStorage.load() }
             .sheet(isPresented: $showEdit) {
                 EditProfileView(displayName: displayName, bio: bio) { name, newBio in
                     displayName = name
                     bio = newBio
                 }
+            }
+            .sheet(isPresented: $showBody, onDismiss: { userProfile = ProfileStorage.load() }) {
+                EditBodyView()
             }
             .fileExporter(
                 isPresented: $showExporter,
@@ -203,6 +113,141 @@ struct ProfileView: View {
                     dismissButton: .default(Text("OK"))
                 )
             }
+        }
+    }
+
+    // MARK: Sections
+
+    private var header: some View {
+        HStack(spacing: 14) {
+            Text(ProfileSummary.initials(from: displayName))
+                .font(MuryTypography.font(.title2, size: 22, weight: .semibold))
+                .foregroundStyle(theme.canvas)
+                .frame(width: 64, height: 64)
+                .background(theme.ink, in: Circle())
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(displayName)
+                    .font(MuryTypography.font(.title2, size: 22, weight: .bold))
+                    .foregroundStyle(theme.ink)
+                if !bio.isEmpty {
+                    Text(bio)
+                        .font(MuryTypography.font(.footnote, size: 13))
+                        .foregroundStyle(theme.muted)
+                        .lineLimit(2)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Button("Edit") { showEdit = true }
+                .font(MuryTypography.font(.subheadline, size: 14, weight: .semibold))
+                .foregroundStyle(theme.ink)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 44)
+                .background(theme.surface, in: Capsule())
+                .overlay(Capsule().stroke(theme.border.opacity(0.5), lineWidth: 1))
+                .buttonStyle(PressableStyle())
+                .accessibilityLabel("Edit profile")
+        }
+        .padding(.top, 4)
+    }
+
+    private func totals(_ summary: StatsSummary) -> some View {
+        HStack(spacing: 0) {
+            ProfileTotal(value: "\(summary.allTimeCount)", label: "Activities")
+            Divider().frame(height: 36)
+            ProfileTotal(value: ProfileSummary.totalDistance(meters: summary.allTimeDistance), label: "Distance")
+            Divider().frame(height: 36)
+            ProfileTotal(value: ProfileSummary.totalTime(seconds: summary.allTimeDuration), label: "Time")
+        }
+        .padding(.vertical, 14)
+        .background(theme.surface, in: RoundedRectangle(cornerRadius: 20))
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("profile-totals")
+    }
+
+    @ViewBuilder
+    private var bodyCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ProfileSectionTitle("Body")
+            Button { showBody = true } label: {
+                HStack {
+                    if userProfile.heightCm == nil && userProfile.weightKg == nil && userProfile.age(now: Date()) == nil {
+                        Text("Add your details")
+                            .font(MuryTypography.font(.body, size: 16))
+                            .foregroundStyle(theme.ink)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        ProfileFigure(label: "Height", value: userProfile.heightCm.map { "\(Int($0.value.rounded())) cm" } ?? "–")
+                        ProfileFigure(label: "Weight", value: userProfile.weightKg.map { Self.kg($0.value) } ?? "–")
+                        ProfileFigure(label: "Age", value: userProfile.age(now: Date()).map(String.init) ?? "–")
+                    }
+                    Image(systemName: "chevron.right").font(.footnote).foregroundStyle(theme.muted).accessibilityHidden(true)
+                }
+                .padding(.horizontal, 16)
+                .frame(minHeight: 64)
+                .background(theme.surface, in: RoundedRectangle(cornerRadius: 20))
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityIdentifier("profile-body")
+        }
+    }
+
+    private static func kg(_ value: Double) -> String {
+        value.rounded() == value ? "\(Int(value)) kg" : String(format: "%.1f kg", value)
+    }
+
+    private func dataCard(_ backup: ProfileSummary.BackupState) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ProfileSectionTitle("Your data")
+            VStack(spacing: 0) {
+                if HealthKitService.isAvailable {
+                    Button {
+                        Task {
+                            isSyncing = true
+                            await HealthKitService.requestAuthorization()
+                            let result = await HealthSync.run(store: activitiesStore)
+                            syncMessage = result.imported == 0
+                                ? "Nothing new to import (\(result.skipped) already in MURY)."
+                                : "Imported \(result.imported), skipped \(result.skipped)."
+                            isSyncing = false
+                        }
+                    } label: {
+                        ProfileRowLabel(
+                            icon: "heart", title: "Sync Health now",
+                            subtitle: syncMessage ?? "Reads the last 90 days and adds new workouts",
+                            trailing: isSyncing ? .progress : .icon("arrow.triangle.2.circlepath"))
+                    }
+                    .buttonStyle(PressableStyle())
+                    .disabled(isSyncing)
+                    .accessibilityIdentifier("profile-sync-health")
+                    Divider().padding(.leading, 52)
+                }
+                Button { exportBackup() } label: {
+                    ProfileRowLabel(icon: "square.and.arrow.up", title: "Export all activities",
+                                    subtitle: nil, trailing: .chevron, status: backupStatus(backup))
+                }
+                .buttonStyle(PressableStyle())
+                .accessibilityIdentifier("profile-export")
+                Divider().padding(.leading, 52)
+                Button { showImporter = true } label: {
+                    ProfileRowLabel(icon: "square.and.arrow.down", title: "Import backup", subtitle: nil, trailing: .chevron)
+                }
+                .buttonStyle(PressableStyle())
+                .accessibilityIdentifier("profile-import")
+            }
+            .background(theme.surface, in: RoundedRectangle(cornerRadius: 20))
+            Text("Backups are a JSON file. Save it to iCloud Drive or Files to keep your data across devices and reinstalls.")
+                .font(MuryTypography.font(.caption, size: 12))
+                .foregroundStyle(theme.muted)
+                .padding(.horizontal, 6)
+        }
+    }
+
+    private func backupStatus(_ state: ProfileSummary.BackupState) -> ProfileRowLabel.Status {
+        switch state {
+        case .never: return .warning("No backup yet")
+        case .stale(let date): return .warning("Last backup \(Formatters.displayDate(date: date)), time for a new one")
+        case .recent(let date): return .info("Last backup \(Formatters.displayDate(date: date))")
         }
     }
 
@@ -291,6 +336,140 @@ private struct EditProfileView: View {
                         onSaved(name, bioText)
                         dismiss()
                     }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Pieces
+
+private struct ProfileSectionTitle: View {
+    @Environment(\.brandTheme) private var theme
+    let text: String
+    init(_ text: String) { self.text = text }
+    var body: some View {
+        Text(text)
+            .font(MuryTypography.font(.caption, size: 12, weight: .semibold))
+            .foregroundStyle(theme.muted)
+            .padding(.horizontal, 6)
+            .accessibilityAddTraits(.isHeader)
+    }
+}
+
+private struct ProfileTotal: View {
+    @Environment(\.brandTheme) private var theme
+    let value: String
+    let label: String
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(value)
+                .font(MuryTypography.font(.title3, size: 20, weight: .bold))
+                .foregroundStyle(theme.ink)
+                .minimumScaleFactor(0.7)
+                .lineLimit(1)
+            Text(label)
+                .font(MuryTypography.font(.caption, size: 12))
+                .foregroundStyle(theme.muted)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+private struct ProfileFigure: View {
+    @Environment(\.brandTheme) private var theme
+    let label: String
+    let value: String
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(MuryTypography.font(.caption, size: 12))
+                .foregroundStyle(theme.muted)
+            Text(value)
+                .font(MuryTypography.font(.body, size: 16, weight: .semibold))
+                .foregroundStyle(theme.ink)
+                .minimumScaleFactor(0.8)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// One tappable row: accent icon, title, optional subtitle or status line, trailing chevron, icon or spinner.
+private struct ProfileRowLabel: View {
+    enum Trailing { case chevron, progress, icon(String) }
+    enum Status { case info(String), warning(String) }
+
+    @Environment(\.brandTheme) private var theme
+    let icon: String
+    let title: String
+    let subtitle: String?
+    let trailing: Trailing
+    var status: Status?
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 18))
+                .foregroundStyle(theme.accent)
+                .frame(width: 28)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(MuryTypography.font(.body, size: 16))
+                    .foregroundStyle(theme.ink)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(MuryTypography.font(.caption, size: 12))
+                        .foregroundStyle(theme.muted)
+                        .multilineTextAlignment(.leading)
+                }
+                if let status {
+                    switch status {
+                    case .info(let text):
+                        Text(text).font(MuryTypography.font(.caption, size: 12)).foregroundStyle(theme.muted)
+                    case .warning(let text):
+                        Text(text).font(MuryTypography.font(.caption, size: 12, weight: .semibold)).foregroundStyle(theme.accent)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            switch trailing {
+            case .chevron: Image(systemName: "chevron.right").font(.footnote).foregroundStyle(theme.muted).accessibilityHidden(true)
+            case .progress: ProgressView()
+            case .icon(let name): Image(systemName: name).font(.footnote).foregroundStyle(theme.muted).accessibilityHidden(true)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .frame(minHeight: 56)
+        .contentShape(Rectangle())
+    }
+}
+
+/// Height, weight, birth date and sex in the same form as first launch; Save writes the stored profile.
+private struct EditBodyView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.brandTheme) private var theme
+    @State private var profile = ProfileStorage.load()
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                ProfileFormView(profile: $profile)
+                    .padding(16)
+            }
+            .background(theme.canvas)
+            .navigationTitle("Body")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        ProfileStorage.save(profile)
+                        dismiss()
+                    }
+                    .accessibilityIdentifier("profile-body-save")
                 }
             }
         }

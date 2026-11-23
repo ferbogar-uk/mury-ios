@@ -106,11 +106,7 @@ touches the network.
   activity is mirrored to the Health app as a workout with its route. Recording
   works identically with or without it, and a failed/denied write never blocks
   or loses the local save.
-- **Profile** — a compact card (not a tall hero banner) with a fixed accent
-  gradient (no custom cover photo) behind avatar/name/bio and a full-height
-  darkening scrim so the gradient never reads as raw lime/blue, and the
-  horizontal wordmark small top-trailing, always white in both light and
-  dark mode. Profile → Settings holds theme and the independent System/Light/Dark controls. A small version footer sits at the bottom.
+- **Profile** (build 45) — header with initials in a dark circle, name, bio and an Edit button (no cover photo, no gradient); all-time totals (activities, distance, time; same rule as Stats, sample activities left out); a *Body* card with height, weight and age from the stored profile (tap to edit in the same form as first launch); a *Your data* card with Sync Health now, Export all activities (shows the last backup date, highlighted when there is none or it is over 30 days old) and Import backup; Settings (theme and System/Light/Dark). Version footer at the bottom.
 - **Themes** — mandatory first-launch Pink or Tiffany Blue selection, persisted locally and changeable in Profile → Settings. Theme is independent of System/Light/Dark appearance.
 - **Appearance** — light/dark/system toggle (icon picker), persisted.
 - **Splash** — branded launch: the horizontal logo wordmark over the app's

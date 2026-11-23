@@ -764,3 +764,7 @@ Ricardo did not like the first icon options (stick figures on a pull-up bar, a r
 ## 2026-11-21 — Build 44: Apple strength icon back
 
 Build 43's custom strength figure looked too thin next to the other icons on Ricardo's phone, so strength is back to Apple's `figure.strengthtraining.traditional` (the Apple Watch icon). `SportIcon` keeps only the thin wrappers (`SportSymbol`, `SportLabel`, `uiImage`) so call sites did not change. Protected file `Models/Activity.swift` changed (one line); its hash was updated in the same PR. Test `testStrengthUsesTheAppleSymbol` replaces the custom-name test.
+
+## 2026-11-23 — Build 45: premium Profile
+
+Last screen of phase 1.5. The cover card and the long footnotes are gone. New layout (mockup approved by Ricardo): initials header with Edit, all-time totals from `StatsSummary`, Body card (height, weight, age from `ProfileStorage`; tapping opens `ProfileFormView` in a sheet with Cancel/Save), Your data card (Sync Health, Export with last-backup line that turns accent-coloured when there is no backup or it is over 30 days old, Import) and Settings. Text logic is in the new `ProfileSummary` with `ProfileSummaryTests` (listed in `scripts/test-core-logic.sh`). Accessibility ids kept: `profile-settings`, `profile-sync-health`; added `profile-export`, `profile-import`, `profile-body`, `profile-totals`. No protected file changed. Unverified on a device (no Swift compiler here, CI is the first compile): layout at large text, the Body sheet save, and the title now being inline instead of large.

@@ -24,6 +24,7 @@ for f in \
   MirrorShared/RecorderMath.swift \
   larping/Features/Stats/StatsSummary.swift \
   larping/Features/Stats/StatsReport.swift \
+  larping/Features/Profile/ProfileSummary.swift \
   larping/Core/HeartRateZones.swift \
   larping/Core/Health/HealthImportRules.swift \
   larping/Core/UserProfile.swift \
@@ -45,7 +46,7 @@ for f in \
   if [ -f "$f" ]; then cp "$f" "$SRC/"; copied=$((copied + 1)); else echo "skip (not on this branch): $f"; fi
 done
 
-for t in RenderCrashLogTests ActivityNamerTests WatchImportTests WatchRecordingTests ReplayTimelineTests FlyoverPlanTests RouteSmoothingTests FlyoverProjectionTests FormattersTests EventNamerTests MirrorSnapshotTests GeoDistanceTests GPXParserTests RecorderMathTests StatsSummaryTests StatsReportTests WatchControlsTests HeartRateTests HeartRateLogTests HeartRateZonesTests BackupFormatTests HealthImportRulesTests UserProfileTests ActivityAnalysisTests SportTypeTests HeartRateSeriesCodecTests ActivityListRulesTests; do
+for t in RenderCrashLogTests ActivityNamerTests WatchImportTests WatchRecordingTests ReplayTimelineTests FlyoverPlanTests RouteSmoothingTests FlyoverProjectionTests FormattersTests EventNamerTests MirrorSnapshotTests GeoDistanceTests GPXParserTests RecorderMathTests StatsSummaryTests StatsReportTests ProfileSummaryTests WatchControlsTests HeartRateTests HeartRateLogTests HeartRateZonesTests BackupFormatTests HealthImportRulesTests UserProfileTests ActivityAnalysisTests SportTypeTests HeartRateSeriesCodecTests ActivityListRulesTests; do
   if [ -f "larpingTests/$t.swift" ]; then
     sed 's/@testable import larping/@testable import CoreLogic/' "larpingTests/$t.swift" > "$TST/$t.swift"
   else
