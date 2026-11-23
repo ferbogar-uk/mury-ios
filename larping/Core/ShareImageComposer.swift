@@ -39,11 +39,6 @@ struct ShareImageComposer {
         let averageHeartRate: String
         let maxHeartRate: String
         var metricLabel: String { usesPaceMetric ? "PACE" : "SPEED" }
-        /// Rows for the Classic and Map cards: empty ones are dropped, heart rate fills in.
-        var rows: [ShareStatRows.Row] {
-            ShareStatRows.rows(distance: distance, duration: duration, metricLabel: metricLabel, paceOrSpeed: paceOrSpeed,
-                               averageHeartRate: averageHeartRate, maxHeartRate: maxHeartRate)
-        }
 
         init(symbolName: String, sportLabel: String, distance: String, duration: String, paceOrSpeed: String, date: String, title: String = "", usesPaceMetric: Bool = true, weekday: String = "", averageHeartRate: String = "–", maxHeartRate: String = "–") {
             self.averageHeartRate = averageHeartRate
@@ -441,7 +436,7 @@ struct ShareImageComposer {
 
     /// Stats rendered as one centered column — three rows of label + value.
     private func drawStats(_ stats: Stats, canvasWidth: CGFloat, startY: CGFloat = 1120, soft: Bool) {
-        let rows = stats.rows
+        let rows = rows(for: stats)
 
         var y: CGFloat = startY
         for row in rows {
@@ -586,7 +581,7 @@ struct ShareImageComposer {
         date.draw(at: CGPoint(x: textX, y: y))
 
         // Three stats across one row.
-        let rows = stats.rows
+        let rows = rows(for: stats)
         let colWidth = (card.width - 88) / CGFloat(max(rows.count, 1))
         for (index, row) in rows.enumerated() {
             let centerX = card.minX + 44 + colWidth * CGFloat(index) + colWidth / 2
@@ -596,6 +591,13 @@ struct ShareImageComposer {
     }
 
     // MARK: - Helpers
+
+    /// Rows for the Classic and Map cards: empty ones are dropped, heart rate fills in.
+    private func rows(for stats: Stats) -> [ShareStatRows.Row] {
+        ShareStatRows.rows(distance: stats.distance, duration: stats.duration, metricLabel: stats.metricLabel,
+                           paceOrSpeed: stats.paceOrSpeed, averageHeartRate: stats.averageHeartRate,
+                           maxHeartRate: stats.maxHeartRate)
+    }
 
     private func displayTitle(_ stats: Stats) -> String {
         let trimmed = stats.title.trimmingCharacters(in: .whitespacesAndNewlines)

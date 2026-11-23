@@ -278,7 +278,7 @@ Canvas 1080x1920.
 4. Route: palette-colour polyline (16pt, round joins), using the resolved
    selected theme and app appearance captured by ShareStyle. Fits into an aspect-matched, centered region
    (y≈504..970) → symmetric margins for any route size.
-5. Stats: one centered column of up to 3 rows from `ShareStatRows` (Foundation-only, Linux-tested): DISTANCE / DURATION / PACE-or-SPEED, with rows that have no value dropped and AVG / MAX HEART RATE filling the space, so a strength session shows DURATION / AVG HEART RATE / MAX HEART RATE instead of dashes. `ShareImageComposer.Stats` carries `averageHeartRate` / `maxHeartRate` strings (default "–") and the computed `rows`.
+5. Stats: one centered column of up to 3 rows from `ShareStatRows` (Foundation-only, Linux-tested): DISTANCE / DURATION / PACE-or-SPEED, with rows that have no value dropped and AVG / MAX HEART RATE filling the space, so a strength session shows DURATION / AVG HEART RATE / MAX HEART RATE instead of dashes. `ShareImageComposer.Stats` carries `averageHeartRate` / `maxHeartRate` strings (default "–"); the composer builds the rows with its private `rows(for:)`.
 6. Footer: the activity **date** (30 semibold, 72% white) — replaces the old
    repo URL text at the same position/size (y≈1610); the URL itself was
    dropped.
@@ -303,7 +303,7 @@ and so the card's title/date can start flush left instead of being indented
 past an icon. Both sit lower than a naive top corner (y≈170, not 90) so
 Instagram Story's own profile-chip/close-button overlay doesn't cover them.
 The **bottom card** (y≈1180..1560, sized to its content instead of a fixed
-oversized box that left empty space) holds event title + date and the same `Stats.rows` (up to three columns) — no icon, no repo URL, no separator line (removed for a cleaner
+oversized box that left empty space) holds event title + date and the same rows (up to three columns) — no icon, no repo URL, no separator line (removed for a cleaner
 look; date text shrunk to 30pt/72% white to match the classic template's
 footer date). Card background dropped from 72% to 50% black opacity (was
 reading too dark/opaque) and corner radius bumped 32→48 to match the
