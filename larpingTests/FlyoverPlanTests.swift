@@ -187,6 +187,64 @@ final class FlyoverPlanTests: XCTestCase {
         XCTAssertEqual(FlyoverPlan.smoothedHeading(timeline: empty, progress: 0.5), 0)
     }
 
+    /// East for 80 s, then 600 s standing still with GPS jitter of about 1 m in changing directions, then north for 80 s.
+    private func pauseTimeline() -> ReplayTimeline {
+        var points: [ReplayPoint] = []
+        for i in 0..<5 {
+            points.append(ReplayPoint(timestamp: origin.addingTimeInterval(Double(i) * 20), latitude: 0, longitude: Double(i) * 0.001))
+        }
+        let latJitter: [Double] = [0.00001, -0.00001, 0.00001, 0.0, -0.00001]
+        let lonJitter: [Double] = [0.0, 0.00001, -0.00001, 0.00001, -0.00001, 0.0, 0.00001]
+        for i in 0..<30 {
+            points.append(ReplayPoint(timestamp: origin.addingTimeInterval(100 + Double(i) * 20),
+                                      latitude: latJitter[i % latJitter.count], longitude: 0.004 + lonJitter[i % lonJitter.count]))
+        }
+        for i in 1...4 {
+            points.append(ReplayPoint(timestamp: origin.addingTimeInterval(700 + Double(i) * 20), latitude: Double(i) * 0.001, longitude: 0.004))
+        }
+        return ReplayTimeline(points: points, startedAt: origin, endedAt: nil)
+    }
+
+    func testHeadingHoldsWhileTheAthleteStandsStill() {
+        let timeline = pauseTimeline()
+        let duration = timeline.duration
+        // Well inside the pause (100 s to 680 s, and clear of the ~9% look-ahead of the later turn north):
+        // the camera keeps the eastward heading instead of spinning on jitter.
+        for step in 0...15 {
+            let seconds = 160 + Double(step) * 24
+            let heading = FlyoverPlan.smoothedHeading(timeline: timeline, progress: seconds / duration)
+            XCTAssertEqual(FlyoverPlan.shortestDelta(from: 90, to: heading), 0, accuracy: 20, "at \(seconds) s")
+        }
+        // After the pause the route heads north and the heading follows.
+        XCTAssertEqual(FlyoverPlan.shortestDelta(from: 0, to: FlyoverPlan.smoothedHeading(timeline: timeline, progress: 0.97)), 0, accuracy: 20)
+    }
+
+    func testCameraDoesNotSpinInThePause() {
+        let plan = FlyoverPlan(timeline: pauseTimeline(), clipSeconds: 30)
+        let follow = plan.range(of: .follow)
+        var previous = plan.state(at: follow.lowerBound).headingDegrees
+        var totalTurn = 0.0
+        var time = follow.lowerBound
+        while time < follow.upperBound {
+            time += 0.05
+            let heading = plan.state(at: min(time, follow.upperBound - 1e-9)).headingDegrees
+            totalTurn += abs(FlyoverPlan.shortestDelta(from: previous, to: heading))
+            previous = heading
+        }
+        // One real turn (east to north) is about 90 degrees; jitter spinning would add several hundred.
+        XCTAssertLessThan(totalTurn, 200)
+    }
+
+    func testMovementThreshold() {
+        XCTAssertFalse(FlyoverPlan.isMovement(meters: 2, seconds: 1))
+        XCTAssertTrue(FlyoverPlan.isMovement(meters: 5, seconds: 1))
+        XCTAssertFalse(FlyoverPlan.isMovement(meters: 10, seconds: 72), "0.14 m/s is jitter")
+        XCTAssertTrue(FlyoverPlan.isMovement(meters: 40, seconds: 72))
+        let a = ReplayCoordinate(latitude: 0, longitude: 0)
+        XCTAssertEqual(FlyoverPlan.distanceMeters(from: a, to: ReplayCoordinate(latitude: 0.001, longitude: 0)), 111.32, accuracy: 0.01)
+        XCTAssertEqual(FlyoverPlan.distanceMeters(from: a, to: a), 0)
+    }
+
     /// Ten points heading due north, 10 s apart: about 1 km tall.
     private func northboundTimeline() -> ReplayTimeline {
         let points = (0..<10).map {
