@@ -122,17 +122,42 @@ enum FlyoverRenderer {
         // Memory the app already holds before the first picture: tells whether the growth starts in the render or before it.
         let startMegabytes = currentMemoryMegabytes()
         var grewBySnapshot = 0, grewByDraw = 0, grewByEncode = 0, grewByScreen = 0, screenFrames = 0
+        // Build 46: only every second frame copies the live map; the frames between blend the two neighbours.
+        var previousCopy: UIImage?
+        var copyAhead: UIImage?
+        var copies = 0
+        func rejectBlack(_ image: UIImage) throws {
+            // A few copies in (the very first can still be loading): a black copy means this phone can't do it.
+            if copies == 4, DirectMapCapture.looksBlack(image) { throw RenderError.blackMap }
+        }
         for (index, time) in times.enumerated() {
             try Task.checkCancellation()
             _ = time
             let state = states[index]
             let frame = timeline.sample(at: state.routeElapsedSeconds)
             let memoryBefore = currentMemoryMegabytes()
-            let mapImage = await capture.capture(state: state, reduceMotion: reduceMotion)
-            try Task.checkCancellation()
-            // A few frames in (the very first can still be loading): a black copy means this phone can't do it.
-            if index == min(5, times.count - 1), DirectMapCapture.looksBlack(mapImage) {
-                throw RenderError.blackMap
+            let mapImage: UIImage
+            if MapFrameSchedule.isKeyframe(index: index, count: times.count) {
+                if let ahead = copyAhead {
+                    capture.moveCamera(state: state, reduceMotion: reduceMotion)
+                    mapImage = ahead
+                    copyAhead = nil
+                } else {
+                    mapImage = await capture.capture(state: state, reduceMotion: reduceMotion)
+                    copies += 1
+                    try Task.checkCancellation()
+                    try rejectBlack(mapImage)
+                }
+                previousCopy = mapImage
+            } else {
+                // Copy the next frame's map now, put the camera back on this frame for the route overlay, and blend.
+                let next = await capture.capture(state: states[index + 1], reduceMotion: reduceMotion)
+                copies += 1
+                try Task.checkCancellation()
+                try rejectBlack(next)
+                capture.moveCamera(state: state, reduceMotion: reduceMotion)
+                copyAhead = next
+                mapImage = DirectMapCapture.halfway(previousCopy ?? next, next)
             }
             let memoryAfterSnapshot = currentMemoryMegabytes()
             grewBySnapshot += memoryAfterSnapshot - memoryBefore

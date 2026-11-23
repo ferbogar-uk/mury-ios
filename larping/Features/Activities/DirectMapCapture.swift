@@ -13,9 +13,13 @@ final class DirectMapCapture: NSObject, MKMapViewDelegate {
 
     /// How long the first frames may wait for the map to finish drawing before they are copied as they are.
     static let firstFrameWaitSeconds: Double = 3
-    /// Later frames wait less: if the map never reports "finished" on this phone, 3 s a frame made a 30 s clip take
-    /// close to an hour and looked like a hang (build 39).
-    static let frameWaitSeconds: Double = 0.7
+    /// Later frames wait this long for the map's "finished" report (0.7 s up to build 45: if the map never reports
+    /// "finished" on this phone, 3 s a frame made a 30 s clip take close to an hour and looked like a hang, build 39).
+    static let frameWaitSeconds: Double = 0.25
+    /// After that wait the map is sampled small, again after `settleStepSeconds`; while it still changes (3D tiles
+    /// arriving) the render waits another step, at most `maxSettleRounds` times (build 46).
+    static let settleStepSeconds: Double = 0.2
+    static let maxSettleRounds = 4
     private var framesCaptured = 0
     /// Camera of the frame just captured; `project` uses it to drop points that are behind the camera or past the horizon.
     private var capturedCenter = CLLocationCoordinate2D()
@@ -36,8 +40,8 @@ final class DirectMapCapture: NSObject, MKMapViewDelegate {
     /// True once the map view sits in a window; it does not draw before that.
     var isOnScreen: Bool { mapView.window != nil }
 
-    /// Moves the map to the frame's camera, waits for it to draw (bounded), and copies it.
-    func capture(state: FlyoverPlan.State, reduceMotion: Bool) async -> UIImage {
+    /// Points the map at a frame's camera without waiting or copying, so `project` answers for that frame.
+    func moveCamera(state: FlyoverPlan.State, reduceMotion: Bool) {
         let camera = MKMapCamera(
             lookingAtCenter: CLLocationCoordinate2D(latitude: state.centerLatitude, longitude: state.centerLongitude),
             fromDistance: state.distanceMeters,
@@ -45,6 +49,11 @@ final class DirectMapCapture: NSObject, MKMapViewDelegate {
             heading: reduceMotion ? 0 : state.headingDegrees)
         capturedCenter = camera.centerCoordinate
         capturedDistance = state.distanceMeters
+        mapView.setCamera(camera, animated: false)
+    }
+
+    /// Moves the map to the frame's camera, waits for it to draw (bounded, and until it stops changing), and copies it.
+    func capture(state: FlyoverPlan.State, reduceMotion: Bool) async -> UIImage {
         frameToken += 1
         let token = frameToken
         let wait = framesCaptured < 3 ? Self.firstFrameWaitSeconds : Self.frameWaitSeconds
@@ -52,18 +61,60 @@ final class DirectMapCapture: NSObject, MKMapViewDelegate {
         await withCheckedContinuation { continuation in
             rendered?.resume()
             rendered = continuation
-            mapView.setCamera(camera, animated: false)
+            moveCamera(state: state, reduceMotion: reduceMotion)
             Task { [weak self] in
                 try? await Task.sleep(for: .seconds(wait))
                 guard let self, self.frameToken == token else { return }
                 self.finishWaiting()
             }
         }
+        // 3D tiles often arrive after the map's own "finished" report; wait while a small sample still changes.
+        var previous = smallSample()
+        for _ in 0..<Self.maxSettleRounds {
+            try? await Task.sleep(for: .seconds(Self.settleStepSeconds))
+            let current = smallSample()
+            let settled = MapFrameSchedule.isSettled(difference: MapFrameSchedule.meanDifference(previous, current))
+            previous = current
+            if settled { break }
+        }
         let format = UIGraphicsImageRendererFormat()
         format.scale = FlyoverRenderer.scale
         format.opaque = true
         return UIGraphicsImageRenderer(bounds: mapView.bounds, format: format).image { _ in
             _ = mapView.drawHierarchy(in: mapView.bounds, afterScreenUpdates: true)
+        }
+    }
+
+    private static let sampleWidth = 36
+    private static let sampleHeight = 64
+
+    /// A 36 x 64 copy of the map as RGBA bytes, cheap enough to compare twice per frame.
+    private func smallSample() -> [UInt8] {
+        let width = Self.sampleWidth, height = Self.sampleHeight
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = true
+        let image = UIGraphicsImageRenderer(size: CGSize(width: width, height: height), format: format).image { _ in
+            _ = mapView.drawHierarchy(in: CGRect(x: 0, y: 0, width: width, height: height), afterScreenUpdates: true)
+        }
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        guard let cg = image.cgImage,
+              let context = CGContext(data: &pixels, width: width, height: height, bitsPerComponent: 8,
+                                      bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return pixels }
+        context.draw(cg, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return pixels
+    }
+
+    /// An even mix of two copies, for the frame halfway between them.
+    static func halfway(_ first: UIImage, _ second: UIImage) -> UIImage {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = first.scale
+        format.opaque = true
+        let bounds = CGRect(origin: .zero, size: first.size)
+        return UIGraphicsImageRenderer(bounds: bounds, format: format).image { _ in
+            first.draw(in: bounds)
+            second.draw(in: bounds, blendMode: .normal, alpha: 0.5)
         }
     }
 
