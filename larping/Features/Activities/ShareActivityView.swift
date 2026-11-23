@@ -103,7 +103,9 @@ struct ShareActivityView: View {
             date: Formatters.displayDate(date: activity.startedAt),
             title: activity.eventName ?? "",
             usesPaceMetric: activity.sportType.usesPaceMetric,
-            weekday: activity.startedAt.formatted(.dateTime.weekday(.wide))
+            weekday: activity.startedAt.formatted(.dateTime.weekday(.wide)),
+            averageHeartRate: ShareStatRows.heartRateText(activity.averageHeartRateBpm),
+            maxHeartRate: ShareStatRows.heartRateText(activity.maxHeartRateBpm)
         )
     }
 

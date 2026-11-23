@@ -59,7 +59,7 @@ touches the network.
   markers, and a bottom info card — sized to its content, no repo URL — holding
   the event title, date, and stats), and a slow 60fps animated video of the
   route drawing in over the same map. The map template's card title is the event name exactly as
-  typed (casing preserved). Pace is shown without the ` /km` unit; speed
+  typed (casing preserved). The sport icon is big and brand red on the classic and map cards, and sessions with no distance or pace (strength, yoga…) show duration plus average and max heart rate instead of dashes. Pace is shown without the ` /km` unit; speed
   sports keep `km/h`. Generated videos are temporary — share/save them before
   leaving, then they're cleaned up. Share through the system sheet or use **Save to Files** for the selected ready PNG/MP4. Save feedback distinguishes success, cancellation and retryable failures; the document owns its bytes before the picker opens. Native save behavior remains pending iOS validation.
 - **Route flyover** — Strava-style 3D flight over the route (Activity detail →
