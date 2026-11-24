@@ -17,8 +17,8 @@ auto-saves, so there's no lost workout.
 
 Activities are stored on-device in SwiftData (SQLite). **No app account, backend or ads.** Apple Maps may request map imagery; optional HealthKit, backup and sharing move data only through their existing user-selected flows.
 
-Open source, built with SwiftUI + SwiftData — no third-party
-dependencies. Optional extras that keep the privacy promise: GPX import,
+Open source, built with SwiftUI + SwiftData — one third-party
+dependency, the Mapbox SDK, used only by the Map test screen. Optional extras that keep the privacy promise: GPX import,
 HealthKit sync/import (you opt in), and JSON backup/restore via iCloud Drive.
 Works fully offline; GPS + Apple Maps tiles aside, the app itself never
 touches the network.
