@@ -13,6 +13,21 @@ struct ActivityRouteCard: View {
         return name.isEmpty ? activity.sportType.label : name
     }
 
+    /// Distance / Time / Avg HR-or-pace, or Time + heart rate + calories when there is no distance.
+    private var numbers: [ActivityCardStats.Item] {
+        let pace = Formatters.paceOrSpeed(sportType: activity.sportType,
+                                          averagePaceSecondsPerKm: activity.averagePaceSecondsPerKm,
+                                          averageSpeedMps: activity.averageSpeedMps)
+        return ActivityCardStats.items(
+            distanceText: (activity.distanceMeters ?? 0) > 0 ? Formatters.distance(meters: activity.distanceMeters.map(Double.init)) : nil,
+            durationText: Formatters.duration(seconds: activity.durationSeconds),
+            paceLabel: activity.sportType.usesPaceMetric ? "Pace" : "Speed",
+            paceText: pace == "–" ? nil : pace,
+            averageHeartRate: activity.averageHeartRateBpm,
+            maxHeartRate: activity.maxHeartRateBpm,
+            calories: activity.energyKcal)
+    }
+
     /// At most ~300 points: enough for the shape, light enough for a list of cards.
     private var coordinates: [CLLocationCoordinate2D] {
         let points = activity.trackPoints.sorted { $0.timestamp < $1.timestamp }
@@ -61,15 +76,10 @@ struct ActivityRouteCard: View {
                         .foregroundStyle(theme.muted)
                 }
                 HStack(alignment: .top) {
-                    stat("Distance", Formatters.distance(meters: activity.distanceMeters.map(Double.init)))
-                    Spacer()
-                    stat("Time", Formatters.duration(seconds: activity.durationSeconds))
-                    Spacer()
-                    stat(activity.averageHeartRateBpm == nil ? activity.sportType.usesPaceMetric ? "Pace" : "Speed" : "Avg HR",
-                         activity.averageHeartRateBpm.map { "\($0)" }
-                            ?? Formatters.paceOrSpeed(sportType: activity.sportType,
-                                                      averagePaceSecondsPerKm: activity.averagePaceSecondsPerKm,
-                                                      averageSpeedMps: activity.averageSpeedMps))
+                    ForEach(Array(numbers.enumerated()), id: \.offset) { index, item in
+                        if index > 0 { Spacer() }
+                        stat(item.label, item.value)
+                    }
                 }
             }
             .padding(14)

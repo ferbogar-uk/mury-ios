@@ -491,7 +491,7 @@ Build 33 redesign of the first launch: `OnboardingView` steps `health → profil
 
 ## Premium visual, phase 1.5 (build 34 onwards)
 
-Shared components in `Features/Shared/`: `ActivityRouteCard` (still `Map` with `MapPolyline` casing + route, start dot, max ~300 points, falls back to a sport header without a route; soft two-layer shadow, 20 pt continuous corners). `PressableStyle` (in `OnboardingView.swift`) gives press feedback. Home is a `ScrollView` (not `List`) with a week card (`HomeSummary.dailyDistance` → `WeekStrip`), record chips (identifiers `home-record-<sport>` kept for UI tests) and map cards. Motion: the week figure animates with `.numericText`; no animation under Reduce Motion.
+Shared components in `Features/Shared/`: `ActivityRouteCard` (its three numbers come from the Foundation-only `Features/Shared/ActivityCardStats.swift`, Linux-tested: Distance / Time / Avg HR-or-pace, and for activities with no distance Time + Avg HR + measured calories, then Max HR as a filler, so a strength card has no "Distance –"; still `Map` with `MapPolyline` casing + route, start dot, max ~300 points, falls back to a sport header without a route; soft two-layer shadow, 20 pt continuous corners). `PressableStyle` (in `OnboardingView.swift`) gives press feedback. Home is a `ScrollView` (not `List`) with a week card (`HomeSummary.dailyDistance` → `WeekStrip`), record chips (identifiers `home-record-<sport>` kept for UI tests) and map cards. Motion: the week figure animates with `.numericText`; no animation under Reduce Motion.
 
 ## Activity types (phase 2, build 36)
 
