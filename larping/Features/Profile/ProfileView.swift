@@ -51,6 +51,15 @@ struct ProfileView: View {
                     .background(theme.surface, in: RoundedRectangle(cornerRadius: 20))
                     .accessibilityIdentifier("profile-settings")
 
+                    NavigationLink {
+                        MapTestView()
+                    } label: {
+                        ProfileRowLabel(icon: "map", title: "Map test", subtitle: "Apple and Mapbox side by side", trailing: .chevron)
+                    }
+                    .buttonStyle(PressableStyle())
+                    .background(theme.surface, in: RoundedRectangle(cornerRadius: 20))
+                    .accessibilityIdentifier("profile-map-test")
+
                     Text("MURY v\(appVersion) (\(appBuild))")
                         .font(MuryTypography.font(.caption2, size: 11, weight: .regular))
                         .foregroundStyle(theme.muted)

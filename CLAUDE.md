@@ -2,7 +2,8 @@
 
 SwiftUI iOS app, brand "Larping", tagline "actually works". Like Strava, but
 just the recording — and private by construction: **fully offline, on-device
-SwiftData storage, zero networking, no server, no account.**
+SwiftData storage, zero networking, no server, no account** (one exception since build 50: the
+Profile → *Map test* screen asks Mapbox for map tiles; see `docs/KNOWN_ISSUES.md`).
 Black/white minimalist theme (`Ink`/`Canvas`/`Accent` etc, see
 `docs/ARCHITECTURE.md`).
 
