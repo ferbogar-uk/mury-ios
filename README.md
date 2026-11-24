@@ -17,14 +17,15 @@ auto-saves, so there's no lost workout.
 
 Activities are stored on-device in SwiftData (SQLite). **No app account, backend or ads.** Apple Maps may request map imagery; optional HealthKit, backup and sharing move data only through their existing user-selected flows.
 
-Open source, built with SwiftUI + SwiftData — no third-party
-dependencies. Optional extras that keep the privacy promise: GPX import,
+Open source, built with SwiftUI + SwiftData — one third-party
+dependency, the Mapbox SDK, used only by the Map test screen. Optional extras that keep the privacy promise: GPX import,
 HealthKit sync/import (you opt in), and JSON backup/restore via iCloud Drive.
 Works fully offline; GPS + Apple Maps tiles aside, the app itself never
 touches the network.
 
 ## Features
 
+- **Map test** — Profile → *Map test* (build 50, for comparing only): plays the 3D flyover camera on Apple's map or on Mapbox (3D or satellite) so the two can be compared on the phone. It is preview only, and the Mapbox options ask Mapbox for map tiles, so they only work in TestFlight builds that include the token.
 - **Render crash report** — if the app is closed by the system during a 3D flyover render, the next launch shows where it stopped (frame, memory) with a Share button. Stays on the phone unless shared.
 - **Activity types** (phase 2, build 36) — 22 types from Apple's Exercise list, each with its SF Symbol: outdoor with GPS (Run, Walk, Hike, Ride, Swim, Rowing, Tennis, Football, Other) and indoor/gym without a route (Strength, Treadmill, Indoor cycle, Stairs, Elliptical, HIIT, Yoga, Pilates, Core, Dance, Climbing, Indoor row, Boxing). Health workouts map to them (indoor running, cycling and rowing told apart by Health's indoor flag); imports saved as "Other" before build 36 are re-classified once on the next sync and get their heart rate and measured energy filled in. Indoor activities show no map but keep time, heart rate (graph and zones) and Health's calories. Record shortcuts list only the outdoor types: recording indoor workouts on the iPhone is phase 7. Activities written to Health from MURY carry the indoor flag when indoor.
 - **Home** — default tab (premium redesign, build 34): the last seven days as one big distance figure that counts up, activity count and time, and a seven-day bar strip; a horizontal row of record shortcuts by sport; the three newest personal activities as map cards (route in white casing under the brand red, three headline numbers). Sample and future-dated activities are excluded from Home metrics/cards; existing history remains unchanged. Home shortcuts preserve active or paused recordings. Native lifecycle validation is pending.
