@@ -6,12 +6,14 @@ import UIKit
 struct MapboxFlyoverMap: UIViewRepresentable {
     enum Style: String {
         case standard = "mapbox://styles/mapbox/standard"
-        case satellite = "mapbox://styles/mapbox/standard-satellite"
+        case satellite = "mapbox://styles/mapbox/satellite-streets-v12"
     }
 
     let style: Style
     let route: [CLLocationCoordinate2D]
     let state: FlyoverPlan.State
+    /// The latest map loading error Mapbox reported (missing tiles, token or style problems), shown under the map.
+    @Binding var loadingError: String?
 
     func makeUIView(context: Context) -> MapView {
         MapboxOptions.accessToken = MapboxConfig.accessToken
@@ -24,6 +26,11 @@ struct MapboxFlyoverMap: UIViewRepresentable {
         line.lineWidth = 5
         manager.annotations = [line]
         context.coordinator.manager = manager
+        let errorBinding = $loadingError
+        context.coordinator.errorWatcher = mapView.mapboxMap.onMapLoadingError.observe { error in
+            let text = "\(error.type): \(error.message)"
+            DispatchQueue.main.async { errorBinding.wrappedValue = text }
+        }
         return mapView
     }
 
@@ -39,5 +46,6 @@ struct MapboxFlyoverMap: UIViewRepresentable {
 
     final class Coordinator {
         var manager: PolylineAnnotationManager?
+        var errorWatcher: AnyCancelable?
     }
 }
