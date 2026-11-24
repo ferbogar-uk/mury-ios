@@ -788,3 +788,7 @@ Reported by Ricardo from the Home "Recent activities" list: a Strength card show
 ## 2026-11-24 — Build 50: Mapbox comparison test
 
 Ricardo asked for a Mapbox test beside the Apple map (full 3D test chosen). Added the `MapboxMaps` Swift package (project file edited by hand: remote package reference, product dependency, `larping` target only), `Features/MapTest/` (screen, two map views, `MapboxCameraMath` + `MapboxCameraMathTests` in `scripts/test-core-logic.sh`, `MapboxConfig`) and a Profile row. `ios-testflight.yml` (protected, hash updated, Ricardo told first) now writes the `MAPBOX_ACCESS_TOKEN` secret into `MapboxConfig.swift` and fails on a non-`pk.` token. Written without a Swift compiler and against Mapbox v11 API from memory, so the first macOS CI run may need compile fixes. CLAUDE.md's "zero networking" line now names this exception.
+
+## 2026-11-24 — Build 51: Mapbox satellite diagnosis
+
+Ricardo's device test of build 50: Mapbox 3D worked and he liked it, but "Mapbox satellite" (`standard-satellite`) showed roads and labels on a plain pink background with no satellite imagery (not a free-account limit: Mapbox's free tier includes satellite imagery; cause not confirmed). Build 51 switches that option to the classic `satellite-streets-v12` style and shows Mapbox's last loading error under the map, so the next device test names the cause if imagery is still missing. Untested on a device.

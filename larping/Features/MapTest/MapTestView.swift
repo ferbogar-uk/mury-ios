@@ -20,6 +20,7 @@ struct MapTestView: View {
     @State private var route: [CLLocationCoordinate2D] = []
     @State private var flyTime: TimeInterval = 0
     @State private var isPlaying = false
+    @State private var mapboxError: String?
 
     private var candidates: [CDActivity] { activities.filter { $0.trackPoints.count > 1 }.prefix(10).map { $0 } }
 
@@ -34,6 +35,14 @@ struct MapTestView: View {
             if let plan, plan.isUsable {
                 mapArea(plan: plan)
                     .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                if provider != .apple, let mapboxError {
+                    Text("Mapbox: \(mapboxError)")
+                        .font(MuryTypography.font(.caption2, size: 11, weight: .regular))
+                        .foregroundStyle(theme.muted)
+                        .lineLimit(3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("maptest-error")
+                }
                 controls
             } else {
                 Spacer()
@@ -49,6 +58,7 @@ struct MapTestView: View {
         .background(theme.canvas)
         .navigationTitle("Map test")
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: provider) { mapboxError = nil }
         .onAppear { if chosen == nil, let first = candidates.first { choose(first) } }
         .task(id: isPlaying) { await run() }
         .onDisappear { isPlaying = false }
@@ -61,7 +71,8 @@ struct MapTestView: View {
             AppleFlyoverMap(route: route, state: state)
         case .mapbox3D, .mapboxSatellite:
             if MapboxConfig.isAvailable {
-                MapboxFlyoverMap(style: provider == .mapbox3D ? .standard : .satellite, route: route, state: state)
+                MapboxFlyoverMap(style: provider == .mapbox3D ? .standard : .satellite, route: route, state: state,
+                                 loadingError: $mapboxError)
                     .id(provider)
             } else {
                 Text("This build has no Mapbox token, so only the Apple map works. TestFlight builds include it.")
