@@ -26,6 +26,10 @@ struct FlyoverPlan {
     }
 
     static let followDistanceMeters = 450.0
+    /// A route whose whole bounding box is smaller than this (indoors, a gym, standing in one spot) is "one point":
+    /// GPS jitter of a few metres would only shake the camera, so it stays fixed on the middle of the route
+    /// (build 52, reported on a gym workout).
+    static let stationaryExtentMeters = 60.0
     /// MapKit clamps pitch to what the map allows at that zoom, so asking for a high value is safe.
     static let followPitchDegrees = 72.0
     /// The marker starts falling at this share of the orbit and lands as the orbit ends, so the run starts right after.
@@ -52,6 +56,8 @@ struct FlyoverPlan {
     private let endHeading: Double
     private let followStartCenter: ReplayCoordinate
     private let followEndCenter: ReplayCoordinate
+    /// True when the whole route fits in `stationaryExtentMeters`: the follow camera then holds still.
+    let isStationary: Bool
     /// Pre-smoothed travel direction at 121 evenly spaced points along the activity.
     private let headingTable: [Double]
 
@@ -69,11 +75,16 @@ struct FlyoverPlan {
             endHeading = 0
             followStartCenter = boxCenter
             followEndCenter = boxCenter
+            isStationary = false
             headingTable = []
             return
         }
         isUsable = true
-        let table = (0...120).map { FlyoverPlan.smoothedHeading(timeline: timeline, progress: Double($0) / 120) }
+        let stationary = FlyoverPlan.extentMeters(of: all) < FlyoverPlan.stationaryExtentMeters
+        isStationary = stationary
+        let rawTable = (0...120).map { FlyoverPlan.smoothedHeading(timeline: timeline, progress: Double($0) / 120) }
+        // One point: a single fixed heading, so the camera does not turn on the spot.
+        let table = stationary ? Array(repeating: rawTable[0], count: rawTable.count) : rawTable
         headingTable = table
         startHeading = table[0]
         endHeading = table[120]
@@ -84,8 +95,34 @@ struct FlyoverPlan {
         let fit = FlyoverPlan.overviewFit(points: all, headingDegrees: opening)
         boxCenter = fit.center
         overviewDistanceMeters = fit.distance
-        followStartCenter = FlyoverPlan.position(timeline: timeline, progress: 0) ?? all[0]
-        followEndCenter = FlyoverPlan.position(timeline: timeline, progress: 1) ?? all[all.count - 1]
+        if stationary {
+            // The middle of the route's box, for the whole follow phase.
+            let middle = ReplayCoordinate(latitude: fit.center.latitude, longitude: fit.center.longitude)
+            followStartCenter = middle
+            followEndCenter = middle
+        } else {
+            followStartCenter = FlyoverPlan.position(timeline: timeline, progress: 0) ?? all[0]
+            followEndCenter = FlyoverPlan.position(timeline: timeline, progress: 1) ?? all[all.count - 1]
+        }
+    }
+
+    /// Diagonal of the box around the points, in metres.
+    static func extentMeters(of points: [ReplayCoordinate]) -> Double {
+        guard let first = points.first else { return 0 }
+        var minLat = first.latitude, maxLat = first.latitude
+        var minLon = first.longitude, maxLon = first.longitude
+        for point in points {
+            minLat = min(minLat, point.latitude); maxLat = max(maxLat, point.latitude)
+            minLon = min(minLon, point.longitude); maxLon = max(maxLon, point.longitude)
+        }
+        return distanceMeters(from: ReplayCoordinate(latitude: minLat, longitude: minLon),
+                              to: ReplayCoordinate(latitude: maxLat, longitude: maxLon))
+    }
+
+    /// Where the position marker sits for a state: the athlete's spot at that share of the activity.
+    func markerCoordinate(for state: State) -> ReplayCoordinate? {
+        guard isUsable else { return nil }
+        return FlyoverPlan.position(timeline: timeline, progress: state.routeProgress)
     }
 
     /// Start and end time (seconds into the clip) of a phase.
@@ -197,7 +234,8 @@ struct FlyoverPlan {
 
     /// Where the camera centres at a share of the activity. Skips GPS gaps by looking back for the last known position.
     private func followCenter(progress: Double) -> ReplayCoordinate {
-        FlyoverPlan.position(timeline: timeline, progress: progress) ?? start
+        if isStationary { return followStartCenter }
+        return FlyoverPlan.position(timeline: timeline, progress: progress) ?? start
     }
 
     static func position(timeline: ReplayTimeline, progress: Double) -> ReplayCoordinate? {

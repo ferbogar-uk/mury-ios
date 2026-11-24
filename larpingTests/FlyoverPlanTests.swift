@@ -354,4 +354,63 @@ final class FlyoverPlanTests: XCTestCase {
         XCTAssertTrue(FlyoverPlan.frameTimes(clipSeconds: .nan, framesPerSecond: 20).isEmpty)
         XCTAssertTrue(FlyoverPlan.frameTimes(clipSeconds: 15, framesPerSecond: 0).isEmpty)
     }
+
+    // MARK: - One point (indoors), build 52
+
+    /// 40 jittering points inside about 8 m: a gym workout where GPS drifts but nobody goes anywhere.
+    private func indoorTimeline() -> ReplayTimeline {
+        let points = (0..<40).map { i -> ReplayPoint in
+            let wobble = Double((i * 7) % 5) * 0.00002
+            let other = Double((i * 3) % 4) * 0.00002
+            return ReplayPoint(timestamp: origin.addingTimeInterval(Double(i) * 15), latitude: 51.5 + wobble, longitude: -0.1 + other)
+        }
+        return ReplayTimeline(points: points, startedAt: origin, endedAt: nil)
+    }
+
+    func testIndoorRouteIsOnePoint() {
+        let plan = FlyoverPlan(timeline: indoorTimeline(), clipSeconds: 30)
+        XCTAssertTrue(plan.isUsable)
+        XCTAssertTrue(plan.isStationary)
+        XCTAssertFalse(FlyoverPlan(timeline: eastboundTimeline(), clipSeconds: 30).isStationary)
+    }
+
+    func testCameraStaysPerfectlyStillWhileFollowingAnIndoorRoute() {
+        let plan = FlyoverPlan(timeline: indoorTimeline(), clipSeconds: 30)
+        let follow = plan.range(of: .follow)
+        let first = plan.state(at: follow.lowerBound + 0.01)
+        for step in 0...40 {
+            let t = follow.lowerBound + (follow.upperBound - follow.lowerBound) * Double(step) / 40
+            let state = plan.state(at: t)
+            XCTAssertEqual(state.centerLatitude, first.centerLatitude, accuracy: 1e-12)
+            XCTAssertEqual(state.centerLongitude, first.centerLongitude, accuracy: 1e-12)
+            XCTAssertEqual(state.headingDegrees, first.headingDegrees, accuracy: 1e-9)
+            XCTAssertEqual(state.distanceMeters, first.distanceMeters, accuracy: 1e-9)
+        }
+    }
+
+    func testIndoorOrbitAndFinishDoNotJumpAtTheSeams() {
+        let plan = FlyoverPlan(timeline: indoorTimeline(), clipSeconds: 30)
+        let orbitEnd = plan.range(of: .orbit).upperBound
+        let before = plan.state(at: orbitEnd - 0.001), after = plan.state(at: orbitEnd + 0.001)
+        XCTAssertEqual(before.centerLatitude, after.centerLatitude, accuracy: 1e-6)
+        XCTAssertEqual(FlyoverPlan.shortestDelta(from: before.headingDegrees, to: after.headingDegrees), 0, accuracy: 0.5)
+        let finishStart = plan.range(of: .finish).lowerBound
+        let a = plan.state(at: finishStart - 0.001), b = plan.state(at: finishStart + 0.001)
+        XCTAssertEqual(a.centerLongitude, b.centerLongitude, accuracy: 1e-6)
+        XCTAssertEqual(FlyoverPlan.shortestDelta(from: a.headingDegrees, to: b.headingDegrees), 0, accuracy: 0.5)
+    }
+
+    func testExtentOfPointsAndMarkerFollowsTheRoute() {
+        XCTAssertEqual(FlyoverPlan.extentMeters(of: []), 0)
+        let line = [ReplayCoordinate(latitude: 0, longitude: 0), ReplayCoordinate(latitude: 0, longitude: 0.001)]
+        XCTAssertEqual(FlyoverPlan.extentMeters(of: line), 111.3, accuracy: 0.5)
+        let plan = FlyoverPlan(timeline: eastboundTimeline(), clipSeconds: 30)
+        let follow = plan.range(of: .follow)
+        let mid = plan.state(at: (follow.lowerBound + follow.upperBound) / 2)
+        let marker = plan.markerCoordinate(for: mid)
+        XCTAssertNotNil(marker)
+        XCTAssertEqual(marker?.longitude ?? -1, 0.0045, accuracy: 0.0005)
+        XCTAssertNil(FlyoverPlan(timeline: ReplayTimeline(points: [], startedAt: origin, endedAt: nil), clipSeconds: 30)
+            .markerCoordinate(for: mid))
+    }
 }

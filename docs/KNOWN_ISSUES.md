@@ -235,3 +235,8 @@ The new Render in app copies a live Apple 3D map view each frame. Apple draws th
 ## Map test sends tile requests to Mapbox (build 50)
 
 The app is otherwise offline apart from Apple's own maps. Profile → *Map test*, when the Mapbox options are chosen, makes the Mapbox SDK request tiles for the area on screen (and the SDK may send its own usage telemetry; not yet checked or switched off). Only TestFlight builds include the public token, so CI builds show a message instead. Mapbox's product terms restrict video use without an agreement (see `docs/mury-3d-video-export-feasibility.md`), so this screen has no recording, render or share. Not compiled or run when written: the first CI run and the first device run are the first checks, and Mapbox's terrain and 3D buildings may look different from what the style name suggests. Remove the screen, the package reference and the workflow step if Mapbox is dropped.
+
+## Mapbox satellite can hit the free-plan tile limit (build 52)
+
+Build 51 showed "HTTP 429 Too Many Requests" under the satellite map: Mapbox rate-limits raster tile requests and the fast flyover asks for many. Build 52 reduces the requests (no tile prefetch, pitch capped at 60 for satellite) but it is not confirmed to be enough; tiles already downloaded are cached, so a second play is lighter. If it still fails, the options are a lower tilt, a slower camera, or a paid plan. Mapbox 3D (vector tiles) is not affected.
+
