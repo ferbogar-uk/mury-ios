@@ -3,7 +3,7 @@ import SwiftData
 import SwiftUI
 
 /// Test screen (build 50): plays the same flyover camera path on Apple's map and on Mapbox, so Ricardo can
-/// compare them on his phone. Preview only: no recording, no render, no sharing, and no trail reveal or marker.
+/// compare them on his phone. Preview only: no recording, no render, no sharing, and no trail reveal (the position marker is shown, build 52).
 /// Mapbox's terms restrict shared video, so nothing produced here may leave the phone. Mapbox is asked for map
 /// tiles for the area shown, so this is the one place the app sends anything to a map server other than Apple.
 struct MapTestView: View {
@@ -66,13 +66,17 @@ struct MapTestView: View {
 
     @ViewBuilder private func mapArea(plan: FlyoverPlan) -> some View {
         let state = plan.state(at: flyTime)
+        // The marker shows once it has landed (it falls in during the orbit, as in the real flyover) and stays to the end.
+        let spot = state.markerDrop <= 0 ? plan.markerCoordinate(for: state) : nil
+        let marker = spot.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+        let symbol = chosen?.sportType.symbolName ?? "figure.run"
         switch provider {
         case .apple:
-            AppleFlyoverMap(route: route, state: state)
+            AppleFlyoverMap(route: route, state: state, marker: marker, markerSymbolName: symbol)
         case .mapbox3D, .mapboxSatellite:
             if MapboxConfig.isAvailable {
                 MapboxFlyoverMap(style: provider == .mapbox3D ? .standard : .satellite, route: route, state: state,
-                                 loadingError: $mapboxError)
+                                 marker: marker, markerSymbolName: symbol, loadingError: $mapboxError)
                     .id(provider)
             } else {
                 Text("This build has no Mapbox token, so only the Apple map works. TestFlight builds include it.")
